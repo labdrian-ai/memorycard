@@ -17,7 +17,7 @@ Source of truth for behavior: `/home/labdrian/memorycard-lab/spec/memorycard-v0.
 - A2 (assumption). Thresholds for duplicate hint and low confidence start at cosine 0.97 and are calibrated in T9 on held-out data.
 
 ## Tasks
-- [ ] T1 (S2) module skeleton, pure-Go SQLite open + pragmas + migrations, FTS5 proven available — route: inline
+- [x] T1 (S2) module skeleton, pure-Go SQLite open + pragmas + migrations, FTS5 proven available — route: inline — commit 654aaba; RED: store package failed to build (undefined Open/DB/SchemaVersion); GREEN: 5 tests pass (schema, WAL+FK pragmas, reopen keeps data, FTS5 folds diacritics, FTS follows update/delete). Risk: none (new code, no existing behavior).
 - [ ] T2 (S4) store: save path, hashing, caps, redaction, topic_key upsert, versions, supersedes — inline
 - [ ] T3 (S4,S5) embedder interface, ollama client, vector storage, pending-embedding queue — inline
 - [ ] T4 (S5) search: dense, lexical fallback, confidence, topic shortcut, exclusions — inline
