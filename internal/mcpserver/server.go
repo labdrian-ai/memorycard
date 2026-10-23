@@ -30,7 +30,7 @@ func New(svc *memory.Service, defaultProject string) *mcp.Server {
 	mcp.AddTool(srv, &mcp.Tool{Name: "mem_save",
 		Description: "Save a memory. Same topic_key updates it in place; supersedes marks an older id replaced."}, h.save)
 	mcp.AddTool(srv, &mcp.Tool{Name: "mem_search",
-		Description: "Find memories by meaning. Returns titles; detail=snippet adds a short excerpt."}, h.search)
+		Description: "Find memories by meaning. Returns titles with a short excerpt; detail=title drops the excerpt."}, h.search)
 	mcp.AddTool(srv, &mcp.Tool{Name: "mem_get",
 		Description: "Read one memory in full, with its version history."}, h.get)
 	mcp.AddTool(srv, &mcp.Tool{Name: "mem_update",
@@ -78,7 +78,7 @@ type searchArgs struct {
 	Query      string `json:"query" jsonschema:"natural-language question or topic_key"`
 	Type       string `json:"type,omitempty"`
 	K          int    `json:"k,omitempty" jsonschema:"results, default 5"`
-	Detail     string `json:"detail,omitempty" jsonschema:"title (default) or snippet"`
+	Detail     string `json:"detail,omitempty" jsonschema:"snippet (default) or title"`
 	IncludeOld bool   `json:"include_old,omitempty" jsonschema:"include superseded and archived"`
 	Project    string `json:"project,omitempty"`
 }

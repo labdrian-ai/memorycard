@@ -192,13 +192,18 @@ func TestSearchDetailLevels(t *testing.T) {
 	s := newSvc(t)
 	body := strings.Repeat("palabra ", 100)
 	save(t, s, SaveInput{Project: "p", Title: "Largo", Body: body})
-	title := search(t, s, SearchInput{Query: "largo", Project: "p"})
+	title := search(t, s, SearchInput{Query: "largo", Project: "p", Detail: DetailTitle})
 	if title.Hits[0].Snippet != "" {
 		t.Errorf("title detail returned a snippet: %q", title.Hits[0].Snippet)
 	}
-	snip := search(t, s, SearchInput{Query: "largo", Project: "p", Detail: DetailSnippet})
-	if n := len([]rune(snip.Hits[0].Snippet)); n == 0 || n > SnippetRunes {
-		t.Errorf("snippet has %d runes, want 1..%d", n, SnippetRunes)
+	for name, in := range map[string]SearchInput{
+		"default":  {Query: "largo", Project: "p"},
+		"explicit": {Query: "largo", Project: "p", Detail: DetailSnippet},
+	} {
+		snip := search(t, s, in)
+		if n := len([]rune(snip.Hits[0].Snippet)); n == 0 || n > SnippetRunes {
+			t.Errorf("%s detail: snippet has %d runes, want 1..%d", name, n, SnippetRunes)
+		}
 	}
 }
 

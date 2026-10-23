@@ -29,7 +29,7 @@ commands:
   mcp                      serve the MCP tools over stdio
   save   --title T --body B [--type X] [--topic K] [--scope S] [--supersedes ID]
                            save a memory (--body - reads stdin)
-  search [--type X] [--k N] [--snippet] [--all] <query>
+  search [--type X] [--k N] [--titles] [--all] <query>
   get    <id>              print one memory with its history
   context                  print the project digest
   stats                    counts and embedding backlog
@@ -184,18 +184,18 @@ func (a *app) save(ctx context.Context, svc *memory.Service, args []string) int 
 func (a *app) search(ctx context.Context, svc *memory.Service, args []string) int {
 	fs := a.flags("search")
 	in := memory.SearchInput{Project: a.project()}
-	var snippet bool
+	var titles bool
 	fs.StringVar(&in.Type, "type", "", "type filter")
 	fs.IntVar(&in.K, "k", 0, "results")
-	fs.BoolVar(&snippet, "snippet", false, "include a snippet")
+	fs.BoolVar(&titles, "titles", false, "titles only, no excerpt")
 	fs.BoolVar(&in.IncludeOld, "all", false, "include superseded and archived")
 	fs.StringVar(&in.Project, "project", in.Project, "project")
 	if fs.Parse(args) != nil {
 		return 2
 	}
 	in.Query = strings.Join(fs.Args(), " ")
-	if snippet {
-		in.Detail = memory.DetailSnippet
+	if titles {
+		in.Detail = memory.DetailTitle
 	}
 	r, err := svc.Search(ctx, in)
 	if err != nil {

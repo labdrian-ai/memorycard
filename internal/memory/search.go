@@ -47,7 +47,7 @@ type SearchInput struct {
 	Project    string // empty means all projects
 	Type       string
 	K          int    // defaults to DefaultK, capped at MaxK
-	Detail     string // DetailTitle (default) or DetailSnippet
+	Detail     string // DetailSnippet (default) or DetailTitle
 	IncludeOld bool   // include superseded and archived memories
 }
 
@@ -56,7 +56,7 @@ type Hit struct {
 	ID      int64
 	Type    string
 	Title   string
-	Snippet string // only with DetailSnippet
+	Snippet string // empty with DetailTitle
 	Score   float64
 	Stale   bool
 }
@@ -286,7 +286,7 @@ func (s *Service) finish(cs []candidate, detail string) []Hit {
 	for _, c := range cs {
 		h := c.Hit
 		h.Stale = isStale(c.Type, c.updated, now)
-		if detail == DetailSnippet {
+		if detail != DetailTitle {
 			h.Snippet = snippet(c.body)
 		}
 		hits = append(hits, h)
