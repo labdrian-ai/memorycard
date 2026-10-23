@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/labdrian-ai/memorycard/internal/accept"
@@ -24,6 +25,9 @@ func run() int {
 	includeOld := flag.Bool("include-old", true, "let superseded memories compete, as the lab index did")
 	sim := flag.Float64("similarity", 0, "also accept memories with cosine >= this to the target (0 = off)")
 	k := flag.Int("k", 10, "results examined per query")
+	negatives := flag.String("negatives", "", "file with one off-topic question per line: prints their top-score distribution")
+	neighbors := flag.Int("neighbors", 0, "if > 0, print the nearest-neighbour cosine distribution of every Nth memory")
+	misses := flag.Bool("misses", false, "list the dense questions whose answer is not ranked first")
 	flag.Parse()
 	if *dbPath == "" || *golds == "" {
 		fmt.Fprintln(os.Stderr, "usage: mc-accept -db memory.db -gold dir[,dir] [-include-old=false] [-similarity 0.97] [-k 10]")
@@ -63,6 +67,25 @@ func run() int {
 		if test := onlySplit(rs, "test"); len(test) > 0 && len(test) < len(rs) {
 			show("dense/test", accept.Summarize(test))
 		}
+		if *negatives != "" || *neighbors > 0 {
+			var found, lost []float64
+			for _, r := range rs {
+				if r.Rank > 0 {
+					found = append(found, r.Top)
+				} else {
+					lost = append(lost, r.Top)
+				}
+			}
+			fmt.Println("  top cosine, answer in top 5:   ", spread(found))
+			fmt.Println("  top cosine, answer missed:     ", spread(lost))
+		}
+		if *misses {
+			for _, r := range rs {
+				if r.Rank != 1 {
+					fmt.Printf("  rank %d  id %s  [%s] %s\n", r.Rank, r.ID, r.Lang, r.Text)
+				}
+			}
+		}
 		for _, f := range accept.Summarize(rs).Check() {
 			fmt.Println("  FAIL:", f)
 			failed = true
@@ -80,6 +103,43 @@ func run() int {
 			failed = true
 		}
 	}
+	if *negatives != "" {
+		raw, err := os.ReadFile(*negatives)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		var tops []float64
+		for _, line := range strings.Split(string(raw), "\n") {
+			if line = strings.TrimSpace(line); line == "" {
+				continue
+			}
+			res, err := dense.Search(ctx, memory.SearchInput{Query: line, K: 1})
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "error:", err)
+				return 1
+			}
+			if len(res.Hits) > 0 {
+				tops = append(tops, res.Hits[0].Score)
+			}
+		}
+		fmt.Println("== off-topic questions, top cosine:", spread(tops))
+	}
+	if *neighbors > 0 {
+		cos, err := accept.NeighborCosines(ctx, db, *neighbors)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			return 1
+		}
+		fmt.Printf("== nearest distinct neighbour of %d memories, cosine: %s\n", len(cos), spread(cos))
+		over := 0
+		for _, c := range cos {
+			if c >= memory.DuplicateHintCosine {
+				over++
+			}
+		}
+		fmt.Printf("   at or above the duplicate hint (%.2f): %d\n", memory.DuplicateHintCosine, over)
+	}
 	if err := integrity(ctx, db); err != nil {
 		fmt.Println("  FAIL:", err)
 		failed = true
@@ -90,6 +150,18 @@ func run() int {
 	}
 	fmt.Println("RESULT: PASS")
 	return 0
+}
+
+// spread formats n, min, quartiles, p90 and max of xs.
+func spread(xs []float64) string {
+	if len(xs) == 0 {
+		return "n=0"
+	}
+	s := append([]float64(nil), xs...)
+	sort.Float64s(s)
+	at := func(p float64) float64 { return s[int(p*float64(len(s)-1))] }
+	return fmt.Sprintf("n=%d min %.3f p25 %.3f p50 %.3f p75 %.3f p90 %.3f max %.3f",
+		len(s), s[0], at(.25), at(.5), at(.75), at(.9), s[len(s)-1])
 }
 
 func show(name string, s accept.Summary) {

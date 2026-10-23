@@ -103,6 +103,7 @@ type QueryResult struct {
 	Rank    int // 1-based position of the first accepted hit within K; 0 = miss
 	Hits    int
 	Mode    string
+	Top     float64 // score of the first hit (cosine in dense mode)
 	Tokens  float64
 	Latency time.Duration
 }
@@ -132,6 +133,9 @@ func Run(ctx context.Context, svc *memory.Service, db *store.DB, g Gold, o Optio
 		}
 		qr := QueryResult{Query: q, Hits: len(res.Hits), Mode: res.Mode, Latency: lat,
 			Tokens: float64(len(render.Search(res))) / charsPerToken}
+		if len(res.Hits) > 0 {
+			qr.Top = res.Hits[0].Score
+		}
 		for i, h := range res.Hits {
 			if accepted[h.ID] {
 				qr.Rank = i + 1

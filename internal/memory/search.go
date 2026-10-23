@@ -19,8 +19,10 @@ const (
 	// SnippetRunes is the snippet length returned with DetailSnippet.
 	SnippetRunes = 150
 	// ConfidenceCosine is the top similarity below which a dense answer is
-	// flagged low confidence. Placeholder until calibrated on held-out data.
-	ConfidenceCosine = 0.55
+	// flagged low confidence. Calibrated (T9) between the best score of 20
+	// off-topic questions (max 0.469) and the worst of 100 answerable ones
+	// (min 0.499).
+	ConfidenceCosine = 0.48
 	// StaleAfter is the age after which decision and policy memories are flagged.
 	StaleAfter = 183 * 24 * time.Hour
 )
