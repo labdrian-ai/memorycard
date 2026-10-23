@@ -18,9 +18,9 @@ Source of truth for behavior: `/home/labdrian/memorycard-lab/spec/memorycard-v0.
 
 ## Tasks
 - [x] T1 (S2) module skeleton, pure-Go SQLite open + pragmas + migrations, FTS5 proven available — route: inline — commit 654aaba; RED: store package failed to build (undefined Open/DB/SchemaVersion); GREEN: 5 tests pass (schema, WAL+FK pragmas, reopen keeps data, FTS5 folds diacritics, FTS follows update/delete). Risk: none (new code, no existing behavior).
-- [ ] T2 (S4) store: save path, hashing, caps, redaction, topic_key upsert, versions, supersedes — inline
-- [ ] T3 (S4,S5) embedder interface, ollama client, vector storage, pending-embedding queue — inline
-- [ ] T4 (S5) search: dense, lexical fallback, confidence, topic shortcut, exclusions — inline
+- [x] T2 (S4) store: save path, hashing, caps, redaction, topic_key upsert, versions, supersedes — inline — commit 1d8b95d; RED: package did not build; GREEN: 9 save tests; mutation check (version prune off by one) failed the test as expected. Risk: none (new code).
+- [x] T3 (S4,S5) embedder interface, ollama client, vector storage, pending-embedding queue — inline — commit 8e9ad19; RED: embed and memory packages did not build; GREEN: 3 client tests + 7 vector/hint tests; integration test (build tag `integration`) against real bge-m3: es-en same-meaning cos 0.812 vs unrelated 0.346. Risk: none (new code; network call only to the local ollama).
+- [x] T4 (S5) search: dense, lexical fallback, confidence, topic shortcut, exclusions — inline — commit pending in this entry's next commit; RED: Search undefined; GREEN: 12 search tests; mutation check (inverted ranking) failed the test as expected. Placeholders to calibrate in T9: ConfidenceCosine 0.55. Risk: none (new code).
 - [ ] T5 (S6) get/update/context/session operations — inline
 - [ ] T6 (S6) CLI + MCP server with the six tools, token-budget test of definitions — inline
 - [ ] T7 (S7) Engram importer — inline

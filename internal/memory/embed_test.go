@@ -13,16 +13,18 @@ import (
 
 // fakeEmbedder maps text to a vector with fn and records every input.
 type fakeEmbedder struct {
-	fn   func(string) []float32
-	fail bool
-	seen []string
+	fn    func(string) []float32
+	fail  bool
+	seen  []string
+	kinds []embed.Kind
 }
 
 func (f *fakeEmbedder) Model() string { return "fake" }
-func (f *fakeEmbedder) Embed(_ context.Context, texts []string, _ embed.Kind) ([][]float32, error) {
+func (f *fakeEmbedder) Embed(_ context.Context, texts []string, kind embed.Kind) ([][]float32, error) {
 	if f.fail {
 		return nil, embed.ErrUnavailable
 	}
+	f.kinds = append(f.kinds, kind)
 	out := make([][]float32, len(texts))
 	for i, t := range texts {
 		f.seen = append(f.seen, t)
