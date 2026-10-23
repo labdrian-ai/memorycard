@@ -290,6 +290,26 @@ func (s *Service) Context(ctx context.Context, project string, budget int) (Dige
 	return d, nil
 }
 
+// Stats counts stored memories for diagnostics.
+type Stats struct {
+	Total, Active, Superseded, Archived int
+	WithoutEmbedding                    int // memories with no vector yet
+}
+
+// Stats returns the counts shown by the CLI's stats command.
+func (s *Service) Stats(ctx context.Context) (Stats, error) {
+	var st Stats
+	err := s.db.SQL().QueryRowContext(ctx,
+		`select count(*),
+		        coalesce(sum(status = 'active'), 0),
+		        coalesce(sum(status = 'superseded'), 0),
+		        coalesce(sum(status = 'archived'), 0),
+		        coalesce(sum(not exists (select 1 from vectors v where v.memory_id = m.id)), 0)
+		 from memories m`).
+		Scan(&st.Total, &st.Active, &st.Superseded, &st.Archived, &st.WithoutEmbedding)
+	return st, err
+}
+
 // SessionStart registers a session; starting an existing one is a no-op.
 func (s *Service) SessionStart(ctx context.Context, id, project string) error {
 	id, project = strings.TrimSpace(id), strings.TrimSpace(project)
