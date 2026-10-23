@@ -108,7 +108,18 @@ func (s *Service) importOne(ctx context.Context, tx *sql.Tx, r ImportRecord, rep
 	}
 	title := redact(strings.TrimSpace(r.Title))
 	body := redact(strings.TrimSpace(r.Body))
-	parts := splitBody(body, chunkTargetBytes)
+	// Parts that are blank or fully redacted hold no content: drop them one by
+	// one and number the rest, so an empty middle part never hides the tail.
+	var parts []string
+	for _, p := range splitBody(body, chunkTargetBytes) {
+		if hasContent(p) {
+			parts = append(parts, p)
+		}
+	}
+	if len(parts) == 0 || !hasContent(title) {
+		rep.Empty++
+		return nil
+	}
 
 	created, updated := stampOf(r.CreatedAt, s.now), stampOf(r.UpdatedAt, s.now)
 	if r.UpdatedAt.IsZero() {
@@ -124,10 +135,6 @@ func (s *Service) importOne(ctx context.Context, tx *sql.Tx, r ImportRecord, rep
 			}
 		}
 		in, err := normalize(in)
-		if errors.Is(err, ErrEmpty) {
-			rep.Empty++
-			return nil
-		}
 		if err != nil {
 			return err
 		}
@@ -165,7 +172,10 @@ func importRow(ctx context.Context, tx *sql.Tx, in SaveInput, pinned bool, creat
 		`select id from memories where project = ? and content_hash = ? order by id limit 1`,
 		in.Project, hash).Scan(&id)
 	if err == nil {
-		return id, false, nil
+		if pinned { // merging must not lose the pin
+			_, err = tx.ExecContext(ctx, `update memories set pinned = 1 where id = ?`, id)
+		}
+		return id, false, err
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return 0, false, err
@@ -216,6 +226,12 @@ func importLink(ctx context.Context, tx *sql.Tx, l ImportLink, rep *ImportReport
 		rep.Linked++
 	}
 	return nil
+}
+
+// hasContent reports whether s has anything left besides whitespace and
+// redaction markers.
+func hasContent(s string) bool {
+	return strings.TrimSpace(strings.ReplaceAll(s, redactionMarker, "")) != ""
 }
 
 func stampOf(t time.Time, now func() time.Time) string {

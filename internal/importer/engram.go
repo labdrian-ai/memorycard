@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	_ "modernc.org/sqlite" // registers the "sqlite" driver
@@ -54,6 +55,10 @@ func FromEngram(ctx context.Context, dst *memory.Service, path string, progress 
 	var total int
 	if err := src.QueryRowContext(ctx,
 		`select count(*), coalesce(sum(deleted_at is not null), 0) from observations`).Scan(&total, &res.SkippedDeleted); err != nil {
+		if strings.Contains(err.Error(), "readonly") {
+			return res, fmt.Errorf("engram database %s: %w (a WAL database needs a writable directory for its -shm file: "+
+				"import a copy of the database, made with `sqlite3 engram.db \".backup copy.db\"`)", path, err)
+		}
 		return res, fmt.Errorf("engram database %s: %w", path, err)
 	}
 	total -= res.SkippedDeleted
@@ -113,7 +118,7 @@ func FromEngram(ctx context.Context, dst *memory.Service, path string, progress 
 		return res, err
 	}
 
-	links, unused, err := supersessions(ctx, src)
+	links, unused, dangling, err := supersessions(ctx, src)
 	if err != nil {
 		return res, err
 	}
@@ -123,36 +128,42 @@ func FromEngram(ctx context.Context, dst *memory.Service, path string, progress 
 		return res, err
 	}
 	res.ImportReport.Add(rep)
+	res.LinksSkipped += dangling
 	return res, nil
 }
 
-// supersessions returns the judged supersedes relations and how many other
-// relations were left out. A relation's source replaced its target.
-func supersessions(ctx context.Context, src *sql.DB) ([]memory.ImportLink, int, error) {
+// supersessions returns the judged supersedes relations whose two ends exist
+// in the source, how many other relations were left out, and how many judged
+// supersedes relations point at an observation that does not exist. A
+// relation's source replaced its target.
+func supersessions(ctx context.Context, src *sql.DB) (links []memory.ImportLink, unused, dangling int, err error) {
 	rows, err := src.QueryContext(ctx,
 		`select s.id, t.id from memory_relations r
 		 join observations s on s.sync_id = r.source_id
 		 join observations t on t.sync_id = r.target_id
 		 where r.relation = 'supersedes' and r.judgment_status = 'judged'`)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
 	defer rows.Close()
-	var links []memory.ImportLink
 	for rows.Next() {
 		var newer, older int64
 		if err := rows.Scan(&newer, &older); err != nil {
-			return nil, 0, err
+			return nil, 0, 0, err
 		}
 		links = append(links, memory.ImportLink{Source: sourceName, Replacement: fmt.Sprint(newer), Replaced: fmt.Sprint(older)})
 	}
 	if err := rows.Err(); err != nil {
-		return nil, 0, err
+		return nil, 0, 0, err
 	}
-	var unused int
-	err = src.QueryRowContext(ctx,
-		`select count(*) from memory_relations where not (relation = 'supersedes' and judgment_status = 'judged')`).Scan(&unused)
-	return links, unused, err
+	var judged int
+	if err := src.QueryRowContext(ctx,
+		`select count(*), coalesce(sum(relation != 'supersedes' or judgment_status != 'judged'), 0) from memory_relations`).
+		Scan(&judged, &unused); err != nil {
+		return nil, 0, 0, err
+	}
+	judged -= unused
+	return links, unused, judged - len(links), nil
 }
 
 // parseTime reads Engram's "2006-01-02 15:04:05" (UTC) or RFC 3339. On

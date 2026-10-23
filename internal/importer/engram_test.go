@@ -44,7 +44,8 @@ func fakeEngram(t *testing.T) string {
 			('r1','obs-2','obs-1','supersedes','judged'),
 			('r2','obs-2','obs-3','supersedes','judged'),
 			('r3','obs-4','obs-5','pending','pending'),
-			('r4','obs-4','obs-5','related','judged')`,
+			('r4','obs-4','obs-5','related','judged'),
+			('r5','obs-ghost','obs-1','supersedes','judged')`, // source row does not exist at all
 	}
 	for _, q := range stmts {
 		if _, err := db.Exec(q); err != nil {
@@ -70,7 +71,7 @@ func TestFromEngramMapsLiveRowsAndSkipsTheRest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Imported != 4 || res.SkippedDeleted != 1 || res.Linked != 1 || res.LinksSkipped != 1 || res.UnusedRelations != 2 {
+	if res.Imported != 4 || res.SkippedDeleted != 1 || res.Linked != 1 || res.LinksSkipped != 2 || res.UnusedRelations != 2 {
 		t.Fatalf("result = %+v", res)
 	}
 
@@ -149,6 +150,34 @@ func TestFromEngramMissingFileFailsWithoutCreatingIt(t *testing.T) {
 	}
 	if _, statErr := os.Stat(path); statErr == nil {
 		t.Error("the importer created the source file")
+	}
+}
+
+// A WAL database in a read-only directory cannot create its -shm file; the
+// error must say what to do instead of only quoting SQLite.
+func TestFromEngramReadOnlyDirectorySuggestsCopying(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores directory permissions")
+	}
+	path := fakeEngram(t)
+	db, err := sql.Open("sqlite", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`pragma journal_mode = wal`); err != nil {
+		t.Fatal(err)
+	}
+	db.Close()
+	dir := filepath.Dir(path)
+	if err := os.Chmod(dir, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.Chmod(dir, 0o755) })
+
+	svc, _ := newService(t)
+	_, err = FromEngram(context.Background(), svc, path, nil)
+	if err == nil || !strings.Contains(err.Error(), "copy") {
+		t.Errorf("err = %v, want advice to import a copy of the database", err)
 	}
 }
 

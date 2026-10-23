@@ -116,6 +116,52 @@ func TestImportChunksLargeBodiesWithoutLoss(t *testing.T) {
 	}
 }
 
+// A part that is empty after trimming or redaction must be dropped on its own;
+// it must never take the rest of the record with it.
+func TestImportKeepsLaterPartsWhenAMiddlePartIsEmpty(t *testing.T) {
+	cases := map[string]string{
+		"blank paragraph":   strings.Repeat("A", 12287) + "\n\n \n\n" + strings.Repeat("B", 13000) + "\n\nTAILMARK end",
+		"private paragraph": strings.Repeat("C", 12286) + "\n\n<private>token</private>\n\n" + strings.Repeat("D", 13000) + "\n\nTAILMARK end",
+		"whitespace block":  strings.Repeat("e", 12000) + "\n\n" + strings.Repeat(" ", 5000) + "\n\n" + strings.Repeat("f", 12000) + "\n\nTAILMARK end",
+	}
+	for name, body := range cases {
+		t.Run(name, func(t *testing.T) {
+			s := newSvc(t)
+			rep := imp(t, s, []ImportRecord{rec("1", "Long note", body)}, nil)
+			if rep.Imported != 1 || rep.Empty != 0 {
+				t.Fatalf("report = %+v, want 1 imported and nothing counted as empty", rep)
+			}
+			rows, _ := s.db.SQL().Query(`select title, body from memories order by id`)
+			defer rows.Close()
+			var all strings.Builder
+			var titles []string
+			for rows.Next() {
+				var ti, b string
+				rows.Scan(&ti, &b)
+				titles = append(titles, ti)
+				all.WriteString(b)
+			}
+			if !strings.Contains(all.String(), "TAILMARK end") {
+				t.Errorf("the tail of the note was lost; stored %d bytes in parts %q", all.Len(), titles)
+			}
+			n := len(titles)
+			if want := fmt.Sprintf("Long note (part %d/%d)", n, n); titles[n-1] != want {
+				t.Errorf("last title = %q, want %q (parts are numbered after empty ones are dropped)", titles[n-1], want)
+			}
+		})
+	}
+}
+
+func TestImportMergedDuplicateKeepsThePin(t *testing.T) {
+	s := newSvc(t)
+	plain, pinned := rec("1", "Same", "same body"), rec("2", "Same", "same body")
+	pinned.Pinned = true
+	imp(t, s, []ImportRecord{plain, pinned}, nil)
+	if n := count(t, s, `select pinned from memories`); n != 1 {
+		t.Errorf("pinned = %d, want the merged memory to keep the pin", n)
+	}
+}
+
 func TestImportSplitsAHugeSingleParagraphOnRuneBoundaries(t *testing.T) {
 	s := newSvc(t)
 	body := strings.Repeat("é", 30000) // 60,000 bytes, no paragraph break
