@@ -135,13 +135,8 @@ func (a *app) open() (*memory.Service, embed.Embedder, func(), error) {
 		return nil, nil, nil, err
 	}
 	svc := memory.New(db)
-	var emb embed.Embedder
-	if a.getenv("MEMORYCARD_EMBED") != "off" {
-		model := a.getenv("MEMORYCARD_EMBED_MODEL")
-		if model == "" {
-			model = "bge-m3"
-		}
-		emb = embed.NewOllama(a.getenv("MEMORYCARD_OLLAMA_URL"), model)
+	emb := embed.FromEnv(a.getenv)
+	if emb != nil {
 		svc.SetEmbedder(emb)
 	}
 	return svc, emb, func() { db.Close() }, nil
