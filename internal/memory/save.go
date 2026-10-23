@@ -13,6 +13,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/labdrian-ai/memorycard/internal/embed"
 	"github.com/labdrian-ai/memorycard/internal/store"
 )
 
@@ -48,8 +49,9 @@ var privateTag = regexp.MustCompile(`(?s)<private>.*?</private>`)
 
 // Service runs memory operations against a store.
 type Service struct {
-	db  *store.DB
-	now func() time.Time
+	db       *store.DB
+	now      func() time.Time
+	embedder embed.Embedder // optional; nil means text-only
 }
 
 // New returns a Service over db.
@@ -73,6 +75,7 @@ type SaveResult struct {
 	ID       int64
 	Action   string
 	Warnings []string
+	Hint     *Hint // set when a similar memory already exists; never blocks the write
 }
 
 // Save stores a memory following the write rules: redaction, size caps,
@@ -126,6 +129,7 @@ func (s *Service) Save(ctx context.Context, in SaveInput) (SaveResult, error) {
 		return SaveResult{}, err
 	}
 	res.ID, res.Action = id, action
+	s.afterWrite(ctx, id, in.Project, in.Title, in.Body, action, &res)
 	return res, nil
 }
 
