@@ -17,7 +17,7 @@ const (
 	// MaxK caps K.
 	MaxK = 20
 	// SnippetRunes is the snippet length returned with DetailSnippet.
-	SnippetRunes = 200
+	SnippetRunes = 150
 	// ConfidenceCosine is the top similarity below which a dense answer is
 	// flagged low confidence. Placeholder until calibrated on held-out data.
 	ConfidenceCosine = 0.55
