@@ -1,7 +1,7 @@
 package store
 
 // SchemaVersion is the number of entries in migrations.
-const SchemaVersion = 1
+const SchemaVersion = 2
 
 // migrations[i] upgrades a database from version i to i+1.
 var migrations = [...]string{
@@ -67,5 +67,17 @@ create trigger memories_au after update of title, body on memories begin
 	insert into fts(fts, rowid, title, body) values ('delete', old.id, old.title, old.body);
 	insert into fts(rowid, title, body) values (new.id, new.title, new.body);
 end;
+`,
+	// v2: remembers which source record became which memory, so an import can
+	// resume and so supersession links can be resolved by source key.
+	`
+create table import_map (
+	source     text    not null,
+	source_key text    not null,
+	part       integer not null default 1,
+	memory_id  integer not null references memories(id) on delete cascade,
+	primary key (source, source_key, part)
+);
+create index idx_import_map_memory on import_map(memory_id);
 `,
 }

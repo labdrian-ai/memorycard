@@ -10,7 +10,16 @@ import (
 // run executes the CLI against a temp database with the embedder off.
 func run(t *testing.T, db string, stdin string, args ...string) (code int, stdout, stderr string) {
 	t.Helper()
+	return runEnv(t, db, nil, stdin, args...)
+}
+
+// runEnv is run with extra or overriding environment variables.
+func runEnv(t *testing.T, db string, extra map[string]string, stdin string, args ...string) (code int, stdout, stderr string) {
+	t.Helper()
 	env := map[string]string{"MEMORYCARD_DB": db, "MEMORYCARD_EMBED": "off", "MEMORYCARD_PROJECT": "p"}
+	for k, v := range extra {
+		env[k] = v
+	}
 	var out, errOut bytes.Buffer
 	code = Run(args, strings.NewReader(stdin), &out, &errOut, func(k string) string { return env[k] })
 	return code, out.String(), errOut.String()

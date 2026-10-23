@@ -16,6 +16,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/labdrian-ai/memorycard/internal/embed"
+	"github.com/labdrian-ai/memorycard/internal/importer"
 	"github.com/labdrian-ai/memorycard/internal/mcpserver"
 	"github.com/labdrian-ai/memorycard/internal/memory"
 	"github.com/labdrian-ai/memorycard/internal/render"
@@ -32,7 +33,8 @@ commands:
   get    <id>              print one memory with its history
   context                  print the project digest
   stats                    counts and embedding backlog
-  embed  [--limit N]       embed memories that have no vector yet
+  embed  [--limit N]       embed every memory that has no vector yet, N per batch
+  import engram <path>     copy an Engram database in (read-only, resumable)
   help
 
 environment:
@@ -63,7 +65,7 @@ func Run(args []string, in io.Reader, out, errOut io.Writer, getenv func(string)
 	case "help", "-h", "--help":
 		fmt.Fprint(out, usage)
 		return 0
-	case "mcp", "save", "search", "get", "context", "stats", "embed":
+	case "mcp", "save", "search", "get", "context", "stats", "embed", "import":
 	default:
 		fmt.Fprintf(errOut, "unknown command %q\n%s", cmd, usage)
 		return 2
@@ -90,6 +92,8 @@ func Run(args []string, in io.Reader, out, errOut io.Writer, getenv func(string)
 		return a.context(ctx, svc)
 	case "stats":
 		return a.stats(ctx, svc, emb)
+	case "import":
+		return a.importCmd(ctx, svc, rest)
 	default: // embed
 		return a.embed(ctx, svc, emb, rest)
 	}
@@ -258,7 +262,43 @@ func (a *app) embed(ctx context.Context, svc *memory.Service, emb embed.Embedder
 	if fs.Parse(args) != nil {
 		return 2
 	}
-	n, err := svc.EmbedPending(ctx, *limit)
-	fmt.Fprintf(a.out, "embedded %d\n", n)
-	return a.fail(err)
+	total := 0
+	for {
+		n, err := svc.EmbedPending(ctx, *limit)
+		total += n
+		if err != nil {
+			fmt.Fprintf(a.out, "embedded %d\n", total)
+			return a.fail(err)
+		}
+		if n == 0 {
+			break
+		}
+		fmt.Fprintf(a.err, "  embedded %d so far\n", total)
+	}
+	fmt.Fprintf(a.out, "embedded %d\n", total)
+	return 0
+}
+
+func (a *app) importCmd(ctx context.Context, svc *memory.Service, args []string) int {
+	if len(args) != 2 || args[0] != "engram" {
+		fmt.Fprintln(a.err, "usage: memorycard import engram <path-to-engram.db>")
+		return 2
+	}
+	res, err := importer.FromEngram(ctx, svc, args[1], func(done, total int) {
+		fmt.Fprintf(a.err, "  %d/%d\n", done, total)
+	})
+	if err != nil {
+		return a.fail(err)
+	}
+	fmt.Fprintf(a.out, "imported: %d\nalready imported: %d\nmerged duplicates: %d\nempty after redaction: %d\n"+
+		"chunked: %d records into %d parts\nsuperseded links: %d (skipped %d)\n"+
+		"skipped deleted: %d\nrelations not imported: %d\nunparsable timestamps: %d\n",
+		res.Imported, res.AlreadyImported, res.Duplicates, res.Empty, res.Chunked, res.Parts,
+		res.Linked, res.LinksSkipped, res.SkippedDeleted, res.UnusedRelations, res.BadTimestamps)
+	st, err := svc.Stats(ctx)
+	if err != nil {
+		return a.fail(err)
+	}
+	fmt.Fprintf(a.out, "without embedding: %d (run `memorycard embed` to index them)\n", st.WithoutEmbedding)
+	return 0
 }

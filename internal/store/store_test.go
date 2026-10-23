@@ -107,3 +107,34 @@ func TestFTSFollowsUpdateAndDelete(t *testing.T) {
 		t.Errorf("after delete bravo still indexed")
 	}
 }
+
+func TestUpgradeFromV1KeepsDataAndAddsImportMap(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "memory.db")
+	first, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`insert into memories(project,title,body,content_hash,created_at,updated_at) values('p','kept','b','h','x','x')`,
+		`drop table import_map`,
+		`pragma user_version = 1`, // what a database created by the v1 build looks like
+	} {
+		if _, err := first.SQL().Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	first.Close()
+
+	db, err := Open(path)
+	if err != nil {
+		t.Fatalf("upgrade: %v", err)
+	}
+	defer db.Close()
+	var title string
+	if err := db.SQL().QueryRow(`select title from memories`).Scan(&title); err != nil || title != "kept" {
+		t.Errorf("row after upgrade: %q, %v", title, err)
+	}
+	if _, err := db.SQL().Exec(`insert into import_map(source, source_key, memory_id) values ('s','1',1)`); err != nil {
+		t.Errorf("import_map missing after upgrade: %v", err)
+	}
+}
