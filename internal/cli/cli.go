@@ -19,6 +19,7 @@ import (
 	"github.com/labdrian-ai/memorycard/internal/importer"
 	"github.com/labdrian-ai/memorycard/internal/mcpserver"
 	"github.com/labdrian-ai/memorycard/internal/memory"
+	"github.com/labdrian-ai/memorycard/internal/project"
 	"github.com/labdrian-ai/memorycard/internal/render"
 	"github.com/labdrian-ai/memorycard/internal/store"
 )
@@ -39,7 +40,9 @@ commands:
 
 environment:
   MEMORYCARD_DB            database path (default ~/.memorycard/memory.db)
-  MEMORYCARD_PROJECT       default project (default: current directory name)
+  MEMORYCARD_PROJECT       default project; otherwise a .memorycard file in the
+                           directory or above, the git remote name, the git root
+                           name, then the directory name
   MEMORYCARD_EMBED         "off" disables the embedder (text search only)
   MEMORYCARD_OLLAMA_URL    ollama address (default http://localhost:11434)
   MEMORYCARD_EMBED_MODEL   embedding model (default bge-m3)
@@ -108,13 +111,11 @@ func (a *app) fail(err error) int {
 }
 
 func (a *app) project() string {
-	if p := a.getenv("MEMORYCARD_PROJECT"); p != "" {
-		return p
+	wd, err := os.Getwd()
+	if err != nil {
+		return a.getenv("MEMORYCARD_PROJECT")
 	}
-	if wd, err := os.Getwd(); err == nil {
-		return filepath.Base(wd)
-	}
-	return ""
+	return project.Resolve(wd, a.getenv("MEMORYCARD_PROJECT"))
 }
 
 func (a *app) dbPath() string {

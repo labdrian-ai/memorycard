@@ -38,7 +38,7 @@ MCP tools: `mem_save`, `mem_search`, `mem_get`, `mem_update`, `mem_context`,
 | Variable | Meaning |
 |---|---|
 | `MEMORYCARD_DB` | database path |
-| `MEMORYCARD_PROJECT` | default project |
+| `MEMORYCARD_PROJECT` | project name; if unset it is resolved as: a `.memorycard` file (first line) in the directory or above, the git `origin` remote name, the git root name, the directory name. Every agent started inside the same repository, worktrees included, shares one project |
 | `MEMORYCARD_EMBED=off` | disable the embedder (lexical only) |
 | `MEMORYCARD_OLLAMA_URL` | ollama endpoint |
 | `MEMORYCARD_EMBED_MODEL` | embedding model (default `bge-m3`) |
