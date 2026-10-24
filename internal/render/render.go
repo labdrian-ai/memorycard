@@ -19,12 +19,18 @@ func Search(r memory.SearchResult) string {
 	if r.Confidence == memory.ConfidenceLow && len(r.Hits) > 0 {
 		b.WriteString("confidence: low (results may not answer the query)\n")
 	}
+	if r.Widened {
+		b.WriteString("note: nothing relevant in this project; showing all projects\n")
+	}
 	if len(r.Hits) == 0 {
 		b.WriteString("no results\n")
 		return b.String()
 	}
 	for _, h := range r.Hits {
 		fmt.Fprintf(&b, "#%d %s: %s", h.ID, h.Type, h.Title)
+		if r.Widened {
+			fmt.Fprintf(&b, " [%s]", h.Project)
+		}
 		if h.Stale {
 			b.WriteString(" [stale]")
 		}

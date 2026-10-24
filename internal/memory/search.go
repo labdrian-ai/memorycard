@@ -61,12 +61,14 @@ type Hit struct {
 	Snippet string // empty with DetailTitle
 	Score   float64
 	Stale   bool
+	Project string
 }
 
 // SearchResult is the answer to a search.
 type SearchResult struct {
 	Mode       string
 	Confidence string
+	Widened    bool // the project had no useful answer, so all projects were searched
 	Hits       []Hit
 }
 
@@ -77,8 +79,29 @@ type candidate struct {
 }
 
 // Search finds memories. It uses dense similarity when an embedder is
-// available and falls back to lexical BM25 when it is not.
+// available and falls back to lexical BM25 when it is not. When the project
+// has nothing that answers the query (no hits, or low confidence) and another
+// project does, the answer comes from all projects and is marked Widened, so
+// work filed under a different project name is still found.
 func (s *Service) Search(ctx context.Context, in SearchInput) (SearchResult, error) {
+	res, err := s.find(ctx, in)
+	if err != nil || in.Project == "" || res.Confidence == ConfidenceOK || res.Confidence == ConfidenceUnknown {
+		return res, err
+	}
+	all := in
+	all.Project = ""
+	wide, err := s.find(ctx, all)
+	if err != nil {
+		return SearchResult{}, err
+	}
+	if wide.Confidence != ConfidenceOK {
+		return res, nil
+	}
+	wide.Widened = true
+	return wide, nil
+}
+
+func (s *Service) find(ctx context.Context, in SearchInput) (SearchResult, error) {
 	q := strings.TrimSpace(in.Query)
 	if q == "" {
 		return SearchResult{}, ErrEmptyQuery
@@ -159,7 +182,7 @@ func buildFilter(in SearchInput) filter {
 
 func (s *Service) byTopic(ctx context.Context, key string, f filter, k int) ([]candidate, error) {
 	rows, err := s.db.SQL().QueryContext(ctx,
-		`select m.id, m.type, m.title, m.body, m.updated_at from memories m
+		`select m.id, m.type, m.title, m.body, m.updated_at, m.project from memories m
 		 where m.topic_key = ? and `+f.where+` order by m.updated_at desc limit ?`,
 		append(append([]any{key}, f.args...), k)...)
 	if err != nil {
@@ -169,7 +192,7 @@ func (s *Service) byTopic(ctx context.Context, key string, f filter, k int) ([]c
 	var out []candidate
 	for rows.Next() {
 		c := candidate{Hit: Hit{Score: 1}}
-		if err := rows.Scan(&c.ID, &c.Type, &c.Title, &c.body, &c.updated); err != nil {
+		if err := rows.Scan(&c.ID, &c.Type, &c.Title, &c.body, &c.updated, &c.Project); err != nil {
 			return nil, err
 		}
 		out = append(out, c)
@@ -184,7 +207,7 @@ func (s *Service) dense(ctx context.Context, q string, f filter, k int) ([]candi
 	}
 	qv := unit(vecs[0])
 	rows, err := s.db.SQL().QueryContext(ctx,
-		`select m.id, m.type, m.title, m.body, m.updated_at, v.vec
+		`select m.id, m.type, m.title, m.body, m.updated_at, m.project, v.vec
 		 from vectors v join memories m on m.id = v.memory_id
 		 where v.model = ? and `+f.where,
 		append([]any{s.embedder.Model()}, f.args...)...)
@@ -196,7 +219,7 @@ func (s *Service) dense(ctx context.Context, q string, f filter, k int) ([]candi
 	for rows.Next() {
 		var c candidate
 		var blob []byte
-		if err := rows.Scan(&c.ID, &c.Type, &c.Title, &c.body, &c.updated, &blob); err != nil {
+		if err := rows.Scan(&c.ID, &c.Type, &c.Title, &c.body, &c.updated, &c.Project, &blob); err != nil {
 			return nil, err
 		}
 		v := decodeVec(blob)
@@ -249,7 +272,7 @@ func (s *Service) lexical(ctx context.Context, q string, f filter, k int) ([]can
 		return nil, nil
 	}
 	rows, err := s.db.SQL().QueryContext(ctx,
-		`select m.id, m.type, m.title, m.body, m.updated_at, bm25(fts, 5.0, 1.0)
+		`select m.id, m.type, m.title, m.body, m.updated_at, m.project, bm25(fts, 5.0, 1.0)
 		 from fts join memories m on m.id = fts.rowid
 		 where fts match ? and `+f.where+` order by bm25(fts, 5.0, 1.0) limit ?`,
 		append(append([]any{match}, f.args...), k)...)
@@ -260,7 +283,7 @@ func (s *Service) lexical(ctx context.Context, q string, f filter, k int) ([]can
 	var out []candidate
 	for rows.Next() {
 		var c candidate
-		if err := rows.Scan(&c.ID, &c.Type, &c.Title, &c.body, &c.updated, &c.Score); err != nil {
+		if err := rows.Scan(&c.ID, &c.Type, &c.Title, &c.body, &c.updated, &c.Project, &c.Score); err != nil {
 			return nil, err
 		}
 		c.Score = -c.Score // bm25() is lower-is-better; flip so higher is better
