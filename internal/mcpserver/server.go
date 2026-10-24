@@ -27,17 +27,23 @@ type handlers struct {
 func New(svc *memory.Service, defaultProject string) *mcp.Server {
 	h := &handlers{svc: svc, project: defaultProject}
 	srv := mcp.NewServer(&mcp.Implementation{Name: "memorycard", Version: Version}, nil)
-	mcp.AddTool(srv, &mcp.Tool{Name: "mem_save",
+	// Clients decide whether to ask for approval from these hints: reads are
+	// declared read-only, writes are declared non-destructive (nothing is
+	// ever hard-deleted; old versions are kept and archiving is reversible).
+	read := &mcp.ToolAnnotations{ReadOnlyHint: true}
+	no := false
+	write := &mcp.ToolAnnotations{DestructiveHint: &no, OpenWorldHint: &no}
+	mcp.AddTool(srv, &mcp.Tool{Name: "mem_save", Annotations: write,
 		Description: "Save a memory. Same topic_key updates it in place; supersedes marks an older id replaced."}, h.save)
-	mcp.AddTool(srv, &mcp.Tool{Name: "mem_search",
+	mcp.AddTool(srv, &mcp.Tool{Name: "mem_search", Annotations: read,
 		Description: "Find memories by meaning. Returns titles with a short excerpt; detail=title drops the excerpt."}, h.search)
-	mcp.AddTool(srv, &mcp.Tool{Name: "mem_get",
+	mcp.AddTool(srv, &mcp.Tool{Name: "mem_get", Annotations: read,
 		Description: "Read one memory in full, with its version history."}, h.get)
-	mcp.AddTool(srv, &mcp.Tool{Name: "mem_update",
+	mcp.AddTool(srv, &mcp.Tool{Name: "mem_update", Annotations: write,
 		Description: "Edit a memory by id, or pin, archive or mark it reviewed."}, h.update)
-	mcp.AddTool(srv, &mcp.Tool{Name: "mem_context",
+	mcp.AddTool(srv, &mcp.Tool{Name: "mem_context", Annotations: read,
 		Description: "Short digest of a project: pinned, stale, then recent memories."}, h.context)
-	mcp.AddTool(srv, &mcp.Tool{Name: "mem_session",
+	mcp.AddTool(srv, &mcp.Tool{Name: "mem_session", Annotations: write,
 		Description: "Session bookkeeping: action start, end or summary."}, h.session)
 	return srv
 }
