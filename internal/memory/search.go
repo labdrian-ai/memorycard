@@ -22,6 +22,13 @@ const (
 	// flagged low confidence. Calibrated (T9) between the best score of 20
 	// off-topic questions (max 0.469) and the worst of 100 answerable ones
 	// (min 0.499).
+	//
+	// It only separates off-topic questions. A question about a known subject
+	// whose specific fact is not stored scores like an answerable one (40
+	// near-topic negatives: top cosine p50 0.597 vs 0.605 for 190 answerable
+	// questions; margins and lexical coverage overlap too), so "ok" means
+	// related memories were found, not that they contain the answer. Judging
+	// that is left to the caller, who reads the excerpts anyway.
 	ConfidenceCosine = 0.48
 	// StaleAfter is the age after which decision and policy memories are flagged.
 	StaleAfter = 183 * 24 * time.Hour

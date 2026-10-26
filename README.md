@@ -16,6 +16,10 @@ Status: v0, episodic tier only. Not yet published.
 - **Never silently degraded.** If the embedder is down, search falls back to
   BM25 and says `mode: lexical`. Oversized notes are rejected with an explicit
   error, never truncated.
+- **Honest about confidence.** `confidence: low` flags results for questions
+  the store knows nothing about. It cannot tell whether related memories hold
+  the exact fact asked for (no retrieval score separates those cases), so the
+  agent reading the results decides that.
 - **No services.** Pure-Go SQLite (no cgo), no daemon, no network except the
   local embedder.
 
