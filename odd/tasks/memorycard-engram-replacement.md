@@ -19,7 +19,7 @@ Branch: `main` for docs and agent-instruction changes; a feature branch for any 
 | T2 | S2 | inline | done | Engram #4517 mirrored as memorycard #3446: project `memorycard`, scope `project`, same topic_key, one live holder |
 | T3 | S3 | inline | done | `~/memorycard-lab/dualwrite-check.py`; first run: engram 1, matched 1, problems 0 |
 | T3b | S3 | inline | done | backfill of the pre-cutover gap (L7): 83 imported, 2 merged, 1 update applied, 85 embedded |
-| T6 | S5 | inline | done, not merged | branch `feat/save-splits-large-bodies`: `93cd550` + correction `8b63386`; RED `body exceeds the hard size cap` then GREEN; full suite ok; differential vs `main`: only a timestamp differs; the independent verifier's recheck shows all 3 findings fixed (L10) |
+| T6 | S5 | inline | done, merged and installed (L11) | branch `feat/save-splits-large-bodies`: `93cd550` + correction `8b63386`; RED `body exceeds the hard size cap` then GREEN; full suite ok; differential vs `main`: only a timestamp differs; the independent verifier's recheck shows all 3 findings fixed (L10) |
 | T4 | S3 | inline | pending | validation run after the dual-write window, with verdict |
 | T5 | S4 | — | pending | migration tasks, written when T4 passes |
 
@@ -46,4 +46,9 @@ Branch: `main` for docs and agent-instruction changes; a feature branch for any 
   - every keyed save archived any `<key>/part-<digits>` row, including rows that were never parts (`release/part-2`, `doc/part-04`).
 
   Advisory 1: reviving an archived part could reach a row under another key or scope through a duplicate match. Correction `8b63386` fixes all three. The previous part count now comes from part 1's title `(part 1/N)`, only the exact keys `<key>/part-i` up to N are archived, and a revival checks the topic key. Each finding has a RED test. Advisories not fixed: a split save can overwrite an unrelated memory whose own key is `<key>/part-i`; `overallAction` can mislabel mixed results. A recheck confirmed all three findings fixed. Remaining advisory: when a generated part key has no row yet, the duplicate lookup (project and hash only) can resolve that part to an identical row in another scope or under another key. No stored data changes.
+- **L11 (2026-10-27).** The owner approved ("si hacelo porfa"); `main` was fast-forwarded to `bc8cc07`.
+  - Install: the suite passed, the old binary was backed up to `~/.memorycard/backups/memorycard-pre-split-2026-10-27.bin`, and the new one went to `~/.local/bin/memorycard` through an atomic rename. Schema unchanged (v3).
+  - Live proof: the three oversized Engram records were mirrored through the save path with `~/memorycard-lab/mirror-engram.sh`. #4353 and #4399 became 2 parts each, updating the imported row in place. #4477 became 3 parts, updating the importer's parts.
+  - Check since the import: engram 92, matched 89. The 3 still `missing` (#4519, #4521, #4522) were written by an intranet-kalani session started before the rule change. That session must restart.
+  - MCP servers that were already running keep the old binary until their agent restarts.
 - **L9 (2026-10-27), advisory.** An update whose re-embedding fails keeps the old vector. `EmbedPending` only picks up rows with no vector or a different model, so that vector stays stale until the next successful update. Not fixed.
