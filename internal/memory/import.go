@@ -16,6 +16,10 @@ const (
 	chunkTargetBytes = 12 * 1024
 
 	unassignedProject = "unassigned"
+
+	// derivedTitleRunes caps a title taken from the body when the source
+	// title was entirely private.
+	derivedTitleRunes = 80
 )
 
 // ImportRecord is one memory coming from another system. Source and Key
@@ -116,9 +120,13 @@ func (s *Service) importOne(ctx context.Context, tx *sql.Tx, r ImportRecord, rep
 			parts = append(parts, p)
 		}
 	}
-	if len(parts) == 0 || !hasContent(title) {
+	if len(parts) == 0 {
 		rep.Empty++
 		return nil
+	}
+	// A fully private title must not drop a body that still has content.
+	if !hasContent(title) {
+		title = titleFromBody(parts[0])
 	}
 
 	created, updated := stampOf(r.CreatedAt, s.now), stampOf(r.UpdatedAt, s.now)
@@ -232,6 +240,22 @@ func importLink(ctx context.Context, tx *sql.Tx, l ImportLink, rep *ImportReport
 // redaction markers.
 func hasContent(s string) bool {
 	return strings.TrimSpace(strings.ReplaceAll(s, redactionMarker, "")) != ""
+}
+
+// titleFromBody returns the first line of body that has content, cut to
+// derivedTitleRunes. body must have content.
+func titleFromBody(body string) string {
+	for _, line := range strings.Split(body, "\n") {
+		if !hasContent(line) {
+			continue
+		}
+		r := []rune(strings.TrimSpace(line))
+		if len(r) > derivedTitleRunes {
+			r = r[:derivedTitleRunes]
+		}
+		return strings.TrimSpace(string(r))
+	}
+	return ""
 }
 
 func stampOf(t time.Time, now func() time.Time) string {

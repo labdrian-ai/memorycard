@@ -225,3 +225,25 @@ func TestImportRedactsSkipsEmptyAndDefaultsProject(t *testing.T) {
 		t.Errorf("rows in unassigned = %d, want 1", n)
 	}
 }
+
+func TestImportPrivateTitleTakesItsTitleFromTheBody(t *testing.T) {
+	s := newSvc(t)
+	r := rec("1", "<private>Acme rollout</private>", "\n<private>x</private>\nDeploys run on Fridays only.\nRollback is manual.")
+	rep := imp(t, s, []ImportRecord{r}, nil)
+	if rep.Imported != 1 || rep.Empty != 0 {
+		t.Fatalf("report = %+v, want 1 imported and 0 empty", rep)
+	}
+	var title, body string
+	if err := s.db.SQL().QueryRow(`select title, body from memories`).Scan(&title, &body); err != nil {
+		t.Fatal(err)
+	}
+	if title != "Deploys run on Fridays only." {
+		t.Errorf("title = %q, want the first line of the body that has content", title)
+	}
+	if strings.Contains(title+body, "Acme") {
+		t.Errorf("private text leaked: %q %q", title, body)
+	}
+	if !strings.Contains(body, "Rollback is manual.") {
+		t.Errorf("body lost content: %q", body)
+	}
+}
