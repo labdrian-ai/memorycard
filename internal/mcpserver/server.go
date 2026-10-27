@@ -34,7 +34,7 @@ func New(svc *memory.Service, defaultProject string) *mcp.Server {
 	no := false
 	write := &mcp.ToolAnnotations{DestructiveHint: &no, OpenWorldHint: &no}
 	mcp.AddTool(srv, &mcp.Tool{Name: "mem_save", Annotations: write,
-		Description: "Save a memory. Same topic_key updates it in place; supersedes marks an older id replaced."}, h.save)
+		Description: "Save a memory. Same topic_key updates it in place; supersedes marks an older id replaced. A body over 16 KB is stored as numbered parts."}, h.save)
 	mcp.AddTool(srv, &mcp.Tool{Name: "mem_search", Annotations: read,
 		Description: "Find memories by meaning. Returns titles with a short excerpt; detail=title drops the excerpt. Results are related memories: check that they hold the fact asked for."}, h.search)
 	mcp.AddTool(srv, &mcp.Tool{Name: "mem_get", Annotations: read,

@@ -39,4 +39,7 @@ func TestSaveExplainsDuplicatesWarningsAndHints(t *testing.T) {
 			t.Errorf("missing %q in %q", want, out)
 		}
 	}
+	if out := Save(memory.SaveResult{ID: 9, Action: memory.ActionCreated, Parts: []int64{9, 10, 11}}); out != "created #9\nparts: #9 #10 #11\n" {
+		t.Errorf("split save: %q", out)
+	}
 }

@@ -78,14 +78,8 @@ func TestSaveRejectsInvalidInput(t *testing.T) {
 
 func TestSaveSizeCaps(t *testing.T) {
 	s := newSvc(t)
-	_, err := s.Save(context.Background(), SaveInput{Project: "p", Title: "big", Body: strings.Repeat("a", HardCapBytes+1)})
-	if !errors.Is(err, ErrTooLarge) {
-		t.Fatalf("over hard cap: err=%v, want ErrTooLarge", err)
-	}
-	if n := count(t, s, `select count(*) from memories`); n != 0 {
-		t.Errorf("over-cap save stored %d rows", n)
-	}
-
+	// Bodies over the hard cap are split into parts (save_split_test.go); one
+	// at the cap is still stored whole.
 	r := save(t, s, SaveInput{Project: "p", Title: "at cap", Body: strings.Repeat("a", HardCapBytes)})
 	if len(r.Warnings) == 0 {
 		t.Error("body above the soft target must warn")

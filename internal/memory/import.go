@@ -112,14 +112,7 @@ func (s *Service) importOne(ctx context.Context, tx *sql.Tx, r ImportRecord, rep
 	}
 	title := redact(strings.TrimSpace(r.Title))
 	body := redact(strings.TrimSpace(r.Body))
-	// Parts that are blank or fully redacted hold no content: drop them one by
-	// one and number the rest, so an empty middle part never hides the tail.
-	var parts []string
-	for _, p := range splitBody(body, chunkTargetBytes) {
-		if hasContent(p) {
-			parts = append(parts, p)
-		}
-	}
+	parts := contentParts(body)
 	if len(parts) == 0 {
 		rep.Empty++
 		return nil
@@ -310,6 +303,18 @@ func stampOf(t time.Time, now func() time.Time) string {
 		t = now()
 	}
 	return t.UTC().Format(time.RFC3339Nano)
+}
+
+// contentParts splits body like splitBody, then drops parts that are blank or
+// fully redacted, so an empty middle part never hides the tail.
+func contentParts(body string) []string {
+	var parts []string
+	for _, p := range splitBody(body, chunkTargetBytes) {
+		if hasContent(p) {
+			parts = append(parts, p)
+		}
+	}
+	return parts
 }
 
 // splitBody returns body whole when it fits the hard cap. Otherwise it packs

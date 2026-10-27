@@ -20,7 +20,8 @@ import (
 const (
 	// SoftTargetBytes is the body size above which Save warns.
 	SoftTargetBytes = 4 * 1024
-	// HardCapBytes is the largest accepted body; bigger ones are rejected, never truncated.
+	// HardCapBytes is the largest body stored in one memory. Save splits bigger
+	// ones into parts; Update rejects them. Nothing is ever truncated.
 	HardCapBytes = 16 * 1024
 	// MaxVersions is how many prior versions of a topic_key memory are kept.
 	MaxVersions = 5
@@ -75,23 +76,29 @@ type SaveResult struct {
 	ID       int64
 	Action   string
 	Warnings []string
-	Hint     *Hint // set when a similar memory already exists; never blocks the write
+	Hint     *Hint   // set when a similar memory already exists; never blocks the write
+	Parts    []int64 // ids of every part, in order, when the body was split
 }
 
 // Save stores a memory following the write rules: redaction, size caps,
 // exact-duplicate suppression, topic_key upsert with version snapshots and
-// optional supersession.
+// optional supersession. A body over HardCapBytes is stored as parts, the way
+// the importer splits records; the result describes part 1.
 func (s *Service) Save(ctx context.Context, in SaveInput) (SaveResult, error) {
-	in, err := normalize(in)
+	in, err := normalizeFields(in)
 	if err != nil {
 		return SaveResult{}, err
 	}
+	pieces := splitInput(in, contentParts(in.Body))
 	var res SaveResult
-	if len(in.Body) > SoftTargetBytes {
+	switch {
+	case len(pieces) > 1:
+		res.Warnings = append(res.Warnings, fmt.Sprintf("body is %d bytes; saved as %d parts of at most %d bytes",
+			len(in.Body), len(pieces), chunkTargetBytes))
+	case len(in.Body) > SoftTargetBytes:
 		res.Warnings = append(res.Warnings,
 			fmt.Sprintf("body is %d bytes; consider splitting it (target <= %d)", len(in.Body), SoftTargetBytes))
 	}
-	hash := contentHash(in.Title, in.Body)
 	stamp := s.now().UTC().Format(time.RFC3339Nano)
 
 	tx, err := s.db.SQL().BeginTx(ctx, nil)
@@ -111,26 +118,100 @@ func (s *Service) Save(ctx context.Context, in SaveInput) (SaveResult, error) {
 		}
 	}
 
-	id, action, err := s.write(ctx, tx, in, hash, stamp)
-	if err != nil {
-		return SaveResult{}, err
-	}
-	if in.Supersedes != 0 {
-		if in.Supersedes == id {
+	ids := make([]int64, len(pieces))
+	actions := make([]string, len(pieces))
+	for i, p := range pieces {
+		if ids[i], actions[i], err = s.write(ctx, tx, p, contentHash(p.Title, p.Body), stamp); err != nil {
+			return SaveResult{}, err
+		}
+		if in.Supersedes == ids[i] {
 			return SaveResult{}, ErrSupersedeTarget
 		}
+		// A part archived when the document shrank is in use again.
+		if i > 0 && p.TopicKey != "" {
+			if _, err := tx.ExecContext(ctx,
+				`update memories set status='active', updated_at=? where id=? and status='archived'`, stamp, ids[i]); err != nil {
+				return SaveResult{}, err
+			}
+		}
+	}
+	if in.TopicKey != "" {
+		if err := archiveLeftoverParts(ctx, tx, in, len(pieces), stamp); err != nil {
+			return SaveResult{}, err
+		}
+	}
+	if in.Supersedes != 0 {
 		if _, err := tx.ExecContext(ctx,
 			`update memories set status='superseded', superseded_by=?, updated_at=? where id=?`,
-			id, stamp, in.Supersedes); err != nil {
+			ids[0], stamp, in.Supersedes); err != nil {
 			return SaveResult{}, err
 		}
 	}
 	if err := tx.Commit(); err != nil {
 		return SaveResult{}, err
 	}
-	res.ID, res.Action = id, action
-	s.afterWrite(ctx, id, in.Project, in.Title, in.Body, action, &res)
+	res.ID, res.Action = ids[0], overallAction(actions)
+	if len(pieces) > 1 {
+		res.Parts = ids
+	}
+	for i, p := range pieces {
+		if i == 0 {
+			s.afterWrite(ctx, ids[i], p.Project, p.Title, p.Body, actions[i], &res)
+			continue
+		}
+		// Only part 1 may report a similar memory; later parts would find part 1.
+		var r SaveResult
+		s.afterWrite(ctx, ids[i], p.Project, p.Title, p.Body, actions[i], &r)
+		res.Warnings = append(res.Warnings, r.Warnings...)
+	}
 	return res, nil
+}
+
+// splitInput returns one input per body part. With several parts, each title
+// gets "(part i/N)" and parts after the first get the topic key <key>/part-i.
+func splitInput(in SaveInput, bodies []string) []SaveInput {
+	if len(bodies) == 1 {
+		return []SaveInput{in}
+	}
+	out := make([]SaveInput, len(bodies))
+	for i, b := range bodies {
+		p := in
+		p.Title = fmt.Sprintf("%s (part %d/%d)", in.Title, i+1, len(bodies))
+		p.Body = b
+		if i > 0 && in.TopicKey != "" {
+			p.TopicKey = fmt.Sprintf("%s/part-%d", in.TopicKey, i+1)
+		}
+		out[i] = p
+	}
+	return out
+}
+
+// archiveLeftoverParts archives the active parts <key>/part-i with i > n, left
+// over from an earlier, longer version of the document.
+func archiveLeftoverParts(ctx context.Context, tx *sql.Tx, in SaveInput, n int, stamp string) error {
+	prefix := in.TopicKey + "/part-"
+	_, err := tx.ExecContext(ctx,
+		`update memories set status='archived', updated_at=?
+		 where project=? and scope=? and status='active'
+		   and substr(topic_key, 1, ?) = ?
+		   and substr(topic_key, ?) != '' and substr(topic_key, ?) not glob '*[^0-9]*'
+		   and cast(substr(topic_key, ?) as integer) > ?`,
+		stamp, in.Project, in.Scope, len(prefix), prefix, len(prefix)+1, len(prefix)+1, len(prefix)+1, n)
+	return err
+}
+
+// overallAction sums up the parts' actions: unchanged or duplicate only when
+// every part was, created when part 1 is new, updated otherwise.
+func overallAction(actions []string) string {
+	for _, a := range actions[1:] {
+		if a != actions[0] {
+			if actions[0] == ActionCreated {
+				return ActionCreated
+			}
+			return ActionUpdated
+		}
+	}
+	return actions[0]
 }
 
 func (s *Service) write(ctx context.Context, tx *sql.Tx, in SaveInput, hash, stamp string) (int64, string, error) {
@@ -199,7 +280,20 @@ func (s *Service) update(ctx context.Context, tx *sql.Tx, id int64, oldTitle, ol
 	return err
 }
 
+// normalize validates and cleans in for a single memory, size cap included.
 func normalize(in SaveInput) (SaveInput, error) {
+	in, err := normalizeFields(in)
+	if err != nil {
+		return in, err
+	}
+	if len(in.Body) > HardCapBytes {
+		return in, fmt.Errorf("%w: body is %d bytes, cap is %d; split it into smaller memories", ErrTooLarge, len(in.Body), HardCapBytes)
+	}
+	return in, nil
+}
+
+// normalizeFields is normalize without the size cap.
+func normalizeFields(in SaveInput) (SaveInput, error) {
 	in.Project = strings.TrimSpace(in.Project)
 	if in.Project == "" {
 		return in, ErrNoProject
@@ -219,9 +313,6 @@ func normalize(in SaveInput) (SaveInput, error) {
 	if strings.TrimSpace(strings.ReplaceAll(in.Title, redactionMarker, "")) == "" ||
 		strings.TrimSpace(strings.ReplaceAll(in.Body, redactionMarker, "")) == "" {
 		return in, ErrEmpty
-	}
-	if len(in.Body) > HardCapBytes {
-		return in, fmt.Errorf("%w: body is %d bytes, cap is %d; split it into smaller memories", ErrTooLarge, len(in.Body), HardCapBytes)
 	}
 	in.TopicKey = topicKey(in.TopicKey)
 	return in, nil

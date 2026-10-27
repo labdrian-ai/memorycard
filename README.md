@@ -14,8 +14,9 @@ Status: v0, episodic tier only. Not yet published.
   questions over a real 3,400-memory store: hit@5 85 %, hit@1 65 %, median
   latency about 200 ms.
 - **Never silently degraded.** If the embedder is down, search falls back to
-  BM25 and says `mode: lexical`. Oversized notes are rejected with an explicit
-  error, never truncated.
+  BM25 and says `mode: lexical`. Notes over 16 KB are saved as numbered parts
+  of about 12 KB, never truncated; saving the same `topic_key` again updates
+  the parts in place.
 - **Honest about confidence.** `confidence: low` flags results for questions
   the store knows nothing about. It cannot tell whether related memories hold
   the exact fact asked for (no retrieval score separates those cases), so the

@@ -50,6 +50,13 @@ func Save(r memory.SaveResult) string {
 	} else {
 		fmt.Fprintf(&b, "%s #%d\n", r.Action, r.ID)
 	}
+	if len(r.Parts) > 0 {
+		b.WriteString("parts:")
+		for _, id := range r.Parts {
+			fmt.Fprintf(&b, " #%d", id)
+		}
+		b.WriteString("\n")
+	}
 	for _, w := range r.Warnings {
 		fmt.Fprintf(&b, "warning: %s\n", w)
 	}
