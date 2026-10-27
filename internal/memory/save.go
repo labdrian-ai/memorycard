@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -118,6 +119,12 @@ func (s *Service) Save(ctx context.Context, in SaveInput) (SaveResult, error) {
 		}
 	}
 
+	oldParts := 0
+	if in.TopicKey != "" {
+		if oldParts, err = savedPartCount(ctx, tx, in); err != nil {
+			return SaveResult{}, err
+		}
+	}
 	ids := make([]int64, len(pieces))
 	actions := make([]string, len(pieces))
 	for i, p := range pieces {
@@ -127,16 +134,22 @@ func (s *Service) Save(ctx context.Context, in SaveInput) (SaveResult, error) {
 		if in.Supersedes == ids[i] {
 			return SaveResult{}, ErrSupersedeTarget
 		}
-		// A part archived when the document shrank is in use again.
+		// A part archived when the document shrank is in use again. The key
+		// check keeps a duplicate match elsewhere from being revived.
 		if i > 0 && p.TopicKey != "" {
 			if _, err := tx.ExecContext(ctx,
-				`update memories set status='active', updated_at=? where id=? and status='archived'`, stamp, ids[i]); err != nil {
+				`update memories set status='active', updated_at=? where id=? and topic_key=? and status='archived'`,
+				stamp, ids[i], p.TopicKey); err != nil {
 				return SaveResult{}, err
 			}
 		}
 	}
-	if in.TopicKey != "" {
-		if err := archiveLeftoverParts(ctx, tx, in, len(pieces), stamp); err != nil {
+	// Parts the previous version had beyond the new count are left over.
+	for i := len(pieces) + 1; i <= oldParts; i++ {
+		if _, err := tx.ExecContext(ctx,
+			`update memories set status='archived', updated_at=?
+			 where project=? and scope=? and topic_key=? and status='active'`,
+			stamp, in.Project, in.Scope, partKey(in.TopicKey, i)); err != nil {
 			return SaveResult{}, err
 		}
 	}
@@ -179,25 +192,41 @@ func splitInput(in SaveInput, bodies []string) []SaveInput {
 		p.Title = fmt.Sprintf("%s (part %d/%d)", in.Title, i+1, len(bodies))
 		p.Body = b
 		if i > 0 && in.TopicKey != "" {
-			p.TopicKey = fmt.Sprintf("%s/part-%d", in.TopicKey, i+1)
+			p.TopicKey = partKey(in.TopicKey, i+1)
 		}
 		out[i] = p
 	}
 	return out
 }
 
-// archiveLeftoverParts archives the active parts <key>/part-i with i > n, left
-// over from an earlier, longer version of the document.
-func archiveLeftoverParts(ctx context.Context, tx *sql.Tx, in SaveInput, n int, stamp string) error {
-	prefix := in.TopicKey + "/part-"
-	_, err := tx.ExecContext(ctx,
-		`update memories set status='archived', updated_at=?
-		 where project=? and scope=? and status='active'
-		   and substr(topic_key, 1, ?) = ?
-		   and substr(topic_key, ?) != '' and substr(topic_key, ?) not glob '*[^0-9]*'
-		   and cast(substr(topic_key, ?) as integer) > ?`,
-		stamp, in.Project, in.Scope, len(prefix), prefix, len(prefix)+1, len(prefix)+1, len(prefix)+1, n)
-	return err
+func partKey(key string, i int) string { return fmt.Sprintf("%s/part-%d", key, i) }
+
+var partOneTitle = regexp.MustCompile(`\(part 1/(\d+)\)$`)
+
+// savedPartCount returns how many parts the live memory holding in's topic key
+// was split into: N when its title ends in "(part 1/N)", otherwise 1 (0 when
+// there is none). Only those parts can be left over, so keys that merely look
+// like parts are never touched.
+func savedPartCount(ctx context.Context, tx *sql.Tx, in SaveInput) (int, error) {
+	var title string
+	err := tx.QueryRowContext(ctx,
+		`select title from memories where project=? and scope=? and topic_key=? and status != 'superseded'`,
+		in.Project, in.Scope, in.TopicKey).Scan(&title)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, err
+	}
+	m := partOneTitle.FindStringSubmatch(title)
+	if m == nil {
+		return 1, nil
+	}
+	n, err := strconv.Atoi(m[1])
+	if err != nil {
+		return 1, nil
+	}
+	return n, nil
 }
 
 // overallAction sums up the parts' actions: unchanged or duplicate only when

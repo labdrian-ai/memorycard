@@ -119,6 +119,45 @@ func TestSaveSplitTopicKeyUpdatesPartsInPlaceAndArchivesLeftovers(t *testing.T) 
 	}
 }
 
+func TestSaveSplitArchivesLeftoversOfNonASCIIKeys(t *testing.T) {
+	s := newSvc(t)
+	save(t, s, SaveInput{Project: "p", Title: "Diseño", Body: paragraphs(30, "d"), TopicKey: "diseño"})
+	save(t, s, SaveInput{Project: "p", Title: "Diseño", Body: "Ahora entra en una sola memoria.", TopicKey: "diseño"})
+	got := parts(t, s, `project = 'p'`)
+	if len(got) != 3 || got[0].status != "active" || got[1].status != "archived" || got[2].status != "archived" {
+		t.Errorf("after shrinking diseño to one memory: %+v, want parts 2 and 3 archived", got)
+	}
+}
+
+func TestSaveLeavesKeysThatOnlyLookLikePartsAlone(t *testing.T) {
+	s := newSvc(t)
+	manual := save(t, s, SaveInput{Project: "p", Title: "Release part two", Body: "notes for part two", TopicKey: "release/part-2"})
+	save(t, s, SaveInput{Project: "p", Title: "Release", Body: "release plan", TopicKey: "release"})
+
+	save(t, s, SaveInput{Project: "p", Title: "Doc", Body: paragraphs(30, "v1"), TopicKey: "doc"})
+	padded := save(t, s, SaveInput{Project: "p", Title: "Doc appendix", Body: "appendix", TopicKey: "doc/part-04"})
+	save(t, s, SaveInput{Project: "p", Title: "Doc", Body: paragraphs(20, "v2"), TopicKey: "doc"})
+
+	for _, id := range []int64{manual.ID, padded.ID} {
+		if n := count(t, s, `select count(*) from memories where id = ? and status = 'active'`, id); n != 1 {
+			t.Errorf("memory #%d was never a part but is no longer active", id)
+		}
+	}
+}
+
+func TestSaveSplitNeverRevivesAnotherKeysArchivedPart(t *testing.T) {
+	s := newSvc(t)
+	body := paragraphs(20, "c")
+	save(t, s, SaveInput{Project: "p", Title: "Doc", Body: body, TopicKey: "doc"})
+	save(t, s, SaveInput{Project: "p", Title: "Doc", Body: "short now", TopicKey: "doc"})
+	old := parts(t, s, `topic_key = 'doc/part-2'`)
+
+	save(t, s, SaveInput{Project: "p", Title: "Doc", Body: body, TopicKey: "copy", Scope: "personal"})
+	if got := parts(t, s, `id = ?`, old[0].id); got[0].status != "archived" {
+		t.Errorf("saving under key copy revived doc's archived part #%d", old[0].id)
+	}
+}
+
 func TestSaveSplitWithoutTopicKeyStoresPartsOnceAndSupersedesWithPartOne(t *testing.T) {
 	s := newSvc(t)
 	old := save(t, s, SaveInput{Project: "p", Title: "Old notes", Body: "superseded soon"})
