@@ -247,3 +247,25 @@ func TestImportPrivateTitleTakesItsTitleFromTheBody(t *testing.T) {
 		t.Errorf("body lost content: %q", body)
 	}
 }
+
+func TestImportChunkPartNeverTakesASourceTopicKey(t *testing.T) {
+	para := strings.Repeat("word ", 1000) + "\n\n"
+	big := rec("1", "Design", strings.Repeat(para, 4)) // chunked: its part 2 would be keyed design/part-2
+	big.TopicKey = "design"
+	own := rec("2", "Design part two", "written by hand as its own note")
+	own.TopicKey = "design/part-2"
+	for _, order := range [][]ImportRecord{{big, own}, {own, big}} {
+		s := newSvc(t)
+		imp(t, s, order, nil)
+		var title string
+		if err := s.db.SQL().QueryRow(`select title from memories where topic_key = 'design/part-2'`).Scan(&title); err != nil {
+			t.Fatalf("no memory keeps design/part-2: %v", err)
+		}
+		if title != "Design part two" {
+			t.Errorf("design/part-2 belongs to %q, want the source's own note", title)
+		}
+		if n := count(t, s, `select count(*) from memories where topic_key like 'design/part-2%'`); n != 2 {
+			t.Errorf("memories keyed design/part-2*: %d, want 2", n)
+		}
+	}
+}

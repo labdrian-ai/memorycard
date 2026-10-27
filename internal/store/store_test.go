@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 )
@@ -117,6 +118,7 @@ func TestUpgradeFromV1KeepsDataAndAddsImportMap(t *testing.T) {
 	for _, q := range []string{
 		`insert into memories(project,title,body,content_hash,created_at,updated_at) values('p','kept','b','h','x','x')`,
 		`drop table import_map`,
+		`drop index idx_memories_topic_live`,
 		`pragma user_version = 1`, // what a database created by the v1 build looks like
 	} {
 		if _, err := first.SQL().Exec(q); err != nil {
@@ -136,5 +138,58 @@ func TestUpgradeFromV1KeepsDataAndAddsImportMap(t *testing.T) {
 	}
 	if _, err := db.SQL().Exec(`insert into import_map(source, source_key, memory_id) values ('s','1',1)`); err != nil {
 		t.Errorf("import_map missing after upgrade: %v", err)
+	}
+}
+
+func TestUpgradeToV3RekeysLiveTopicKeyCollisionsAndEnforcesThem(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "memory.db")
+	first, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ins := `insert into memories(project,title,body,topic_key,status,content_hash,created_at,updated_at) values('p',?,'b',?,?,?,'x','x')`
+	for _, q := range []string{`drop index if exists idx_memories_topic_live`, `pragma user_version = 2`} {
+		if _, err := first.SQL().Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rows := []struct{ title, key, status string }{
+		{"genuine k", "k", "active"},           // 1: the source's own key
+		{"generated part of k", "k", "active"}, // 2: an importer chunk part, newer
+		{"old j", "j", "superseded"},           // 3: superseded rows never count
+		{"j", "j", "active"},                   // 4
+		{"x older", "x", "archived"},           // 5
+		{"x newer", "x", "active"},             // 6
+	}
+	for i, r := range rows {
+		if _, err := first.SQL().Exec(ins, r.title, r.key, r.status, fmt.Sprint(i)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := first.SQL().Exec(`insert into import_map(source, source_key, part, memory_id) values ('engram','a',2,2)`); err != nil {
+		t.Fatal(err)
+	}
+	first.Close()
+
+	db, err := Open(path)
+	if err != nil {
+		t.Fatalf("upgrade: %v", err)
+	}
+	defer db.Close()
+	want := map[int]string{1: "k", 2: "k~2", 3: "j", 4: "j", 5: "x~5", 6: "x"}
+	for id, key := range want {
+		var got string
+		if err := db.SQL().QueryRow(`select topic_key from memories where id = ?`, id).Scan(&got); err != nil || got != key {
+			t.Errorf("memory %d topic_key = %q (%v), want %q", id, got, err, key)
+		}
+	}
+	if _, err := db.SQL().Exec(ins, "another k", "k", "active", "h7"); err == nil {
+		t.Error("a second live memory with topic_key k was accepted")
+	}
+	if _, err := db.SQL().Exec(ins, "superseded k", "k", "superseded", "h8"); err != nil {
+		t.Errorf("a superseded memory with a taken topic_key was rejected: %v", err)
+	}
+	if _, err := db.SQL().Exec(ins, "untagged", nil, "active", "h9"); err != nil {
+		t.Errorf("a memory without topic_key was rejected: %v", err)
 	}
 }

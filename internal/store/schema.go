@@ -1,7 +1,7 @@
 package store
 
 // SchemaVersion is the number of entries in migrations.
-const SchemaVersion = 2
+const SchemaVersion = 3
 
 // migrations[i] upgrades a database from version i to i+1.
 var migrations = [...]string{
@@ -79,5 +79,23 @@ create table import_map (
 	primary key (source, source_key, part)
 );
 create index idx_import_map_memory on import_map(memory_id);
+`,
+	// v3: one live memory per topic_key, which the topic_key upsert relies on.
+	// Earlier imports could leave two (a chunk part keyed <key>/part-N next to
+	// a source note that already had that key); the source's own note keeps the
+	// key, then the newest, and the others become <key>~<id>.
+	`
+with ranked as (
+	select m.id, row_number() over (
+		partition by m.project, m.scope, m.topic_key
+		order by exists (select 1 from import_map i where i.memory_id = m.id and i.part > 1), m.id desc
+	) as rn
+	from memories m
+	where m.topic_key is not null and m.status != 'superseded'
+)
+update memories set topic_key = topic_key || '~' || id
+where id in (select id from ranked where rn > 1);
+create unique index idx_memories_topic_live on memories(project, scope, topic_key)
+	where topic_key is not null and status != 'superseded';
 `,
 }

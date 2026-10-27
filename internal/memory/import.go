@@ -146,6 +146,11 @@ func (s *Service) importOne(ctx context.Context, tx *sql.Tx, r ImportRecord, rep
 		if err != nil {
 			return err
 		}
+		if in.TopicKey != "" {
+			if in.TopicKey, err = claimTopicKey(ctx, tx, in, i > 0); err != nil {
+				return err
+			}
+		}
 		id, fresh, err := importRow(ctx, tx, in, r.Pinned, created, updated)
 		if err != nil {
 			return err
@@ -170,6 +175,48 @@ func (s *Service) importOne(ctx context.Context, tx *sql.Tx, r ImportRecord, rep
 		rep.Chunked++
 	}
 	return nil
+}
+
+// claimTopicKey returns the topic key a new imported row may use, keeping one
+// live memory per key. A generated chunk-part key that is taken moves to
+// <key>~N. A source's own key wins over a chunk part that took it earlier,
+// which moves instead.
+func claimTopicKey(ctx context.Context, tx *sql.Tx, in SaveInput, generated bool) (string, error) {
+	holder, holderIsPart, err := liveTopicHolder(ctx, tx, in.Project, in.Scope, in.TopicKey)
+	if err != nil || holder == 0 {
+		return in.TopicKey, err
+	}
+	free, err := freeTopicKey(ctx, tx, in.Project, in.Scope, in.TopicKey)
+	if err != nil || generated || !holderIsPart {
+		return free, err
+	}
+	_, err = tx.ExecContext(ctx, `update memories set topic_key = ? where id = ?`, free, holder)
+	return in.TopicKey, err
+}
+
+// liveTopicHolder returns the live memory holding key, if any, and whether it
+// is an imported chunk part after the first.
+func liveTopicHolder(ctx context.Context, tx *sql.Tx, project, scope, key string) (int64, bool, error) {
+	var id int64
+	var part bool
+	err := tx.QueryRowContext(ctx,
+		`select m.id, exists (select 1 from import_map i where i.memory_id = m.id and i.part > 1)
+		 from memories m where m.project = ? and m.scope = ? and m.topic_key = ? and m.status != 'superseded'`,
+		project, scope, key).Scan(&id, &part)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, false, nil
+	}
+	return id, part, err
+}
+
+func freeTopicKey(ctx context.Context, tx *sql.Tx, project, scope, key string) (string, error) {
+	for n := 2; ; n++ {
+		k := fmt.Sprintf("%s~%d", key, n)
+		holder, _, err := liveTopicHolder(ctx, tx, project, scope, k)
+		if err != nil || holder == 0 {
+			return k, err
+		}
+	}
 }
 
 // importRow inserts one row, or reuses the existing row with identical
