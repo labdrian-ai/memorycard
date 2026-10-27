@@ -30,7 +30,9 @@ commands:
   mcp                      serve the MCP tools over stdio
   save   --title T --body B [--type X] [--topic K] [--scope S] [--supersedes ID]
                            save a memory (--body - reads stdin)
-  search [--type X] [--k N] [--titles] [--all] <query>
+  search [--type X] [--k N] [--titles] [--all] [--project P] <query>
+                           find memories by meaning; --all includes superseded
+                           and archived ones, --project "" searches every project
   get    <id>              print one memory with its history
   context                  print the project digest
   stats                    counts and embedding backlog
