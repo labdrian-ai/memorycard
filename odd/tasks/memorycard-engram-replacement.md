@@ -19,7 +19,7 @@ Branch: `main` for docs and agent-instruction changes; a feature branch for any 
 | T2 | S2 | inline | done | Engram #4517 mirrored as memorycard #3446: project `memorycard`, scope `project`, same topic_key, one live holder |
 | T3 | S3 | inline | done | `~/memorycard-lab/dualwrite-check.py`; first run: engram 1, matched 1, problems 0 |
 | T3b | S3 | inline | done | backfill of the pre-cutover gap (L7): 83 imported, 2 merged, 1 update applied, 85 embedded |
-| T6 | S5 | inline | done, verifying | branch `feat/save-splits-large-bodies`; RED `body exceeds the hard size cap` then GREEN; full suite ok; differential vs `main`: only a timestamp differs; over-cap CLI save gives 3 parts |
+| T6 | S5 | inline | done, not merged | branch `feat/save-splits-large-bodies`: `93cd550` + correction `8b63386`; RED `body exceeds the hard size cap` then GREEN; full suite ok; differential vs `main`: only a timestamp differs; the independent verifier's recheck shows all 3 findings fixed (L10) |
 | T4 | S3 | inline | pending | validation run after the dual-write window, with verdict |
 | T5 | S4 | — | pending | migration tasks, written when T4 passes |
 
@@ -41,4 +41,9 @@ Branch: `main` for docs and agent-instruction changes; a feature branch for any 
 - **L8 (2026-10-27).** Check since the import (`--since "2026-10-24 18:27:25"`) after the backfill: engram 89, matched 85, problems 4. Two causes:
   - **Blocker for S2: memorycard rejects bodies over 16 KB** (`HardCapBytes`, `internal/memory/save.go:24`). Engram accepts 50 KB, and ODD feature-doc mirrors pass 16 KB. #4353 (17107 bytes) and #4399 (19242) cannot be mirrored. #4477 was imported in parts, but its later updates cannot go through `mem_save` either. Needs an owner decision.
   - **Agent sessions started before the rule change still run the old rule.** An open intranet-kalani session wrote #4519 and updated #4477 after the cutover without mirroring. This goes away when those sessions restart.
+- **L10 (2026-10-27).** T6: the independent verifier checked commit `93cd550` against `main`. Every S5 clause passed except leftover archiving, which had two blockers:
+  - non-ASCII topic keys never matched, because a byte length was passed to SQLite's character-counting `substr`;
+  - every keyed save archived any `<key>/part-<digits>` row, including rows that were never parts (`release/part-2`, `doc/part-04`).
+
+  Advisory 1: reviving an archived part could reach a row under another key or scope through a duplicate match. Correction `8b63386` fixes all three. The previous part count now comes from part 1's title `(part 1/N)`, only the exact keys `<key>/part-i` up to N are archived, and a revival checks the topic key. Each finding has a RED test. Advisories not fixed: a split save can overwrite an unrelated memory whose own key is `<key>/part-i`; `overallAction` can mislabel mixed results. A recheck confirmed all three findings fixed. Remaining advisory: when a generated part key has no row yet, the duplicate lookup (project and hash only) can resolve that part to an identical row in another scope or under another key. No stored data changes.
 - **L9 (2026-10-27), advisory.** An update whose re-embedding fails keeps the old vector. `EmbedPending` only picks up rows with no vector or a different model, so that vector stays stale until the next successful update. Not fixed.
