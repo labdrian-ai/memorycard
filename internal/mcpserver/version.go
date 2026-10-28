@@ -1,6 +1,7 @@
 package mcpserver
 
 import (
+	"regexp"
 	"runtime/debug"
 	"strings"
 )
@@ -18,16 +19,21 @@ func init() {
 	Version = buildVersion(Version, info, ok)
 }
 
+// pseudoVersion matches the timestamp-and-commit suffix Go gives a module
+// version that is not a tag, as in v0.1.2-0.20261028190000-3f5b8cb0cd13.
+var pseudoVersion = regexp.MustCompile(`\d{14}-[0-9a-f]{12}$`)
+
 // buildVersion returns the version stamped by the linker, else the module
-// version Go records for `go install`, without its leading "v".
+// version Go records for `go install` of a tag, without its leading "v".
+// A local build in a git checkout also gets a module version, but a pseudo
+// version or a "+dirty" one names no release, so it stays dev.
 func buildVersion(ldflag string, info *debug.BuildInfo, ok bool) string {
 	if ldflag != devVersion || !ok || info == nil {
 		return ldflag
 	}
-	switch v := info.Main.Version; v {
-	case "", "(devel)":
+	v, _, meta := strings.Cut(info.Main.Version, "+")
+	if v == "" || v == "(devel)" || meta || pseudoVersion.MatchString(v) {
 		return ldflag
-	default:
-		return strings.TrimPrefix(v, "v")
 	}
+	return strings.TrimPrefix(v, "v")
 }
