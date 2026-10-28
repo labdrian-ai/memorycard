@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.svg" width="180" alt="memorycard logo: a retro cartridge stamped with an ouroboros">
+</p>
+
 # memorycard
 
 Local-first persistent memory for coding agents. One Go binary, one SQLite file,
