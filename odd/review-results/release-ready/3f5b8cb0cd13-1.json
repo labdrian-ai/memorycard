@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "2ae2ca8d7ab82094ebf92d7f9332b78aeac0a105",
+    "head": "3f5b8cb0cd13bafd5af3e043f79636a38e9ffc32",
+    "diff_sha256": "90384483c7ce48a18cf0f2ebea8d933ffd09566db76bfde2f5a7a488201dc231",
+    "paths": [
+      ".goreleaser.yaml",
+      "internal/mcpserver/server.go",
+      "internal/mcpserver/version.go",
+      "internal/mcpserver/version_test.go"
+    ]
+  },
+  "rows": [
+    "default",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "2ae2ca8d7ab82094ebf92d7f9332b78aeac0a105",
+      "head": "3f5b8cb0cd13bafd5af3e043f79636a38e9ffc32",
+      "diff_sha256": "90384483c7ce48a18cf0f2ebea8d933ffd09566db76bfde2f5a7a488201dc231"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        ".goreleaser.yaml",
+        "internal/mcpserver/server.go",
+        "internal/mcpserver/version.go",
+        "internal/mcpserver/version_test.go"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "location": "internal/mcpserver/version.go:23-33",
+        "severity": "SUGGESTION",
+        "claim": "Since Go 1.24, a local `go build` in a VCS checkout stamps Main.Version with a pseudo-version or `+dirty` suffix (for example `v0.1.0+dirty`). buildVersion passes that through, so local builds report values like `0.1.0+dirty` instead of `dev`. This matches the owner's observation but not the stated criterion 'unversioned builds report dev'. The test table has no case for a `+dirty` or pseudo-version, so the behavior is neither pinned nor documented.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/mcpserver/version.go:27-31",
+          "internal/mcpserver/version_test.go:17-21"
+        ]
+      }
+    ],
+    "evidence": [
+      "Read version.go and version_test.go in the worktree.",
+      "Grepped all Version usages: cli.go:75 and server.go:26 read mcpserver.Version, and .goreleaser.yaml:14 sets it through the -X ldflag.",
+      "The release ldflag path is unchanged and still works: the ldflag value is not 'dev', so buildVersion returns it as is.",
+      "The init() ordering is correct: linker -X values are set before init runs.",
+      "Did not read the .goreleaser.yaml changelog hunk or the server.go removal directly. The server.go removal is indirectly confirmed because Version is still defined in version.go.",
+      "No commands were run."
+    ]
+  }
+}
