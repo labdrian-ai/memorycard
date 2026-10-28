@@ -38,6 +38,7 @@ commands:
   stats                    counts and embedding backlog
   embed  [--limit N]       embed every memory that has no vector yet, N per batch
   import engram <path>     copy an Engram database in (read-only, resumable)
+  version                  print the build version
   help
 
 environment:
@@ -69,6 +70,9 @@ func Run(args []string, in io.Reader, out, errOut io.Writer, getenv func(string)
 	switch cmd {
 	case "help", "-h", "--help":
 		fmt.Fprint(out, usage)
+		return 0
+	case "version", "--version":
+		fmt.Fprintf(out, "memorycard %s\n", mcpserver.Version)
 		return 0
 	case "mcp", "save", "search", "get", "context", "stats", "embed", "import":
 	default:

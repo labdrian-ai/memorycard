@@ -2,9 +2,12 @@ package cli
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/labdrian-ai/memorycard/internal/mcpserver"
 )
 
 // run executes the CLI against a temp database with the embedder off.
@@ -80,6 +83,19 @@ func TestUsageForNoCommandAndUnknownCommand(t *testing.T) {
 	}
 	if code, out, _ := run(t, db, "", "help"); code != 0 || !strings.Contains(out, "mcp") || !strings.Contains(out, "stats") {
 		t.Errorf("help: code=%d out=%q, want a command list", code, out)
+	}
+}
+
+func TestVersionPrintsTheBuildVersionWithoutOpeningTheDatabase(t *testing.T) {
+	db := newDB(t)
+	for _, arg := range []string{"version", "--version"} {
+		code, out, errOut := run(t, db, "", arg)
+		if code != 0 || out != "memorycard "+mcpserver.Version+"\n" || errOut != "" {
+			t.Errorf("%s: code=%d out=%q err=%q", arg, code, out, errOut)
+		}
+	}
+	if _, err := os.Stat(db); !os.IsNotExist(err) {
+		t.Errorf("version created the database: %v", err)
 	}
 }
 
