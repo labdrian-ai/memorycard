@@ -14,10 +14,6 @@ import (
 	"github.com/labdrian-ai/memorycard/internal/render"
 )
 
-// Version is reported to MCP clients and by `memorycard version`. Release
-// builds set it from the git tag with -ldflags "-X ...mcpserver.Version=...".
-var Version = "0.1.0-dev"
-
 type handlers struct {
 	svc     *memory.Service
 	project string // default project when a call does not name one
