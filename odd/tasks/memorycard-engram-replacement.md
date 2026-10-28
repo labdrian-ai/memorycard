@@ -51,4 +51,15 @@ Branch: `main` for docs and agent-instruction changes; a feature branch for any 
   - Live proof: the three oversized Engram records were mirrored through the save path with `~/memorycard-lab/mirror-engram.sh`. #4353 and #4399 became 2 parts each, updating the imported row in place. #4477 became 3 parts, updating the importer's parts.
   - Check since the import: engram 92, matched 89. The 3 still `missing` (#4519, #4521, #4522) were written by an intranet-kalani session started before the rule change. That session must restart.
   - MCP servers that were already running keep the old binary until their agent restarts.
+- **L12 (2026-10-27 20:55 UTC).** Owner: "ya los reinicie".
+  - Running memorycard MCP servers: two Claude Code sessions are on the new binary (started 18:45 and 20:54). A Pi session (memorycard pid 967986, started 13:38) still runs the deleted old binary and the old rule.
+  - The check found 8 Engram writes without a mirror (#4519, #4521, #4522, #4524, #4525, #4526, #4527, plus an update to #4477), all between 14:42 and 19:47.
+  - It also found one memorycard-only write: #3537, labdrian-sdd-overlay, 20:08, topic `review/per-commit-native-review-method`, with no Engram counterpart. That breaks "Engram stays the source of truth"; which agent wrote it is unknown.
+  - The checker no longer reports memorycard rows whose Engram source was written before the window as orphans.
+- **L13 (2026-10-28).** Owner approved ("si porfa").
+  - Mirrored with `mirror-engram.sh`: #4477, #4519, #4521, #4522, #4524 to #4530.
+  - Saved memorycard-only #3537 to Engram as #4531.
+  - Parity since the original cutover: engram 16, matched 16, problems 0. Every memorycard MCP server now runs the new binary; Pi has restarted.
+  - Validation window reset to `2026-10-28 12:58:49` UTC, the new default in `dualwrite-check.py`.
+  - Finding for T4: the Claude Code session in labdrian-sdd-overlay started at 18:45, after the rule change. It still wrote #4526 to #4530 to Engram without mirroring, and #3537 to memorycard only. Agent-driven dual write leaks even under the new rule, and T4 must measure how often. If it keeps leaking, a deterministic option is a post-save hook on Engram `mem_save` that calls `memorycard save`. Not decided.
 - **L9 (2026-10-27), advisory.** An update whose re-embedding fails keeps the old vector. `EmbedPending` only picks up rows with no vector or a different model, so that vector stays stale until the next successful update. Not fixed.

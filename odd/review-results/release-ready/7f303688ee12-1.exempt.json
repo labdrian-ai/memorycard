@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "fed0941864bcac7a987a4885a8fd574fe4d5f927",
+    "head": "7f303688ee12f31196f3076c366463f12f575db7",
+    "diff_sha256": "5d2b1655acce177ad77ef50b80eb04745ed7f421670a32f55bbe0d6f193ca0de",
+    "paths": [
+      "README.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "README claims vs code (rg on internal/mcpserver/server.go, cmd and internal/cli, internal/memory)",
+        "result": "pass",
+        "output": "The six tool names found in server.go (mem_save, mem_search, mem_get, mem_update, mem_context, mem_session) match the README. The env vars MEMORYCARD_DB, _PROJECT, _EMBED, _OLLAMA_URL and _EMBED_MODEL are all in the code and in the usage text, with default bge-m3. The 'save --title --body' flags exist, and search takes a positional query. The CLI dispatches mcp, save, search, get, context, stats, embed, import and version. memory.ModeLexical = 'lexical' and search falls back to it (search.go:148), pinned by search_test.go:159. The Claude Code command, Codex TOML and OpenCode JSON snippets are syntactically valid."
+      }
+    ]
+  }
+}

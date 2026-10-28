@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "b77508d61bb95adddfe28471f6b6d043e799e3d3",
+    "head": "5a021d10692d24dbfb59677e9877ad586ba4bc3a",
+    "diff_sha256": "18acca70ff6c4d2f6ba45ea34166fe2a8c53b7343828025bc6da32c4849818d1",
+    "paths": [
+      "internal/cli/cli.go",
+      "internal/cli/cli_test.go",
+      "internal/mcpserver/server.go"
+    ]
+  },
+  "rows": [
+    "default",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "b77508d61bb95adddfe28471f6b6d043e799e3d3",
+      "head": "5a021d10692d24dbfb59677e9877ad586ba4bc3a",
+      "diff_sha256": "18acca70ff6c4d2f6ba45ea34166fe2a8c53b7343828025bc6da32c4849818d1"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "internal/cli/cli.go",
+        "internal/cli/cli_test.go",
+        "internal/mcpserver/server.go"
+      ],
+      "reason": ""
+    },
+    "findings": [],
+    "evidence": [
+      "Read internal/cli/cli.go Run: the version/--version case returns 0 before a.open(), so the database is never opened or created.",
+      "The test asserts stdout, an empty stderr, exit code 0 and that the database file does not exist, for both spellings.",
+      "Grep found mcpserver.Version used only in cli.go, cli_test.go and the MCP Implementation in server.go. Changing it from const to var breaks no other reference.",
+      "No tests, builds or commands were run (not run)."
+    ]
+  }
+}

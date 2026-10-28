@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "5a021d10692d24dbfb59677e9877ad586ba4bc3a",
+    "head": "fed0941864bcac7a987a4885a8fd574fe4d5f927",
+    "diff_sha256": "b5ba0266059b41e548b0022bf5d8ca2c70a1a875bc3ab4cc9b47ac7833f94270",
+    "paths": [
+      ".github/workflows/ci.yml",
+      ".github/workflows/release.yml",
+      ".gitignore",
+      ".goreleaser.yaml"
+    ]
+  },
+  "rows": [
+    "default",
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "5a021d10692d24dbfb59677e9877ad586ba4bc3a",
+      "head": "fed0941864bcac7a987a4885a8fd574fe4d5f927",
+      "diff_sha256": "b5ba0266059b41e548b0022bf5d8ca2c70a1a875bc3ab4cc9b47ac7833f94270"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/release.yml",
+        ".gitignore",
+        ".goreleaser.yaml"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "location": ".github/workflows/release.yml:5-27",
+        "severity": "SUGGESTION",
+        "claim": "The release workflow runs for any pushed v* tag, regardless of branch, with contents: write. It does not check that the tagged commit is on main or that CI passed. A stray tag publishes binaries. The only gate is the go test step, and vet and the cgo-free build are skipped. Third-party actions are pinned to mutable major tags (checkout@v4, setup-go@v5, goreleaser-action@v6) and goreleaser to the floating '~> v2', which is a supply-chain exposure for a job holding a write token. Exploiting this needs push access to the repo, so impact is low.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          ".github/workflows/release.yml"
+        ]
+      }
+    ],
+    "evidence": [
+      "Read all four diff hunks.",
+      "Confirmed LICENSE and README.md exist in the worktree, so the goreleaser archive files entries resolve.",
+      "Confirmed internal/mcpserver/server.go:19 declares `var Version = \"0.1.0-dev\"`, a package-level string var. The -X ldflag target path matches the module path and is valid.",
+      "{{.Version}} strips the leading v from the tag, which is consistent with the dev default.",
+      "CGO_ENABLED=0 is set in the goreleaser build env.",
+      "ci.yml uses read-only permissions.",
+      "Nothing was run; this is static inspection only."
+    ]
+  }
+}
