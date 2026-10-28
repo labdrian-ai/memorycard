@@ -12,7 +12,7 @@ six MCP tools, dense retrieval with a lexical fallback.
 Coding agents forget everything when a session ends. memorycard gives them a
 memory they can save to and search by meaning, across sessions and across
 agents, without a service or a cloud account. It speaks MCP, so it works with
-Claude Code, Codex, OpenCode and any other MCP client.
+Claude Code, Codex, OpenCode, Pi and any other MCP client.
 
 Status: v0.1, episodic memory (decisions, fixes, discoveries, session summaries).
 
@@ -83,6 +83,16 @@ OpenCode (`opencode.json`):
 {
   "mcp": {
     "memorycard": { "type": "local", "command": ["memorycard", "mcp"] }
+  }
+}
+```
+
+Pi (`~/.pi/agent/mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "memorycard": { "command": "memorycard", "args": ["mcp"] }
   }
 }
 ```
