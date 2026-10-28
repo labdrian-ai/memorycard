@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "c3c81eeec177eb1c0b15b49164e519da3df849bf",
+    "head": "5439349e5a61bb657faaa847d8665972cc0800d7",
+    "diff_sha256": "36b8457ed3ff734812cb57aebf20fe85c7cbf3f875ff763783a9690a4323ca94",
+    "paths": [
+      "internal/mcpserver/version.go",
+      "internal/mcpserver/version_test.go"
+    ]
+  },
+  "rows": [
+    "default",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "c3c81eeec177eb1c0b15b49164e519da3df849bf",
+      "head": "5439349e5a61bb657faaa847d8665972cc0800d7",
+      "diff_sha256": "36b8457ed3ff734812cb57aebf20fe85c7cbf3f875ff763783a9690a4323ca94"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "internal/mcpserver/version.go",
+        "internal/mcpserver/version_test.go"
+      ],
+      "reason": ""
+    },
+    "findings": [],
+    "evidence": [
+      "Read both changed files in full at the detached worktree. I did not run any commands or tests.",
+      "buildVersion keeps the -ldflags value whenever it is not dev, or when build info is missing or nil. That preserves release builds.",
+      "buildVersion falls back to dev for an empty version, \"(devel)\", any \"+\" build metadata, and any version ending in a 14-digit timestamp, a hyphen and a 12-character hex commit. Reading the code, this covers the pseudo-version forms the owner listed.",
+      "Plain tags and prerelease tags such as v0.2.0-rc.1 do not match the pseudo-version regexp, so they report the version without the v prefix.",
+      "The new table cases pin the prerelease tag, +dirty, a pseudo-version past a tag, and a dirty pseudo-version past a prerelease. The old cases are unchanged.",
+      "A \"+incompatible\" suffix would also map to dev. That cannot apply to this module's own main version, so I did not report it."
+    ]
+  }
+}
