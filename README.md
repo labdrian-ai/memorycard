@@ -3,7 +3,14 @@
 Local-first persistent memory for coding agents. One Go binary, one SQLite file,
 six MCP tools, dense retrieval with a lexical fallback.
 
-Status: v0, episodic tier only. Not yet published.
+[![ci](https://github.com/labdrian-ai/memorycard/actions/workflows/ci.yml/badge.svg)](https://github.com/labdrian-ai/memorycard/actions/workflows/ci.yml)
+
+Coding agents forget everything when a session ends. memorycard gives them a
+memory they can save to and search by meaning, across sessions and across
+agents, without a service or a cloud account. It speaks MCP, so it works with
+Claude Code, Codex, OpenCode and any other MCP client.
+
+Status: v0.1, episodic memory (decisions, fixes, discoveries, session summaries).
 
 ## Why
 
@@ -24,19 +31,67 @@ Status: v0, episodic tier only. Not yet published.
 - **No services.** Pure-Go SQLite (no cgo), no daemon, no network except the
   local embedder.
 
-## Install and run
+## Install
+
+Download the archive for your platform from
+[Releases](https://github.com/labdrian-ai/memorycard/releases) and put
+`memorycard` on your `PATH`, or build it with Go:
 
 ```sh
-go build -o memorycard ./cmd/memorycard
-ollama pull bge-m3
+go install github.com/labdrian-ai/memorycard/cmd/memorycard@latest
+```
 
+Then pull the embedding model into a local [ollama](https://ollama.com).
+Without it memorycard still works, with keyword search only.
+
+```sh
+ollama pull bge-m3
+```
+
+## Try it
+
+```sh
 memorycard save --title "Auth model" --body "Signed tokens, 15 min expiry"
 memorycard search "how do sessions expire"
-memorycard mcp          # MCP server over stdio
+```
+
+## Connect your agent
+
+memorycard serves its tools over stdio with `memorycard mcp`.
+
+Claude Code:
+
+```sh
+claude mcp add --scope user memorycard -- memorycard mcp
+```
+
+Codex (`~/.codex/config.toml`):
+
+```toml
+[mcp_servers.memorycard]
+command = "memorycard"
+args = ["mcp"]
+```
+
+OpenCode (`opencode.json`):
+
+```json
+{
+  "mcp": {
+    "memorycard": { "type": "local", "command": ["memorycard", "mcp"] }
+  }
+}
 ```
 
 MCP tools: `mem_save`, `mem_search`, `mem_get`, `mem_update`, `mem_context`,
-`mem_session`. Diagnostics (`stats`, `embed`, `import`) live in the CLI.
+`mem_session`. Diagnostics (`stats`, `embed`, `import`, `version`) live in the
+CLI.
+
+Agents use memory best when told when to save and search. A line like this in
+your agent instructions (`CLAUDE.md`, `AGENTS.md`) is enough to start:
+
+> Search memorycard before starting work that may have been done before. After
+> a decision, a bug fix or a non-obvious discovery, save it with `mem_save`.
 
 ## Configuration
 
@@ -48,7 +103,9 @@ MCP tools: `mem_save`, `mem_search`, `mem_get`, `mem_update`, `mem_context`,
 | `MEMORYCARD_OLLAMA_URL` | ollama endpoint |
 | `MEMORYCARD_EMBED_MODEL` | embedding model (default `bge-m3`) |
 
-## Importing from Engram
+## Importing existing memories
+
+An existing Engram database can be copied in:
 
 ```sh
 sqlite3 ~/.engram/engram.db ".backup engram-copy.db"
