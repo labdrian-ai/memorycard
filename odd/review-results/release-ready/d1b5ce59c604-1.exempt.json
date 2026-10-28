@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "7a83f025aa0298c1bcbb3296cbb27167aa38d707",
+    "head": "d1b5ce59c604923d3c8b17ddc7f04a6d84224b5a",
+    "diff_sha256": "d8c7271590441c141c5c043f50af82bd784c89bf6d43b3cf060149e960e476e4",
+    "paths": [
+      "README.md",
+      "assets/logo.png",
+      "assets/logo.svg",
+      "assets/social-preview.png"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "git diff --name-only HEAD~1 HEAD",
+        "result": "pass",
+        "output": "Only README.md and assets/ (logo.svg, logo.png, social-preview.png) changed; no code, workflow or config."
+      },
+      {
+        "command": "test -f assets/logo.svg (path referenced by README img)",
+        "result": "pass",
+        "output": "assets/logo.svg exists (91582 bytes); README img src matches."
+      },
+      {
+        "command": "gh run watch (ci on pushed main)",
+        "result": "pass",
+        "output": "CI workflow concluded success on this commit."
+      }
+    ]
+  }
+}
