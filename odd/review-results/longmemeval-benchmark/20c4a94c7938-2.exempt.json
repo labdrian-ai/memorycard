@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "82341f2684bbeff6505fffda819529664a890a88",
+    "head": "20c4a94c7938f7cda1ba2467af228ccb441c0373",
+    "diff_sha256": "57be208bec45d2d5367c8265e7c4e98a5c54f0752728e320364a420a2430ac74",
+    "paths": [
+      "internal/memory/hybrid_test.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "git diff --name-only 82341f2 20c4a94",
+        "result": "pass",
+        "output": "only internal/memory/hybrid_test.go changed (one new test); no production code"
+      },
+      {
+        "command": "go test ./internal/memory/ -run Hybrid",
+        "result": "pass",
+        "output": "ok"
+      },
+      {
+        "command": "mutation: fuse iterates only the lexical list, then go test ./internal/memory/ -run Hybrid",
+        "result": "pass",
+        "output": "TestHybridKeepsMemoriesOnlyTheDenseListFinds and TestHybridKeepsDenseRankingAndCosineConfidence fail as expected; search.go restored, git diff empty"
+      },
+      {
+        "command": "go test ./...",
+        "result": "pass",
+        "output": "10 packages ok, no FAIL"
+      }
+    ]
+  }
+}
