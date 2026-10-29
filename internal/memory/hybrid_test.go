@@ -50,6 +50,17 @@ func TestHybridKeepsDenseRankingAndCosineConfidence(t *testing.T) {
 	}
 }
 
+// "authorization" shares no indexed word with any memory, so only the dense
+// list can surface the auth memory: fusion must keep it.
+func TestHybridKeepsMemoriesOnlyTheDenseListFinds(t *testing.T) {
+	s, m := hybridSeeded(t)
+	s.SetHybrid(true)
+	r := search(t, s, SearchInput{Query: "authorization", Project: "p"})
+	if len(r.Hits) == 0 || r.Hits[0].ID != m["auth"] {
+		t.Fatalf("hits = %v, want the auth memory (%d) first from the dense list", ids(r), m["auth"])
+	}
+}
+
 func TestHybridFallsBackToLexicalWhenEmbedderDown(t *testing.T) {
 	fe := &fakeEmbedder{fn: topicVec}
 	s := withEmbedder(t, fe)
