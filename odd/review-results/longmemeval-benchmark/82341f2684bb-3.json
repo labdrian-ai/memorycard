@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "974e5dea776a4e62b33c0ad2fc8b2267666a6ebb",
+    "head": "82341f2684bbeff6505fffda819529664a890a88",
+    "diff_sha256": "17cfa68adbef9dd8babdea71a950f838689dc82bb334f141eab92610b4b32dbc",
+    "paths": [
+      "cmd/mc-accept/main.go",
+      "cmd/mc-bench/main.go",
+      "internal/bench/longmemeval.go",
+      "internal/bench/longmemeval_test.go",
+      "internal/memory/hybrid_test.go",
+      "internal/memory/save.go",
+      "internal/memory/search.go",
+      "internal/memory/vectors.go",
+      "odd/tasks/longmemeval-benchmark.md"
+    ]
+  },
+  "rows": [
+    "default",
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "974e5dea776a4e62b33c0ad2fc8b2267666a6ebb",
+      "head": "82341f2684bbeff6505fffda819529664a890a88",
+      "diff_sha256": "17cfa68adbef9dd8babdea71a950f838689dc82bb334f141eab92610b4b32dbc"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "cmd/mc-accept/main.go",
+        "cmd/mc-bench/main.go",
+        "internal/bench/longmemeval.go",
+        "internal/bench/longmemeval_test.go",
+        "internal/memory/hybrid_test.go",
+        "internal/memory/save.go",
+        "internal/memory/search.go",
+        "internal/memory/vectors.go",
+        "odd/tasks/longmemeval-benchmark.md"
+      ],
+      "reason": ""
+    },
+    "findings": [],
+    "evidence": [
+      "Read the full diff at /home/labdrian/memorycard-worktrees/review-82341f2684bb.diff.",
+      "Read find() in the head worktree, internal/memory/search.go lines 100-229. I did not run anything, including tests.",
+      "Default path with hybrid off: the dense pool is k, as before, and the mode is ModeDense. The old confidence test used merged[0].Score. When there are no topic hits, merged[0] is the first dense hit, which is the new cosine variable. The topic-hit case is handled earlier in the switch. So default behavior is equivalent.",
+      "Hybrid path: confidence uses dense[0].Score, as S5 requires. An empty dense result gives cosine 0, which is low confidence. A dense ErrUnavailable falls back to lexical mode with unknown confidence. A lexical error in hybrid mode is returned, the same way the lexical fallback returns it.",
+      "fuse() keeps the dense order on ties because the sort is stable. It keeps at most k results and deduplicates by ID. The pool is never smaller than k, so the pool is at least k when k exceeds 50.",
+      "The err variable inside the hybrid case is shadowed. The later check `if err == nil && len(dense) > 0` uses the outer dense error, which is correct.",
+      "mc-bench rejects -hybrid together with -lexical. The Setup refactor updates all RunQuestion callers in the diff, including the tests. mc-accept sets hybrid only on the dense service.",
+      "Hit.Score is an RRF score in hybrid mode. mc-accept documents this in its flag text, and the mode is opt-in. I found no consumer of the score that this commit breaks."
+    ]
+  }
+}
