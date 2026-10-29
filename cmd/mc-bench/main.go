@@ -29,11 +29,12 @@ func run() int {
 	seed := flag.Int64("seed", 20261029, "sample seed")
 	cachePath := flag.String("cache", "", "embedding cache file (required unless -lexical)")
 	lexical := flag.Bool("lexical", false, "run without an embedder (BM25 baseline)")
+	hybrid := flag.Bool("hybrid", false, "fuse the dense and lexical rankings")
 	out := flag.String("out", "", "results file, one JSON line per question; questions already in it are skipped")
 	flag.Parse()
 	g := bench.Granularity(*gran)
-	if *data == "" || *out == "" || (g != bench.Session && g != bench.Round) || (*cachePath == "" && !*lexical) {
-		fmt.Fprintln(os.Stderr, "usage: mc-bench -data longmemeval_s_cleaned.json -out results.jsonl [-granularity session|round] [-sample 50] [-cache cache.db | -lexical]")
+	if *data == "" || *out == "" || (g != bench.Session && g != bench.Round) || (*cachePath == "" && !*lexical) || (*hybrid && *lexical) {
+		fmt.Fprintln(os.Stderr, "usage: mc-bench -data longmemeval_s_cleaned.json -out results.jsonl [-granularity session|round] [-sample 50] [-cache cache.db [-hybrid] | -lexical]")
 		return 2
 	}
 
@@ -82,7 +83,7 @@ func run() int {
 			return fail(err)
 		}
 		t := time.Now()
-		r, err := bench.RunQuestion(ctx, q, g, emb, dir)
+		r, err := bench.RunQuestion(ctx, q, bench.Setup{Granularity: g, Embedder: emb, Hybrid: *hybrid}, dir)
 		os.RemoveAll(dir)
 		if err != nil {
 			return fail(err)

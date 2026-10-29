@@ -54,6 +54,7 @@ type Service struct {
 	db       *store.DB
 	now      func() time.Time
 	embedder embed.Embedder // optional; nil means text-only
+	hybrid   bool           // fuse dense and lexical rankings when searching
 }
 
 // New returns a Service over db.

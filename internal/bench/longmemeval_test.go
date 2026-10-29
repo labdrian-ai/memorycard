@@ -32,7 +32,8 @@ func (e keywordEmbedder) Embed(_ context.Context, texts []string, _ embed.Kind) 
 
 // fixture: the answer to q1 sits in the second round of session "ans", after
 // 1,600 characters of filler, beyond the part of a memory that is embedded.
-// Session "near" mentions denver early; session "far" is unrelated.
+// Session "near" is about a related subject without the answer's words;
+// session "far" is unrelated.
 func fixture(t *testing.T) string {
 	t.Helper()
 	filler := strings.Repeat("we talked about the weather for a while. ", 40)
@@ -44,7 +45,7 @@ func fixture(t *testing.T) string {
 			"haystack_session_ids": []string{"near", "ans", "far"},
 			"answer_session_ids":   []string{"ans"},
 			"haystack_sessions": [][]map[string]any{
-				{{"role": "user", "content": "Is denver nice in spring?"}, {"role": "assistant", "content": "Yes."}},
+				{{"role": "user", "content": "Is Colorado nice in spring?"}, {"role": "assistant", "content": "Yes."}},
 				{
 					{"role": "user", "content": filler}, {"role": "assistant", "content": "Indeed."},
 					{"role": "user", "content": "I moved to Denver last month.", "has_answer": true},
@@ -84,7 +85,7 @@ func TestRoundGranularityFindsAnswersBeyondTheEmbedWindow(t *testing.T) {
 	}
 	emb := keywordEmbedder{words: []string{"denver", "moved", "pizza"}}
 
-	bySession, err := RunQuestion(ctx, qs[0], Session, emb, t.TempDir())
+	bySession, err := RunQuestion(ctx, qs[0], Setup{Granularity: Session, Embedder: emb}, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +96,7 @@ func TestRoundGranularityFindsAnswersBeyondTheEmbedWindow(t *testing.T) {
 		t.Fatalf("session granularity ranked the answer %d; its answer lies beyond the embed window, so it must not be first", r)
 	}
 
-	byRound, err := RunQuestion(ctx, qs[0], Round, emb, t.TempDir())
+	byRound, err := RunQuestion(ctx, qs[0], Setup{Granularity: Round, Embedder: emb}, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +107,7 @@ func TestRoundGranularityFindsAnswersBeyondTheEmbedWindow(t *testing.T) {
 		t.Fatalf("round granularity ranked the answer %d, want 1", r)
 	}
 
-	abs, err := RunQuestion(ctx, qs[1], Round, emb, t.TempDir())
+	abs, err := RunQuestion(ctx, qs[1], Setup{Granularity: Round, Embedder: emb}, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,12 +129,27 @@ func TestLexicalRunWithoutEmbedder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	r, err := RunQuestion(context.Background(), qs[0], Round, nil, t.TempDir())
+	r, err := RunQuestion(context.Background(), qs[0], Setup{Granularity: Round}, t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if r.Mode != "lexical" || r.Ranks[0] < 1 {
 		t.Fatalf("lexical run: %+v, want the answer found in lexical mode", r)
+	}
+}
+
+func TestHybridSessionRunFindsAnswersBeyondTheEmbedWindow(t *testing.T) {
+	qs, err := Load(fixture(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	emb := keywordEmbedder{words: []string{"denver", "moved", "pizza"}}
+	r, err := RunQuestion(context.Background(), qs[0], Setup{Granularity: Session, Embedder: emb, Hybrid: true}, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Mode != "hybrid" || r.Ranks[0] != 1 {
+		t.Fatalf("hybrid session run: %+v, want the answer first in hybrid mode", r)
 	}
 }
 

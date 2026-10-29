@@ -30,6 +30,11 @@ const (
 	// related memories were found, not that they contain the answer. Judging
 	// that is left to the caller, who reads the excerpts anyway.
 	ConfidenceCosine = 0.48
+	// FusionPool is how many candidates each ranking contributes to hybrid
+	// fusion, and FusionRRF the constant of reciprocal rank fusion
+	// (score = sum of 1/(FusionRRF + rank)); 60 is the usual value.
+	FusionPool = 50
+	FusionRRF  = 60
 	// StaleAfter is the age after which decision and policy memories are flagged.
 	StaleAfter = 183 * 24 * time.Hour
 )
@@ -38,6 +43,7 @@ const (
 const (
 	ModeDense   = "dense"
 	ModeLexical = "lexical"
+	ModeHybrid  = "hybrid" // dense and lexical rankings fused
 
 	ConfidenceOK      = "ok"
 	ConfidenceLow     = "low"
@@ -132,12 +138,27 @@ func (s *Service) find(ctx context.Context, in SearchInput) (SearchResult, error
 
 	var res SearchResult
 	var found []candidate
+	var cosine float64 // best dense similarity; confidence is judged on it in every mode
 	if s.embedder != nil {
-		dense, err := s.dense(ctx, q, f, k)
-		if err == nil {
+		pool := k
+		if s.hybrid && pool < FusionPool {
+			pool = FusionPool
+		}
+		dense, err := s.dense(ctx, q, f, pool)
+		switch {
+		case err == nil && s.hybrid:
+			lex, err := s.lexical(ctx, q, f, pool)
+			if err != nil {
+				return SearchResult{}, err
+			}
+			res.Mode, found = ModeHybrid, fuse(dense, lex, k)
+		case err == nil:
 			res.Mode, found = ModeDense, dense
-		} else if !errors.Is(err, embed.ErrUnavailable) {
+		case !errors.Is(err, embed.ErrUnavailable):
 			return SearchResult{}, err
+		}
+		if err == nil && len(dense) > 0 {
+			cosine = dense[0].Score
 		}
 	}
 	if res.Mode == "" {
@@ -157,7 +178,7 @@ func (s *Service) find(ctx context.Context, in SearchInput) (SearchResult, error
 		res.Confidence = ConfidenceLow
 	case res.Mode == ModeLexical:
 		res.Confidence = ConfidenceUnknown
-	case merged[0].Score >= ConfidenceCosine:
+	case cosine >= ConfidenceCosine:
 		res.Confidence = ConfidenceOK
 	default:
 		res.Confidence = ConfidenceLow
@@ -297,6 +318,30 @@ func (s *Service) lexical(ctx context.Context, q string, f filter, k int) ([]can
 		out = append(out, c)
 	}
 	return out, rows.Err()
+}
+
+// fuse merges two rankings by reciprocal rank fusion and keeps the top k. Rank
+// positions, not scores, are summed, so cosine and BM25 need no common scale.
+// Ties keep the dense order.
+func fuse(dense, lex []candidate, k int) []candidate {
+	score := map[int64]float64{}
+	var order []candidate
+	for _, list := range [][]candidate{dense, lex} {
+		for i, c := range list {
+			if _, seen := score[c.ID]; !seen {
+				order = append(order, c)
+			}
+			score[c.ID] += 1 / float64(FusionRRF+i+1)
+		}
+	}
+	for i := range order {
+		order[i].Score = score[order[i].ID]
+	}
+	sort.SliceStable(order, func(i, j int) bool { return order[i].Score > order[j].Score })
+	if len(order) > k {
+		order = order[:k]
+	}
+	return order
 }
 
 func mergeUnique(first, second []candidate, k int) []candidate {

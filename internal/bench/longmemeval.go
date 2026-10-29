@@ -142,9 +142,17 @@ type Result struct {
 	SearchMs   float64 `json:"search_ms"`
 }
 
+// Setup is how a question is run.
+type Setup struct {
+	Granularity Granularity
+	Embedder    embed.Embedder // nil runs lexical only
+	Hybrid      bool           // fuse dense and lexical rankings
+}
+
 // RunQuestion builds a fresh database in dir from the haystack of q, embeds it
-// with emb (nil runs lexical only) and searches it with the question.
-func RunQuestion(ctx context.Context, q Question, g Granularity, emb embed.Embedder, dir string) (Result, error) {
+// and searches it with the question.
+func RunQuestion(ctx context.Context, q Question, setup Setup, dir string) (Result, error) {
+	g, emb := setup.Granularity, setup.Embedder
 	res := Result{ID: q.ID, Type: q.Type, Abstention: q.Abstention(), Ranks: []int{}}
 	if res.Abstention {
 		return res, nil
@@ -176,6 +184,7 @@ func RunQuestion(ctx context.Context, q Question, g Granularity, emb embed.Embed
 	}
 	if emb != nil {
 		svc.SetEmbedder(emb)
+		svc.SetHybrid(setup.Hybrid)
 		for {
 			n, err := svc.EmbedPending(ctx, 32)
 			if err != nil {
