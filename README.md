@@ -5,7 +5,7 @@
 # memorycard
 
 Local-first persistent memory for coding agents. One Go binary, one SQLite file,
-six MCP tools, dense retrieval with a lexical fallback.
+six MCP tools, dense retrieval boosted by keywords, with a lexical fallback.
 
 [![ci](https://github.com/labdrian-ai/memorycard/actions/workflows/ci.yml/badge.svg)](https://github.com/labdrian-ai/memorycard/actions/workflows/ci.yml)
 [![M8ven Score](https://m8ven.ai/badge/mcp/labdrian-ai/memorycard)](https://m8ven.ai/mcp/labdrian-ai/memorycard?s=readme)
@@ -22,9 +22,9 @@ Status: v0.1, episodic memory (decisions, fixes, discoveries, session summaries)
 - **Cheap in tokens.** The six tool definitions cost about 720 tokens (budget
   1,500). A default search returns about 330 tokens for five results.
 - **Finds what you mean.** Retrieval is dense (`bge-m3` through a local
-  [ollama](https://ollama.com)), not keyword matching. On 190 held-out natural
-  questions over a real 3,400-memory store: hit@5 85 %, hit@1 65 %, median
-  latency about 200 ms.
+  [ollama](https://ollama.com)), boosted by the query's keywords. On
+  190 held-out natural questions over a real 3,400-memory store: hit@5 88 %,
+  hit@1 71 %, median latency about 230 ms.
 - **Never silently degraded.** If the embedder is down, search falls back to
   BM25 and says `mode: lexical`. Notes over 16 KB are saved as numbered parts
   of about 12 KB, never truncated; saving the same `topic_key` again updates
@@ -117,7 +117,7 @@ your agent instructions (`CLAUDE.md`, `AGENTS.md`) is enough to start:
 | `MEMORYCARD_EMBED=off` | disable the embedder (lexical only) |
 | `MEMORYCARD_OLLAMA_URL` | ollama endpoint |
 | `MEMORYCARD_EMBED_MODEL` | embedding model (default `bge-m3`) |
-| `MEMORYCARD_SEARCH=hybrid` | fuse dense and BM25 rankings (the mode measured in [Benchmark](#benchmark)); the default is dense only. Better on English, worse on our Spanish test set |
+| `MEMORYCARD_SEARCH=dense` | rank by meaning only. The default, `hybrid`, boosts meaning with the query's keywords and a light BM25 fusion (the mode measured in [Benchmark](#benchmark)) |
 
 ## Importing existing memories
 
@@ -143,15 +143,24 @@ questions whose answer session is in the top k.
 
 | System | any@1 | any@5 | any@10 |
 |---|---|---|---|
-| memorycard, hybrid search | 86.4 % | 97.9 % | 99.1 % |
+| memorycard, default search | 86.8 % | 98.1 % | 98.9 % |
+| memorycard, `MEMORYCARD_SEARCH=dense` | 81.3 % | 93.6 % | 97.0 % |
 | MemPalace raw, same 470 questions | 81.7 % | 96.6 % | 98.3 % |
 
 The MemPalace row is scored from the per-question results its authors
-published. Hybrid search fuses dense and BM25 rankings; it is not the default
-yet because it lowers a private set of mostly Spanish questions (see
+published. Their best mode, hybrid_v4, was tuned on 50 questions and reports
+90.1 % any@1 and 98.3 % any@5 on the other 450 (424 without abstentions);
+memorycard scores 86.3 % and 97.9 % on those same 424.
+
+Default search ranks by meaning (dense cosine), multiplies each score by
+1 + 0.3 × the share of query words found in the title and the best
+1500-character window of the body, then fuses the top 10 BM25 results at half
+weight, never moving the dense winner. Choices were made on a private set of
+190 mostly Spanish questions, where it lifts hit@1 on all three splits (see
 `odd/tasks/longmemeval-benchmark.md`). Per-question results:
 [`bench/results/longmemeval-s-hybrid-session.jsonl`](bench/results/longmemeval-s-hybrid-session.jsonl).
-CPU only, `bge-m3` through a local ollama, search p50 180 ms.
+CPU only, `bge-m3` through a local ollama, search p50 about 230 ms on a store
+of 3,600 memories, query embedding included.
 
 Reproduce (embeddings are cached by content, so reruns and resumed runs are
 cheap):

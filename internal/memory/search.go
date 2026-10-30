@@ -30,11 +30,21 @@ const (
 	// related memories were found, not that they contain the answer. Judging
 	// that is left to the caller, who reads the excerpts anyway.
 	ConfidenceCosine = 0.48
-	// FusionPool is how many candidates each ranking contributes to hybrid
-	// fusion, and FusionRRF the constant of reciprocal rank fusion
-	// (score = sum of 1/(FusionRRF + rank)); 60 is the usual value.
-	FusionPool = 50
-	FusionRRF  = 60
+	// FusionPool is how many dense candidates hybrid search ranks, and
+	// FusionLexPool how many lexical ones join them; FusionRRF is the constant
+	// of reciprocal rank fusion (score = sum of weight/(FusionRRF + rank)); 60 is
+	// the usual value. The lexical list counts at FusionLexWeight and only its
+	// head, because BM25 is noisy on short Spanish questions.
+	FusionPool      = 50
+	FusionLexPool   = 10
+	FusionLexWeight = 0.5
+	FusionRRF       = 60
+	// OverlapBoost scales a dense score by 1 + OverlapBoost * the share of
+	// query terms in the title and the best OverlapWindow bytes of the body.
+	// The window is the embed window's size, so long bodies gain no edge from
+	// length, while words beyond what was embedded still count.
+	OverlapBoost  = 0.3
+	OverlapWindow = 1500
 	// StaleAfter is the age after which decision and policy memories are flagged.
 	StaleAfter = 183 * 24 * time.Hour
 )
@@ -145,20 +155,20 @@ func (s *Service) find(ctx context.Context, in SearchInput) (SearchResult, error
 			pool = FusionPool
 		}
 		dense, err := s.dense(ctx, q, f, pool)
+		if err == nil && len(dense) > 0 {
+			cosine = dense[0].Score
+		}
 		switch {
 		case err == nil && s.hybrid:
-			lex, err := s.lexical(ctx, q, f, pool)
+			lex, err := s.lexical(ctx, q, f, FusionLexPool)
 			if err != nil {
 				return SearchResult{}, err
 			}
-			res.Mode, found = ModeHybrid, fuse(dense, lex, k)
+			res.Mode, found = ModeHybrid, fuse(boostOverlap(q, dense), lex, k)
 		case err == nil:
 			res.Mode, found = ModeDense, dense
 		case !errors.Is(err, embed.ErrUnavailable):
 			return SearchResult{}, err
-		}
-		if err == nil && len(dense) > 0 {
-			cosine = dense[0].Score
 		}
 	}
 	if res.Mode == "" {
@@ -279,12 +289,18 @@ func init() {
 
 var wordRe = regexp.MustCompile(`[\p{L}\p{N}_]+`)
 
-// ftsQuery builds an OR query of quoted terms, so no FTS operator in the
-// user's text is ever interpreted.
+// foldAccents strips Spanish accents, as the FTS tokenizer does
+// (remove_diacritics 2), so "más" is a stopword and "configuración" matches
+// "configuracion".
+var foldAccents = strings.NewReplacer("á", "a", "é", "e", "í", "i", "ó", "o", "ú", "u", "ü", "u", "ñ", "n")
+
+// ftsQuery builds an OR query of quoted, accent-folded terms, so no FTS
+// operator in the user's text is ever interpreted.
 func ftsQuery(q string) string {
 	seen := map[string]bool{}
 	var terms []string
 	for _, w := range wordRe.FindAllString(strings.ToLower(q), -1) {
+		w = foldAccents.Replace(w)
 		if len([]rune(w)) < 3 || stopwords[w] || seen[w] {
 			continue
 		}
@@ -320,28 +336,106 @@ func (s *Service) lexical(ctx context.Context, q string, f filter, k int) ([]can
 	return out, rows.Err()
 }
 
-// fuse merges two rankings by reciprocal rank fusion and keeps the top k. Rank
-// positions, not scores, are summed, so cosine and BM25 need no common scale.
-// Ties keep the dense order.
+// fuse merges two rankings by weighted reciprocal rank fusion and keeps the top
+// k. Rank positions, not scores, are summed, so cosine and BM25 need no common
+// scale. Ties keep the dense order, and a dense winner (strictly above the
+// second) stays first: the lexical list only reorders what follows it.
 func fuse(dense, lex []candidate, k int) []candidate {
 	score := map[int64]float64{}
 	var order []candidate
-	for _, list := range [][]candidate{dense, lex} {
+	for li, list := range [][]candidate{dense, lex} {
+		w := 1.0
+		if li == 1 {
+			w = FusionLexWeight
+		}
 		for i, c := range list {
 			if _, seen := score[c.ID]; !seen {
 				order = append(order, c)
 			}
-			score[c.ID] += 1 / float64(FusionRRF+i+1)
+			score[c.ID] += w / float64(FusionRRF+i+1)
 		}
 	}
 	for i := range order {
 		order[i].Score = score[order[i].ID]
 	}
 	sort.SliceStable(order, func(i, j int) bool { return order[i].Score > order[j].Score })
+	if len(dense) == 1 || len(dense) > 1 && dense[0].Score > dense[1].Score {
+		for i := range order {
+			if order[i].ID == dense[0].ID {
+				top := order[i]
+				copy(order[1:i+1], order[:i])
+				order[0] = top
+				break
+			}
+		}
+	}
 	if len(order) > k {
 		order = order[:k]
 	}
 	return order
+}
+
+// boostOverlap rescales each dense score by the share of query terms in its
+// title and best body window (see OverlapBoost) and reorders the list.
+func boostOverlap(q string, cs []candidate) []candidate {
+	var terms []string
+	for _, t := range strings.Split(ftsQuery(q), " OR ") {
+		if t = strings.Trim(t, `"`); t != "" {
+			terms = append(terms, t)
+		}
+	}
+	if len(terms) == 0 {
+		return cs
+	}
+	out := append([]candidate{}, cs...)
+	for i := range out {
+		n := windowOverlap(out[i].Title, out[i].body, terms, OverlapWindow)
+		out[i].Score *= 1 + OverlapBoost*float64(n)/float64(len(terms))
+	}
+	sort.SliceStable(out, func(i, j int) bool { return out[i].Score > out[j].Score })
+	return out
+}
+
+// windowOverlap counts the distinct terms found in the title plus those found
+// together in the best window of win bytes of the body. Terms are distinct and
+// accent-folded.
+func windowOverlap(title, body string, terms []string, win int) int {
+	idx := map[string]int{}
+	for i, t := range terms {
+		idx[t] = i
+	}
+	inTitle := make([]bool, len(terms))
+	base := 0
+	for _, w := range wordRe.FindAllString(strings.ToLower(title), -1) {
+		if j, ok := idx[foldAccents.Replace(w)]; ok && !inTitle[j] {
+			inTitle[j] = true
+			base++
+		}
+	}
+	lower := strings.ToLower(body)
+	type hit struct{ pos, term int }
+	var hits []hit
+	for _, loc := range wordRe.FindAllStringIndex(lower, -1) {
+		if j, ok := idx[foldAccents.Replace(lower[loc[0]:loc[1]])]; ok && !inTitle[j] {
+			hits = append(hits, hit{loc[0], j})
+		}
+	}
+	counts := make([]int, len(terms))
+	best, cur, lo := 0, 0, 0
+	for _, h := range hits {
+		if counts[h.term] == 0 {
+			cur++
+		}
+		counts[h.term]++
+		for hits[lo].pos < h.pos-win {
+			if counts[hits[lo].term]--; counts[hits[lo].term] == 0 {
+				cur--
+			}
+			lo++
+		}
+		best = max(best, cur)
+	}
+	return base + best
 }
 
 func mergeUnique(first, second []candidate, k int) []candidate {
