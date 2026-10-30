@@ -1,0 +1,20 @@
+{
+  "kind": "sweep",
+  "base": "6309e62160f866ca7e8db5ee86dec4ad3c5cc8f7",
+  "head": "1c556215092e16546dd5ef2e1623c85b14a803a5",
+  "diff_sha256": "48cedef0e5238314565ee0b99e816831d9c2a2e5a6ad2ca356248608aa923737",
+  "outcome": "fired",
+  "t1": {
+    "deleted_or_renamed": [],
+    "removed_names": [
+      {
+        "name": "TestSearchHybridOption",
+        "hits": [
+          "odd/review-results/longmemeval-benchmark/eea0d238c0f6-2.exempt.json"
+        ]
+      }
+    ]
+  },
+  "t2": [],
+  "t3": []
+}
