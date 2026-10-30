@@ -49,6 +49,8 @@ environment:
   MEMORYCARD_EMBED         "off" disables the embedder (text search only)
   MEMORYCARD_OLLAMA_URL    ollama address (default http://localhost:11434)
   MEMORYCARD_EMBED_MODEL   embedding model (default bge-m3)
+  MEMORYCARD_SEARCH        "hybrid" fuses meaning and keyword rankings
+                           (default: meaning only)
 `
 
 type app struct {
@@ -146,6 +148,7 @@ func (a *app) open() (*memory.Service, embed.Embedder, func(), error) {
 	if emb != nil {
 		svc.SetEmbedder(emb)
 	}
+	svc.SetHybrid(a.getenv("MEMORYCARD_SEARCH") == "hybrid")
 	return svc, emb, func() { db.Close() }, nil
 }
 

@@ -116,6 +116,7 @@ your agent instructions (`CLAUDE.md`, `AGENTS.md`) is enough to start:
 | `MEMORYCARD_EMBED=off` | disable the embedder (lexical only) |
 | `MEMORYCARD_OLLAMA_URL` | ollama endpoint |
 | `MEMORYCARD_EMBED_MODEL` | embedding model (default `bge-m3`) |
+| `MEMORYCARD_SEARCH=hybrid` | fuse dense and BM25 rankings (the mode measured in [Benchmark](#benchmark)); the default is dense only. Better on English, worse on our Spanish test set |
 
 ## Importing existing memories
 
