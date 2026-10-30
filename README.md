@@ -131,6 +131,34 @@ The import is read-only on the source, resumable, merges exact duplicates,
 splits oversized notes into parts instead of truncating, and maps judged
 `supersedes` relations.
 
+## Benchmark
+
+Retrieval on [LongMemEval_S](https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned)
+(`longmemeval_s_cleaned.json`, 500 questions, each with its own haystack of
+about 50 sessions). Each question gets a fresh database with one memory per
+session; the 30 abstention questions are excluded. recall_any@k is the share of
+questions whose answer session is in the top k.
+
+| System | any@1 | any@5 | any@10 |
+|---|---|---|---|
+| memorycard, hybrid search | 86.4 % | 97.9 % | 99.1 % |
+| MemPalace raw, same 470 questions | 81.7 % | 96.6 % | 98.3 % |
+
+The MemPalace row is scored from the per-question results its authors
+published. Hybrid search fuses dense and BM25 rankings; it is not the default
+yet because it lowers a private set of mostly Spanish questions (see
+`odd/tasks/longmemeval-benchmark.md`). Per-question results:
+[`bench/results/longmemeval-s-hybrid-session.jsonl`](bench/results/longmemeval-s-hybrid-session.jsonl).
+CPU only, `bge-m3` through a local ollama, search p50 180 ms.
+
+Reproduce (embeddings are cached by content, so reruns and resumed runs are
+cheap):
+
+```sh
+go run ./cmd/mc-bench -data longmemeval_s_cleaned.json -granularity session \
+  -hybrid -cache cache.db -out run.jsonl
+```
+
 ## Development
 
 ```sh
