@@ -170,6 +170,16 @@ go run ./cmd/mc-bench -data longmemeval_s_cleaned.json -granularity session \
   -hybrid -cache cache.db -out run.jsonl
 ```
 
+End-to-end QA gives the top 5 sessions of the default search to a reader
+model and scores its answer with a judge model, both through the
+[Codex CLI](https://github.com/openai/codex), using the official LongMemEval
+reader and judge prompts (abstention questions included):
+
+```sh
+go run ./cmd/mc-qa -data longmemeval_s_cleaned.json -cache cache.db \
+  -model gpt-6.1-sol -out qa.jsonl
+```
+
 ## Development
 
 ```sh

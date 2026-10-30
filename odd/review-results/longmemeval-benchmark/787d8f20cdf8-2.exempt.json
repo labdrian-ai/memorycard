@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "d00650facff531ca88ea08e3bb0fda0dfa56ff4a",
+    "head": "787d8f20cdf8f0806468c79239370bc2374f2f1a",
+    "diff_sha256": "c75e15c1327ff09de6506c81d8760eb188a4644af34b89cf6846a044dac1d212",
+    "paths": [
+      "cmd/mc-qa/main.go",
+      "internal/bench/longmemeval.go",
+      "internal/bench/longmemeval_test.go",
+      "internal/bench/qa.go",
+      "internal/bench/qa_test.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go test ./internal/bench/ (before qa.go existed)",
+        "result": "pass",
+        "output": "RED as expected: undefined: RunQA, QASetup, JudgePrompt; unknown field Answer"
+      },
+      {
+        "command": "go vet ./... && go test ./...",
+        "result": "pass",
+        "output": "all packages ok, no FAIL"
+      },
+      {
+        "command": "scratch test comparing JudgePrompt and the reader template with prompts extracted from upstream evaluate_qa.py and run_generation.py",
+        "result": "pass",
+        "output": "8 of 8 prompts byte-identical; scratch test removed"
+      },
+      {
+        "command": "differential mc-bench -hybrid -sample 20 -seed 99, main vs branch",
+        "result": "pass",
+        "output": "20/20 results identical (search_ms excluded), report identical except latency"
+      },
+      {
+        "command": "mc-qa -sample 2 -seed 7 smoke run through codex gpt-6.1-sol",
+        "result": "pass",
+        "output": "2 knowledge-update questions answered and judged yes, about 11 s each"
+      }
+    ]
+  }
+}
