@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "434b6172acc6857c536616fc943eb390a5cc2eec",
+    "head": "e178ed4a59e460bdc9f5d12085b0a5e69749af62",
+    "diff_sha256": "9badf2c419f5867e7a46864646739d0b094958a4ca17845b7fd03dcc38965b01",
+    "paths": [
+      "README.md",
+      "odd/review-results/longmemeval-benchmark/434b6172acc6-1.sweep.json",
+      "odd/review-results/longmemeval-benchmark/434b6172acc6-2.exempt.json",
+      "odd/review-results/longmemeval-benchmark/787d8f20cdf8-1.sweep.json",
+      "odd/review-results/longmemeval-benchmark/787d8f20cdf8-2.exempt.json",
+      "odd/tasks/longmemeval-benchmark.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of README.md mc-qa section and odd/tasks/longmemeval-benchmark.md T5, L11, L12",
+        "result": "pass",
+        "output": "documentation only; the mc-qa command and flags in the README match cmd/mc-qa/main.go; figures match runs/qa-sample50*.txt"
+      },
+      {
+        "command": "go test ./...",
+        "result": "pass",
+        "output": "all packages ok; no code changed in this commit"
+      }
+    ]
+  }
+}

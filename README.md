@@ -175,6 +175,23 @@ model and scores its answer with a judge model, both through the
 [Codex CLI](https://github.com/openai/codex), using the official LongMemEval
 reader and judge prompts (abstention questions included):
 
+With `gpt-6.1-sol` as reader and judge, on all 500 questions: 87.0 %
+accuracy, abstention 80.0 % (30 questions).
+
+| Question type | n | Accuracy |
+|---|---|---|
+| single-session-user | 70 | 98.6 % |
+| single-session-assistant | 56 | 100.0 % |
+| single-session-preference | 30 | 93.3 % |
+| knowledge-update | 78 | 91.0 % |
+| temporal-reasoning | 133 | 85.0 % |
+| multi-session | 133 | 73.7 % |
+
+Most misses (36 of 65) are questions whose evidence spans several sessions,
+only some of which reach the 5 read. The judge runs without temperature control, so a rerun can
+move a question or two. Per-question results:
+[`bench/results/longmemeval-s-qa-gpt-6.1-sol.jsonl`](bench/results/longmemeval-s-qa-gpt-6.1-sol.jsonl).
+
 ```sh
 go run ./cmd/mc-qa -data longmemeval_s_cleaned.json -cache cache.db \
   -model gpt-6.1-sol -out qa.jsonl
