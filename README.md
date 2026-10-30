@@ -8,6 +8,7 @@ Local-first persistent memory for coding agents. One Go binary, one SQLite file,
 six MCP tools, dense retrieval with a lexical fallback.
 
 [![ci](https://github.com/labdrian-ai/memorycard/actions/workflows/ci.yml/badge.svg)](https://github.com/labdrian-ai/memorycard/actions/workflows/ci.yml)
+[![M8ven Score](https://m8ven.ai/badge/mcp/labdrian-ai/memorycard)](https://m8ven.ai/mcp/labdrian-ai/memorycard?s=readme)
 
 Coding agents forget everything when a session ends. memorycard gives them a
 memory they can save to and search by meaning, across sessions and across
