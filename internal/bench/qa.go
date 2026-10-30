@@ -3,6 +3,7 @@ package bench
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 )
@@ -90,17 +91,24 @@ func RunQA(ctx context.Context, q Question, setup Setup, dir string, qa QASetup)
 	}
 	res.Mode, res.SearchMs, res.Ranks = r.Mode, r.SearchMs, h.ranks(q, found.Hits)
 
-	var history strings.Builder
+	type session struct{ date, body string }
+	var read []session
 	for _, hit := range found.Hits {
-		if res.Read == qa.K {
+		if len(read) == qa.K {
 			break
 		}
 		m, err := h.svc.Get(ctx, hit.ID)
 		if err != nil {
 			return res, fmt.Errorf("%s: get %d: %w", q.ID, hit.ID, err)
 		}
-		res.Read++
-		fmt.Fprintf(&history, "\n### Session %d:\nSession Date: %s\nSession Content:\n\n%s\n", res.Read, h.dates[hit.ID], m.Body)
+		read = append(read, session{h.dates[hit.ID], m.Body})
+	}
+	res.Read = len(read)
+	// As the official reader does, the top sessions are shown oldest first.
+	sort.SliceStable(read, func(i, j int) bool { return read[i].date < read[j].date })
+	var history strings.Builder
+	for i, s := range read {
+		fmt.Fprintf(&history, "\n### Session %d:\nSession Date: %s\nSession Content:\n\n%s\n", i+1, s.date, s.body)
 	}
 
 	start := time.Now()

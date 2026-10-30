@@ -39,7 +39,7 @@ func TestRunQAReadsTheRetrievedSessionsAndJudgesTheAnswer(t *testing.T) {
 	p := reader.prompts[0]
 	for _, want := range []string{
 		"I will give you several history chats between you and a user. Please answer the question based on the relevant chat history. Answer the question step by step",
-		"### Session 1:\nSession Date: 2023/05/02\nSession Content:\n",
+		"Session Date: 2023/05/02\nSession Content:\n",
 		"I moved to Denver last month.",
 		"### Session 2:",
 		"Current Date: 2023/05/04\nQuestion: Where did I say I moved to? denver\nAnswer (step by step):",
@@ -54,6 +54,33 @@ func TestRunQAReadsTheRetrievedSessionsAndJudgesTheAnswer(t *testing.T) {
 	j := judge.prompts[0]
 	if !strings.Contains(j, "Correct Answer: Denver\n\nModel Response: You moved to Denver.\n\nIs the model response correct?") {
 		t.Fatalf("judge prompt:\n%s", j)
+	}
+}
+
+// The official reader sorts the retrieved sessions by date. Here the later
+// session matches both query words and ranks first.
+func TestRunQAGivesTheReaderSessionsInDateOrder(t *testing.T) {
+	q := Question{
+		ID: "q3", Type: "knowledge-update", Text: "Where do I live now? denver moved", Answer: json.RawMessage(`"Denver"`), Date: "2023/07/01",
+		Dates: []string{"2023/06/01", "2023/01/01"}, SessionIDs: []string{"late", "early"}, AnswerSessionIDs: []string{"late"},
+		Sessions: [][]Turn{
+			{{Role: "user", Content: "I moved again, to Denver."}},
+			{{Role: "user", Content: "I moved to Austin."}},
+		},
+	}
+	emb := keywordEmbedder{words: []string{"denver", "moved"}}
+	reader := &scripted{replies: []string{"Denver."}}
+	r, err := RunQA(context.Background(), q, Setup{Granularity: Session, Embedder: emb}, t.TempDir(), QASetup{K: 2, Reader: reader, Judge: &scripted{replies: []string{"yes"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Read != 2 || r.Ranks[0] != 1 {
+		t.Fatalf("result %+v, want 2 sessions read and the later session ranked first", r)
+	}
+	p := reader.prompts[0]
+	if !strings.Contains(p, "### Session 1:\nSession Date: 2023/01/01\nSession Content:\n\nuser: I moved to Austin.") ||
+		!strings.Contains(p, "### Session 2:\nSession Date: 2023/06/01\nSession Content:\n\nuser: I moved again, to Denver.") {
+		t.Fatalf("sessions not in date order:\n%s", p)
 	}
 }
 
