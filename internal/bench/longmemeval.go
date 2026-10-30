@@ -39,13 +39,24 @@ type Turn struct {
 
 // Question is one LongMemEval question with its haystack of sessions.
 type Question struct {
-	ID               string   `json:"question_id"`
-	Type             string   `json:"question_type"`
-	Text             string   `json:"question"`
-	Dates            []string `json:"haystack_dates"`
-	SessionIDs       []string `json:"haystack_session_ids"`
-	Sessions         [][]Turn `json:"haystack_sessions"`
-	AnswerSessionIDs []string `json:"answer_session_ids"`
+	ID               string          `json:"question_id"`
+	Type             string          `json:"question_type"`
+	Text             string          `json:"question"`
+	Dates            []string        `json:"haystack_dates"`
+	SessionIDs       []string        `json:"haystack_session_ids"`
+	Sessions         [][]Turn        `json:"haystack_sessions"`
+	AnswerSessionIDs []string        `json:"answer_session_ids"`
+	Answer           json.RawMessage `json:"answer"` // a string or a number
+	Date             string          `json:"question_date"`
+}
+
+// AnswerText returns the reference answer as text.
+func (q Question) AnswerText() string {
+	var s string
+	if json.Unmarshal(q.Answer, &s) == nil {
+		return s
+	}
+	return string(q.Answer)
 }
 
 // Abstention reports whether the question has no answer in its haystack.
@@ -152,68 +163,108 @@ type Setup struct {
 // RunQuestion builds a fresh database in dir from the haystack of q, embeds it
 // and searches it with the question.
 func RunQuestion(ctx context.Context, q Question, setup Setup, dir string) (Result, error) {
-	g, emb := setup.Granularity, setup.Embedder
 	res := Result{ID: q.ID, Type: q.Type, Abstention: q.Abstention(), Ranks: []int{}}
 	if res.Abstention {
 		return res, nil
 	}
-	db, err := store.Open(filepath.Join(dir, "memory.db"))
+	h, err := build(ctx, q, setup, dir)
 	if err != nil {
 		return res, err
 	}
-	defer db.Close()
-	svc := memory.New(db)
+	defer h.db.Close()
+	res.Docs = h.docs
+	found, err := h.search(ctx, q, &res)
+	if err != nil {
+		return res, err
+	}
+	res.Ranks = h.ranks(q, found.Hits)
+	return res, nil
+}
 
-	owners := map[int64][]string{}
-	for _, d := range Docs(q, g) {
-		saved, err := svc.Save(ctx, memory.SaveInput{Project: benchProject, Type: "conversation", Title: d.Title, Body: d.Body})
+// haystack is the database built from one question's sessions.
+type haystack struct {
+	db     *store.DB
+	svc    *memory.Service
+	docs   int
+	owners map[int64][]string // memory id -> the sessions it came from
+	dates  map[int64]string   // memory id -> the date of its session
+}
+
+// build saves the haystack of q as memories in a fresh database in dir and
+// embeds them.
+func build(ctx context.Context, q Question, setup Setup, dir string) (*haystack, error) {
+	db, err := store.Open(filepath.Join(dir, "memory.db"))
+	if err != nil {
+		return nil, err
+	}
+	h := &haystack{db: db, svc: memory.New(db), owners: map[int64][]string{}, dates: map[int64]string{}}
+	dates := map[string]string{}
+	for i, sid := range q.SessionIDs {
+		dates[sid] = at(q.Dates, i)
+	}
+	for _, d := range Docs(q, setup.Granularity) {
+		saved, err := h.svc.Save(ctx, memory.SaveInput{Project: benchProject, Type: "conversation", Title: d.Title, Body: d.Body})
 		if errors.Is(err, memory.ErrEmpty) {
 			continue
 		}
 		if err != nil {
-			return res, fmt.Errorf("%s: save %s: %w", q.ID, d.SessionID, err)
+			db.Close()
+			return nil, fmt.Errorf("%s: save %s: %w", q.ID, d.SessionID, err)
 		}
-		res.Docs++
+		h.docs++
 		ids := saved.Parts
 		if len(ids) == 0 {
 			ids = []int64{saved.ID}
 		}
 		for _, id := range ids {
-			owners[id] = append(owners[id], d.SessionID)
+			h.owners[id] = append(h.owners[id], d.SessionID)
+			h.dates[id] = dates[d.SessionID]
 		}
 	}
-	if emb != nil {
-		svc.SetEmbedder(emb)
-		svc.SetHybrid(setup.Hybrid)
+	if setup.Embedder != nil {
+		h.svc.SetEmbedder(setup.Embedder)
+		h.svc.SetHybrid(setup.Hybrid)
 		for {
-			n, err := svc.EmbedPending(ctx, 32)
+			n, err := h.svc.EmbedPending(ctx, 32)
 			if err != nil {
-				return res, fmt.Errorf("%s: embed: %w", q.ID, err)
+				db.Close()
+				return nil, fmt.Errorf("%s: embed: %w", q.ID, err)
 			}
 			if n == 0 {
 				break
 			}
 		}
 	}
+	return h, nil
+}
 
+// search runs the question and records its mode and latency in res.
+func (h *haystack) search(ctx context.Context, q Question, res *Result) (memory.SearchResult, error) {
 	start := time.Now()
-	found, err := svc.Search(ctx, memory.SearchInput{Query: q.Text, Project: benchProject, K: memory.MaxK, Detail: memory.DetailTitle})
+	found, err := h.svc.Search(ctx, memory.SearchInput{Query: q.Text, Project: benchProject, K: memory.MaxK, Detail: memory.DetailTitle})
 	if err != nil {
-		return res, fmt.Errorf("%s: search: %w", q.ID, err)
+		return found, fmt.Errorf("%s: search: %w", q.ID, err)
 	}
 	res.SearchMs = float64(time.Since(start).Microseconds()) / 1000
 	res.Mode = found.Mode
+	return found, nil
+}
+
+// ranks gives, per answer session of q, the 1-based rank of its first hit, 0
+// if no hit came from it.
+func (h *haystack) ranks(q Question, hits []memory.Hit) []int {
+	out := []int{}
 	for _, sid := range q.AnswerSessionIDs {
 		rank := 0
-		for i, h := range found.Hits {
-			if contains(owners[h.ID], sid) {
+		for i, hit := range hits {
+			if contains(h.owners[hit.ID], sid) {
 				rank = i + 1
 				break
 			}
 		}
-		res.Ranks = append(res.Ranks, rank)
+		out = append(out, rank)
 	}
-	return res, nil
+	return out
 }
 
 func contains(s []string, v string) bool {

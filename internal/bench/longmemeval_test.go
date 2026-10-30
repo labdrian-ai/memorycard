@@ -40,7 +40,7 @@ func fixture(t *testing.T) string {
 	qs := []map[string]any{
 		{
 			"question_id": "q1", "question_type": "single-session-user",
-			"question": "Where did I say I moved to? denver", "answer": "Denver",
+			"question": "Where did I say I moved to? denver", "answer": "Denver", "question_date": "2023/05/04",
 			"haystack_dates":       []string{"2023/05/01", "2023/05/02", "2023/05/03"},
 			"haystack_session_ids": []string{"near", "ans", "far"},
 			"answer_session_ids":   []string{"ans"},
