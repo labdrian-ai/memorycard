@@ -1,0 +1,16 @@
+{
+  "kind": "polisher",
+  "base": "974e5dea776a4e62b33c0ad2fc8b2267666a6ebb",
+  "head": "82341f2684bbeff6505fffda819529664a890a88",
+  "diff_sha256": "17cfa68adbef9dd8babdea71a950f838689dc82bb334f141eab92610b4b32dbc",
+  "findings": {
+    "findings": [],
+    "evidence": [
+      "Read the full diff and internal/memory/search.go at head (find, dense, lexical, fuse, mergeUnique).",
+      "Default path (hybrid off): pool equals k, and the dense case is unchanged. cosine is set to dense[0].Score exactly when err == nil and dense is non-empty. When dense is empty, merged is empty and the result is low confidence, as before. When topic hits exist, confidence is ok regardless. Compared with the old merged[0].Score, this is equivalent: whenever topic is empty and the mode is dense, merged[0] is dense[0].",
+      "Hybrid path: an empty lexical query makes lexical return nil, nil, so fuse returns the dense order. An embedder failure with ErrUnavailable falls to lexical mode with unknown confidence. Any other embedder error is returned. The inner `err` in the hybrid case shadows the outer one, but the outer err is only read in the following `if err == nil` check, which still sees the dense error, so the shadowing is harmless. Hybrid pool is at least 50 and the result is cut to k with k capped by MaxK. Topic hits are merged first through mergeUnique and bounded by k.",
+      "Score meaning in hybrid mode: accept.go:137 stores Hits[0].Score in Top (a fusion score of about 0.016 to 0.033, not a cosine). That only affects the -negatives and -neighbors distributions, and the -hybrid flag help text says so. render.go does not print Hit.Score for search results, only Hint.Score for duplicate hints, which does not go through fuse. No defect with a user-facing failure scenario.",
+      "Not run: go build and go test (read-only inspection only)."
+    ]
+  }
+}

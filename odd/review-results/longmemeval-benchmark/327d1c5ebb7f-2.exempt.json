@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "780251fc3a4b4e602ed77c41e6fe55cb3ff7f817",
+    "head": "327d1c5ebb7f8f43ceaa6143b2dc689952f8e841",
+    "diff_sha256": "6422053f1515e06888530c817ec0b486fdbb7360832543349f7bd217d7e409da",
+    "paths": [
+      "cmd/mc-bench/main.go",
+      "internal/bench/cache.go",
+      "internal/bench/cache_test.go",
+      "internal/bench/longmemeval.go",
+      "internal/bench/longmemeval_test.go",
+      "odd/tasks/longmemeval-benchmark.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go vet ./...",
+        "result": "pass",
+        "output": "no output"
+      },
+      {
+        "command": "go test ./...",
+        "result": "pass",
+        "output": "all packages ok, including internal/bench (5 tests)"
+      },
+      {
+        "command": "mc-bench -sample 3 -lexical -granularity round on longmemeval_s_cleaned.json",
+        "result": "pass",
+        "output": "3 questions scored, summary table printed"
+      },
+      {
+        "command": "git diff --stat 780251f..HEAD -- internal/memory internal/embed internal/cli internal/mcpserver",
+        "result": "pass",
+        "output": "no product package changed; only new internal/bench, cmd/mc-bench and the feature document"
+      }
+    ]
+  }
+}

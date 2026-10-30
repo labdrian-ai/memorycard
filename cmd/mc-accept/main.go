@@ -28,6 +28,7 @@ func run() int {
 	negatives := flag.String("negatives", "", "file with one off-topic question per line: prints their top-score distribution")
 	neighbors := flag.Int("neighbors", 0, "if > 0, print the nearest-neighbour cosine distribution of every Nth memory")
 	misses := flag.Bool("misses", false, "list the dense questions whose answer is not ranked first")
+	hybrid := flag.Bool("hybrid", false, "fuse the dense and lexical rankings (top score is then a fusion score, not a cosine)")
 	flag.Parse()
 	if *dbPath == "" || *golds == "" {
 		fmt.Fprintln(os.Stderr, "usage: mc-accept -db memory.db -gold dir[,dir] [-include-old=false] [-similarity 0.97] [-k 10]")
@@ -47,6 +48,7 @@ func run() int {
 	}
 	dense, lexical := memory.New(db), memory.New(db)
 	dense.SetEmbedder(emb)
+	dense.SetHybrid(*hybrid)
 	opts := accept.Options{K: *k, IncludeOld: *includeOld, SimilarityAccept: *sim}
 
 	ctx := context.Background()

@@ -1,0 +1,34 @@
+{
+  "kind": "polisher",
+  "base": "974e5dea776a4e62b33c0ad2fc8b2267666a6ebb",
+  "head": "82341f2684bbeff6505fffda819529664a890a88",
+  "diff_sha256": "17cfa68adbef9dd8babdea71a950f838689dc82bb334f141eab92610b4b32dbc",
+  "findings": {
+    "findings": [
+      {
+        "severity": "low",
+        "title": "Hybrid tests do not fail if fusion drops the dense list",
+        "introduced_by_target": true,
+        "detail": "Mutation scenario: change `fuse` so the dense list is ignored, so hybrid returns only the lexical ranking. TestHybridFindsWordsBeyondTheEmbedWindow still passes, because the late memory is found by BM25 alone. TestHybridKeepsDenseRankingAndCosineConfidence also still passes. The query 'how does the cache expire' shares the word 'cache' with the cache memory, so lexical alone ranks it first. Confidence is computed from `dense[0]` in `find()`, not from the fused result, so the confidence assertions say nothing about whether fusion used the dense list. The bench test TestHybridSessionRunFindsAnswersBeyondTheEmbedWindow has the same gap: the 'ans' session is found lexically on the word 'Denver'. No test pins a case where only the dense list can surface a memory, for example a semantically related memory with no shared FTS terms ranking in the top k. A regression that silently turns hybrid into BM25-only would therefore ship unnoticed, and it is the failure the user is about to measure in T7. Only the 'ignore the lexical list' direction is covered.",
+        "files": [
+          "internal/memory/hybrid_test.go",
+          "internal/bench/longmemeval_test.go"
+        ],
+        "evidence": [
+          "internal/memory/hybrid_test.go: both hybrid queries share an FTS term with the expected memory (zephyrine, cache)",
+          "internal/memory/search.go find(): confidence reads dense[0].Score before fuse, so confidence assertions do not exercise fuse"
+        ]
+      }
+    ],
+    "evidence": [
+      "Read the full diff at /home/labdrian/memorycard-worktrees/review-82341f2684bb.diff",
+      "Read find(), dense(), lexical() and fuse() in internal/memory/search.go at head (lines 100-340)",
+      "Default search path: with hybrid off, `cosine` is `dense[0].Score` and `merged[0]` is `found[0]` when `topic` is empty. That is the same value the old `merged[0].Score` used. Dense pool stays k and the Mode strings are unchanged. I found no regression. The ConfidenceUnknown path for ModeLexical is untouched.",
+      "Hybrid fallback: ErrUnavailable from dense leaves Mode empty and falls through to the lexical path. A lexical error in hybrid mode is returned, not swallowed.",
+      "mc-bench flag validation: `-hybrid` with `-lexical` exits 2. `-hybrid` without `-cache` and without `-lexical` is already rejected by the cache check. In RunQuestion, `SetHybrid` is applied only when an embedder is set.",
+      "mc-accept: `Hits[0].Score` is used only for the top-score distribution. SimilarityAccept uses its own vectors, so the fusion score does not affect it. The flag help says the top score is a fusion score.",
+      "internal/accept/accept.go and cmd/mc-bench/main.go (resume-by-ID, mode summary) checked by grep",
+      "Not run: go test and go build. No Bash tool was available, so test pass/fail status is unverified."
+    ]
+  }
+}

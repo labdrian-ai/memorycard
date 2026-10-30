@@ -27,6 +27,11 @@ type Hint struct {
 // SetEmbedder enables vector indexing. Without one, Save stores text only.
 func (s *Service) SetEmbedder(e embed.Embedder) { s.embedder = e }
 
+// SetHybrid makes Search fuse the dense ranking with the lexical one, so words
+// beyond the embedded part of a memory still count. It needs an embedder;
+// without one, search stays lexical.
+func (s *Service) SetHybrid(on bool) { s.hybrid = on }
+
 func embedText(title, body string) string {
 	r := []rune(body)
 	if len(r) > EmbedBodyRunes {
