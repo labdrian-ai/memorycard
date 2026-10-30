@@ -61,6 +61,47 @@ func TestHybridKeepsMemoriesOnlyTheDenseListFinds(t *testing.T) {
 	}
 }
 
+// Every text embeds to the same vector, so dense order is save order. The long
+// note holds all three query words but never within one embed window; the short
+// one holds them together. Counting overlap over the whole body would tie them
+// and keep the long note first.
+func TestHybridOverlapCountsTheBestBodyWindow(t *testing.T) {
+	s := withEmbedder(t, &fakeEmbedder{fn: func(string) []float32 { return []float32{1, 0, 0} }})
+	gap := strings.Repeat("notes about nothing in particular. ", 60)
+	long := save(t, s, SaveInput{Project: "p", Title: "Plant log", Body: "quartz " + gap + "relay " + gap + "heater"}).ID
+	short := save(t, s, SaveInput{Project: "p", Title: "Spare parts", Body: "The quartz relay heater is in bay two."}).ID
+	s.SetHybrid(true)
+	r := search(t, s, SearchInput{Query: "quartz relay heater", Project: "p"})
+	if len(r.Hits) < 2 || r.Hits[0].ID != short || r.Hits[1].ID != long {
+		t.Fatalf("hits = %v, want the short note (%d) before the long one (%d)", ids(r), short, long)
+	}
+}
+
+// The auth memory is the clear dense winner but holds no query word, while a
+// weaker dense match is also the lexical first: fusion must not demote the
+// dense winner.
+func TestHybridKeepsTheDenseWinnerFirst(t *testing.T) {
+	s, m := seeded(t)
+	other := save(t, s, SaveInput{Project: "p", Title: "Deploy checklist", Body: "authorization before every deploy"}).ID
+	s.SetHybrid(true)
+	r := search(t, s, SearchInput{Query: "authorization", Project: "p"})
+	if len(r.Hits) < 2 || r.Hits[0].ID != m["auth"] || r.Hits[1].ID != other {
+		t.Fatalf("hits = %v, want auth (%d) then the checklist (%d)", ids(r), m["auth"], other)
+	}
+}
+
+// "qué" folds to the stopword "que", so it no longer matches every Spanish
+// memory; "configuración" still matches "configuracion".
+func TestLexicalFoldsAccentsBeforeStopwords(t *testing.T) {
+	s := newSvc(t)
+	save(t, s, SaveInput{Project: "p", Title: "Nota", Body: "lo que dijimos y lo que hicimos"})
+	cfg := save(t, s, SaveInput{Project: "p", Title: "Ajustes", Body: "la configuracion del embedder"}).ID
+	r := search(t, s, SearchInput{Query: "qué configuración", Project: "p"})
+	if r.Mode != ModeLexical || len(r.Hits) != 1 || r.Hits[0].ID != cfg {
+		t.Fatalf("mode %q hits %v, want only the settings note (%d)", r.Mode, ids(r), cfg)
+	}
+}
+
 func TestHybridFallsBackToLexicalWhenEmbedderDown(t *testing.T) {
 	fe := &fakeEmbedder{fn: topicVec}
 	s := withEmbedder(t, fe)

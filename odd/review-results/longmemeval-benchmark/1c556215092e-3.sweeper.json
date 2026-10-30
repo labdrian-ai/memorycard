@@ -1,0 +1,15 @@
+{
+  "kind": "sweeper",
+  "base": "6309e62160f866ca7e8db5ee86dec4ad3c5cc8f7",
+  "head": "1c556215092e16546dd5ef2e1623c85b14a803a5",
+  "diff_sha256": "48cedef0e5238314565ee0b99e816831d9c2a2e5a6ad2ca356248608aa923737",
+  "sweep": "1c556215092e-1.sweep.json",
+  "commit": null,
+  "candidates": [
+    {
+      "candidate": "T1 name: TestSearchHybridOption",
+      "disposition": "live",
+      "evidence": "1c55621 renamed the CLI test TestSearchHybridOption to TestSearchModes (internal/cli/hybrid_test.go). The one stale mention, the T8 evidence row of odd/tasks/longmemeval-benchmark.md, was corrected by the parent in a556f43 to read 'the CLI search-mode test (now `TestSearchModes`)'. The sweeper ran rg for TestSearchHybridOption and found no reference outside odd/review-results/, which holds immutable records; README.md, the help text in internal/cli/cli.go and the comments in internal/memory/search.go already describe hybrid as the default. Nothing left to remove, so no sweep commit."
+    }
+  ]
+}
