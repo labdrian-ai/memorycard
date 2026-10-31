@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "a5538eb4df1ee6b22275dd147c8ccf6e26e2f4d9",
+    "head": "50d45128bf9e89ea6292e665685519ea8cd7ffb6",
+    "diff_sha256": "11ddccb401f9ee5cc0f735febab13fb9b669f19950b5a226a0984bc192ca428c",
+    "paths": [
+      "odd/review-results/longmemeval-benchmark/9e6192e4f75c-1.sweep.json",
+      "odd/review-results/longmemeval-benchmark/9e6192e4f75c-2.exempt.json"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of odd/review-results/longmemeval-benchmark/9e6192e4f75c-1.sweep.json and -2.exempt.json",
+        "result": "pass",
+        "output": "review records only, as written by labdrian review sweep and exempt for 9e6192e; no code or docs changed"
+      }
+    ]
+  }
+}
