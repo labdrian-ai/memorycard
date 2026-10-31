@@ -170,31 +170,36 @@ go run ./cmd/mc-bench -data longmemeval_s_cleaned.json -granularity session \
   -hybrid -cache cache.db -out run.jsonl
 ```
 
-End-to-end QA gives the top 5 sessions of the default search to a reader
+End-to-end QA gives the top k sessions of the default search to a reader
 model and scores its answer with a judge model, both through the
 [Codex CLI](https://github.com/openai/codex), using the official LongMemEval
-reader and judge prompts (abstention questions included):
+reader and judge prompts (abstention questions included). With `gpt-6.1-sol`
+as reader and judge, on all 500 questions:
 
-With `gpt-6.1-sol` as reader and judge, on all 500 questions: 87.0 %
-accuracy, abstention 80.0 % (30 questions).
+| Question type | n | top 5 | top 10 |
+|---|---|---|---|
+| single-session-user | 70 | 98.6 % | 100.0 % |
+| single-session-assistant | 56 | 100.0 % | 100.0 % |
+| single-session-preference | 30 | 93.3 % | 93.3 % |
+| knowledge-update | 78 | 91.0 % | 94.9 % |
+| temporal-reasoning | 133 | 85.0 % | 90.2 % |
+| multi-session | 133 | 73.7 % | 81.2 % |
+| abstention (subset of the above) | 30 | 80.0 % | 86.7 % |
+| **all** | 500 | **87.0 %** | **91.2 %** |
 
-| Question type | n | Accuracy |
-|---|---|---|
-| single-session-user | 70 | 98.6 % |
-| single-session-assistant | 56 | 100.0 % |
-| single-session-preference | 30 | 93.3 % |
-| knowledge-update | 78 | 91.0 % |
-| temporal-reasoning | 133 | 85.0 % |
-| multi-session | 133 | 73.7 % |
-
-Most misses (36 of 65) are questions whose evidence spans several sessions,
-only some of which reach the 5 read. The judge runs without temperature control, so a rerun can
-move a question or two. Per-question results:
-[`bench/results/longmemeval-s-qa-gpt-6.1-sol.jsonl`](bench/results/longmemeval-s-qa-gpt-6.1-sol.jsonl).
+Reading 10 sessions instead of 5 fixes 21 questions and breaks none. Of the
+40 answerable questions still wrong at top 10, 23 read only part of their
+answer sessions, 5 read none, and 12 read all of them. The judge runs without
+temperature control, so a rerun can move a question or two. Per-question
+results:
+[`bench/results/longmemeval-s-qa-gpt-6.1-sol.jsonl`](bench/results/longmemeval-s-qa-gpt-6.1-sol.jsonl)
+(top 5) and
+[`bench/results/longmemeval-s-qa-gpt-6.1-sol-k10.jsonl`](bench/results/longmemeval-s-qa-gpt-6.1-sol-k10.jsonl)
+(top 10).
 
 ```sh
 go run ./cmd/mc-qa -data longmemeval_s_cleaned.json -cache cache.db \
-  -model gpt-6.1-sol -out qa.jsonl
+  -model gpt-6.1-sol -k 10 -out qa.jsonl
 ```
 
 ## Development
