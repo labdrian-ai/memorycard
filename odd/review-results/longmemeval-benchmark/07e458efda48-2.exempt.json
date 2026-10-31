@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "50d45128bf9e89ea6292e665685519ea8cd7ffb6",
+    "head": "07e458efda48bbd6843041d37e75c8f8ac70360c",
+    "diff_sha256": "464fd2cd4a8c093fa6f23772cc37e8bb22cfd36a92dbd5073cfbd5a43ca05df8",
+    "paths": [
+      "README.md",
+      "bench/results/longmemeval-s-qa-gpt-6.1-sol-k20.jsonl",
+      "odd/review-results/longmemeval-benchmark/50d45128bf9e-1.sweep.json",
+      "odd/review-results/longmemeval-benchmark/50d45128bf9e-2.exempt.json",
+      "odd/tasks/longmemeval-benchmark.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of README.md QA table and odd/tasks/longmemeval-benchmark.md T5, L17-L19",
+        "result": "pass",
+        "output": "documentation and data only; top 20 column matches runs/qa-full-k20.txt (94.4 %, abstention 80.0 %, per-type rows); 24 gained / 8 lost and 1/4/17 breakdown recounted with jq over the results files"
+      },
+      {
+        "command": "wc -l bench/results/longmemeval-s-qa-gpt-6.1-sol-k20.jsonl",
+        "result": "pass",
+        "output": "500 lines, one per question"
+      }
+    ]
+  }
+}

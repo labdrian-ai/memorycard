@@ -51,9 +51,59 @@ func TestRunQAReadsTheRetrievedSessionsAndJudgesTheAnswer(t *testing.T) {
 	if strings.Contains(p, "### Session 3:") {
 		t.Fatalf("reader prompt holds more than K=2 sessions:\n%s", p)
 	}
+	if strings.Contains(p, "most recent") {
+		t.Fatalf("the default reader prompt holds the careful rules:\n%s", p)
+	}
 	j := judge.prompts[0]
 	if !strings.Contains(j, "Correct Answer: Denver\n\nModel Response: You moved to Denver.\n\nIs the model response correct?") {
 		t.Fatalf("judge prompt:\n%s", j)
+	}
+}
+
+func TestRunQACarefulReaderAddsRulesToTheOfficialPrompt(t *testing.T) {
+	qs, err := Load(fixture(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	emb := keywordEmbedder{words: []string{"denver", "moved", "pizza"}}
+	reader := &scripted{replies: []string{"You moved to Denver."}}
+	r, err := RunQA(context.Background(), qs[0], Setup{Granularity: Round, Embedder: emb}, t.TempDir(),
+		QASetup{K: 2, Prompt: "careful", Reader: reader, Judge: &scripted{replies: []string{"yes"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !r.Correct || r.Read != 2 {
+		t.Fatalf("result %+v, want correct with 2 sessions read", r)
+	}
+	p := reader.prompts[0]
+	for _, want := range []string{
+		"I will give you several history chats between you and a user. Please answer the question based on the relevant chat history. Answer the question step by step",
+		"the most recent session",
+		"list each one with the date of the session",
+		"write down the dates involved",
+		"say that the information is not in the chat history",
+		"Session Date: 2023/05/02\nSession Content:\n",
+		"Current Date: 2023/05/04\nQuestion: Where did I say I moved to? denver\nAnswer (step by step):",
+	} {
+		if !strings.Contains(p, want) {
+			t.Fatalf("careful reader prompt lacks %q:\n%s", want, p)
+		}
+	}
+}
+
+func TestRunQARejectsAnUnknownReaderPrompt(t *testing.T) {
+	qs, err := Load(fixture(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := &scripted{}
+	_, err = RunQA(context.Background(), qs[0], Setup{Granularity: Round, Embedder: keywordEmbedder{}}, t.TempDir(),
+		QASetup{K: 2, Prompt: "clever", Reader: reader, Judge: &scripted{}})
+	if err == nil || !strings.Contains(err.Error(), `unknown reader prompt "clever" (official or careful)`) {
+		t.Fatalf("err %v, want the unknown reader prompt named", err)
+	}
+	if len(reader.prompts) != 0 {
+		t.Fatalf("the reader was asked %d times, want none", len(reader.prompts))
 	}
 }
 

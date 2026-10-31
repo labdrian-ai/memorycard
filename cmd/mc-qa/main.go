@@ -31,11 +31,16 @@ func run() int {
 	cachePath := flag.String("cache", "", "embedding cache file")
 	dense := flag.Bool("dense", false, "rank by meaning only instead of the default hybrid search")
 	k := flag.Int("k", 5, "sessions given to the reader")
+	reader := flag.String("reader", "official", "reader prompt: official (LongMemEval's) or careful (official plus rules for recency, counting, dates and abstention)")
 	model := flag.String("model", "gpt-6.1-sol", "reader and judge model, run through codex exec")
 	out := flag.String("out", "", "results file, one JSON line per question; questions already in it are skipped")
 	flag.Parse()
 	if *data == "" || *out == "" || *cachePath == "" || *k < 1 {
-		fmt.Fprintln(os.Stderr, "usage: mc-qa -data longmemeval_s_cleaned.json -cache cache.db -out qa.jsonl [-sample 50] [-k 5] [-model gpt-6.1-sol] [-dense]")
+		fmt.Fprintln(os.Stderr, "usage: mc-qa -data longmemeval_s_cleaned.json -cache cache.db -out qa.jsonl [-sample 50] [-k 5] [-reader official] [-model gpt-6.1-sol] [-dense]")
+		return 2
+	}
+	if _, err := bench.ReaderPrompt(*reader); err != nil {
+		fmt.Fprintln(os.Stderr, "error:", err)
 		return 2
 	}
 
@@ -88,7 +93,7 @@ func run() int {
 			return fail(err)
 		}
 		t := time.Now()
-		r, err := bench.RunQA(ctx, q, setup, dir, bench.QASetup{K: *k, Reader: codex, Judge: codex})
+		r, err := bench.RunQA(ctx, q, setup, dir, bench.QASetup{K: *k, Prompt: *reader, Reader: codex, Judge: codex})
 		os.RemoveAll(dir)
 		if err != nil {
 			return fail(err)
@@ -101,7 +106,7 @@ func run() int {
 		fmt.Fprintf(os.Stderr, "[%d/%d] %s correct %v ranks %v in %s (total %s)\n",
 			i+1, len(qs), q.ID, r.Correct, r.Ranks, time.Since(t).Round(time.Second), time.Since(start).Round(time.Second))
 	}
-	report(keep(results, qs), *model, *k)
+	report(keep(results, qs), *model, *k, *reader)
 	return 0
 }
 
@@ -176,8 +181,11 @@ func readResults(path string) ([]bench.QAResult, error) {
 	return out, sc.Err()
 }
 
-func report(results []bench.QAResult, model string, k int) {
+func report(results []bench.QAResult, model string, k int, reader string) {
 	s := bench.SummarizeQA(results)
+	if reader != "official" {
+		model += ", " + reader + " reader"
+	}
 	fmt.Printf("model %s, top %d sessions: %d questions, accuracy %.1f%%, abstention %d at %.1f%%\n",
 		model, k, s.N, 100*s.Accuracy, s.Abstention.N, 100*s.Abstention.Accuracy)
 	types := make([]string, 0, len(s.ByType))

@@ -16,7 +16,8 @@ type Model interface {
 
 // QASetup is how a question is answered and judged.
 type QASetup struct {
-	K      int // sessions given to the reader
+	K      int    // sessions given to the reader
+	Prompt string // reader prompt: official (the default when empty) or careful
 	Reader Model
 	Judge  Model
 }
@@ -39,7 +40,31 @@ type QAResult struct {
 // The reader and judge prompts are copied from the LongMemEval repository
 // (src/generation/run_generation.py, chain-of-thought reader over chat
 // history; src/evaluation/evaluate_qa.py), so scores compare with theirs.
-const readerPrompt = "I will give you several history chats between you and a user. Please answer the question based on the relevant chat history. Answer the question step by step: first extract all the relevant information, and then reason over the information to get the answer.\n\n\nHistory Chats:\n\n%s\n\nCurrent Date: %s\nQuestion: %s\nAnswer (step by step):"
+const (
+	readerIntro  = "I will give you several history chats between you and a user. Please answer the question based on the relevant chat history. Answer the question step by step: first extract all the relevant information, and then reason over the information to get the answer."
+	readerBody   = "\n\n\nHistory Chats:\n\n%s\n\nCurrent Date: %s\nQuestion: %s\nAnswer (step by step):"
+	readerPrompt = readerIntro + readerBody
+)
+
+// carefulRules target the reader errors left at top 20: outdated values,
+// miscounts, date arithmetic and answering a nearby topic instead of
+// declining. Results with them are not comparable with the official reader.
+const carefulRules = " Follow these rules:\n" +
+	"1. If the chats give different values for the same thing at different times, the value from the most recent session is the current one; answer with it.\n" +
+	"2. Before counting or adding up items, list each one with the date of the session it comes from, and count each distinct item once.\n" +
+	"3. For questions about time, write down the dates involved and compute the difference explicitly, using the Current Date for questions about how long ago.\n" +
+	"4. Check that the chats mention the exact thing the question asks about, not just something similar. If they do not, say that the information is not in the chat history instead of guessing."
+
+// ReaderPrompt returns the reader prompt template called name.
+func ReaderPrompt(name string) (string, error) {
+	switch name {
+	case "", "official":
+		return readerPrompt, nil
+	case "careful":
+		return readerIntro + carefulRules + readerBody, nil
+	}
+	return "", fmt.Errorf("unknown reader prompt %q (official or careful)", name)
+}
 
 const (
 	judgeIntro    = "I will give you a question, a correct answer, and a response from a model. Please answer yes if the response contains the correct answer. Otherwise, answer no."
@@ -79,6 +104,10 @@ func RunQA(ctx context.Context, q Question, setup Setup, dir string, qa QASetup)
 	if _, err := JudgePrompt(q, ""); err != nil {
 		return res, err
 	}
+	prompt, err := ReaderPrompt(qa.Prompt)
+	if err != nil {
+		return res, err
+	}
 	h, err := build(ctx, q, setup, dir)
 	if err != nil {
 		return res, err
@@ -112,7 +141,7 @@ func RunQA(ctx context.Context, q Question, setup Setup, dir string, qa QASetup)
 	}
 
 	start := time.Now()
-	if res.Hypothesis, err = qa.Reader.Complete(ctx, fmt.Sprintf(readerPrompt, history.String(), q.Date, q.Text)); err != nil {
+	if res.Hypothesis, err = qa.Reader.Complete(ctx, fmt.Sprintf(prompt, history.String(), q.Date, q.Text)); err != nil {
 		return res, fmt.Errorf("%s: reader: %w", q.ID, err)
 	}
 	res.AnswerMs = float64(time.Since(start).Microseconds()) / 1000
