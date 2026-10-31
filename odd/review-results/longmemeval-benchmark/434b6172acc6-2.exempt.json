@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "787d8f20cdf8f0806468c79239370bc2374f2f1a",
+    "head": "434b6172acc6857c536616fc943eb390a5cc2eec",
+    "diff_sha256": "3c51f1a343b6222c9d79693797738207ce699ee366e893ff578624d4a3014b69",
+    "paths": [
+      "internal/bench/qa.go",
+      "internal/bench/qa_test.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go test ./internal/bench/ -run RunQA (before the fix)",
+        "result": "pass",
+        "output": "RED as expected: TestRunQAGivesTheReaderSessionsInDateOrder showed the 2023/06/01 session before 2023/01/01"
+      },
+      {
+        "command": "go vet ./... && go test ./...",
+        "result": "pass",
+        "output": "all packages ok, no FAIL"
+      }
+    ]
+  }
+}
