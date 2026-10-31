@@ -176,30 +176,33 @@ model and scores its answer with a judge model, both through the
 reader and judge prompts (abstention questions included). With `gpt-6.1-sol`
 as reader and judge, on all 500 questions:
 
-| Question type | n | top 5 | top 10 |
-|---|---|---|---|
-| single-session-user | 70 | 98.6 % | 100.0 % |
-| single-session-assistant | 56 | 100.0 % | 100.0 % |
-| single-session-preference | 30 | 93.3 % | 93.3 % |
-| knowledge-update | 78 | 91.0 % | 94.9 % |
-| temporal-reasoning | 133 | 85.0 % | 90.2 % |
-| multi-session | 133 | 73.7 % | 81.2 % |
-| abstention (subset of the above) | 30 | 80.0 % | 86.7 % |
-| **all** | 500 | **87.0 %** | **91.2 %** |
+| Question type | n | top 5 | top 10 | top 20 |
+|---|---|---|---|---|
+| single-session-user | 70 | 98.6 % | 100.0 % | 98.6 % |
+| single-session-assistant | 56 | 100.0 % | 100.0 % | 100.0 % |
+| single-session-preference | 30 | 93.3 % | 93.3 % | 96.7 % |
+| knowledge-update | 78 | 91.0 % | 94.9 % | 93.6 % |
+| temporal-reasoning | 133 | 85.0 % | 90.2 % | 94.0 % |
+| multi-session | 133 | 73.7 % | 81.2 % | 90.2 % |
+| abstention (subset of the above) | 30 | 80.0 % | 86.7 % | 80.0 % |
+| **all** | 500 | **87.0 %** | **91.2 %** | **94.4 %** |
 
-Reading 10 sessions instead of 5 fixes 21 questions and breaks none. Of the
-40 answerable questions still wrong at top 10, 23 read only part of their
-answer sessions, 5 read none, and 12 read all of them. The judge runs without
-temperature control, so a rerun can move a question or two. Per-question
-results:
+Reading 10 sessions instead of 5 fixes 21 questions and breaks none. Reading
+20 instead of 10 fixes 24 more and breaks 8: with more sessions the reader
+sometimes picks an outdated value or answers a question it should decline.
+Of the 22 answerable questions still wrong at top 20, 17 read all of their
+answer sessions. The judge runs without temperature control, so a rerun can
+move a question or two. Per-question results:
 [`bench/results/longmemeval-s-qa-gpt-6.1-sol.jsonl`](bench/results/longmemeval-s-qa-gpt-6.1-sol.jsonl)
-(top 5) and
+(top 5),
 [`bench/results/longmemeval-s-qa-gpt-6.1-sol-k10.jsonl`](bench/results/longmemeval-s-qa-gpt-6.1-sol-k10.jsonl)
-(top 10).
+(top 10) and
+[`bench/results/longmemeval-s-qa-gpt-6.1-sol-k20.jsonl`](bench/results/longmemeval-s-qa-gpt-6.1-sol-k20.jsonl)
+(top 20).
 
 ```sh
 go run ./cmd/mc-qa -data longmemeval_s_cleaned.json -cache cache.db \
-  -model gpt-6.1-sol -k 10 -out qa.jsonl
+  -model gpt-6.1-sol -k 20 -out qa.jsonl
 ```
 
 ## Development

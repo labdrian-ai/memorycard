@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "4d40b972f6300c588a0f41f915c2f4eb808347dc",
+    "head": "9e6192e4f75c417472616bd731542c69fab0e7b9",
+    "diff_sha256": "f8c8c606b69ca6e9fa27a31a31c5b78f817dd01ae8b92546b0b32b016acf9719",
+    "paths": [
+      "README.md",
+      "bench/results/longmemeval-s-qa-gpt-6.1-sol-k10.jsonl",
+      "odd/review-results/longmemeval-benchmark/af7d9593aeef-1.sweep.json",
+      "odd/review-results/longmemeval-benchmark/af7d9593aeef-2.exempt.json",
+      "odd/tasks/longmemeval-benchmark.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of README.md QA table, odd/tasks/longmemeval-benchmark.md S6, T5, L14-L16",
+        "result": "pass",
+        "output": "documentation and data only; README figures match runs/qa-full.txt and runs/qa-full-k10.txt; breakdown recounted with jq treating rank 0 as not read (k=5: 8/39/12 of 59, k=10: 5/23/12 of 40); 21 gained, 0 lost per question"
+      },
+      {
+        "command": "wc -l bench/results/longmemeval-s-qa-gpt-6.1-sol-k10.jsonl",
+        "result": "pass",
+        "output": "500 lines, one per question"
+      }
+    ]
+  }
+}
