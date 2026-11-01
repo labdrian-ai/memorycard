@@ -26,6 +26,7 @@ func main() { os.Exit(run()) }
 
 func run() int {
 	data := flag.String("data", "", "LongMemEval JSON file (longmemeval_s_cleaned.json)")
+	dataset := flag.String("dataset", "longmemeval", "format of -data: longmemeval (longmemeval_s_cleaned.json) or locomo (locomo10.json)")
 	split := flag.String("split", "", "run only the dev or test half of the questions (balanced by type, fixed across runs)")
 	sample := flag.Int("sample", 0, "questions to run, picked with -seed (0 = all)")
 	seed := flag.Int64("seed", 20261029, "sample seed")
@@ -36,8 +37,8 @@ func run() int {
 	model := flag.String("model", "gpt-6.1-sol", "reader and judge model, run through codex exec")
 	out := flag.String("out", "", "results file, one JSON line per question; questions already in it are skipped")
 	flag.Parse()
-	if *data == "" || *out == "" || *cachePath == "" || *k < 1 {
-		fmt.Fprintln(os.Stderr, "usage: mc-qa -data longmemeval_s_cleaned.json -cache cache.db -out qa.jsonl [-split dev|test] [-sample 50] [-k 5] [-reader official] [-model gpt-6.1-sol] [-dense]")
+	if *data == "" || *out == "" || *cachePath == "" || *k < 1 || (*dataset != "longmemeval" && *dataset != "locomo") {
+		fmt.Fprintln(os.Stderr, "usage: mc-qa -data longmemeval_s_cleaned.json -cache cache.db -out qa.jsonl [-dataset longmemeval|locomo] [-split dev|test] [-sample 50] [-k 5] [-reader official] [-model gpt-6.1-sol] [-dense]")
 		return 2
 	}
 	if _, err := bench.ReaderPrompt(*reader); err != nil {
@@ -49,7 +50,11 @@ func run() int {
 		return 2
 	}
 
-	qs, err := bench.Load(*data)
+	load := bench.Load
+	if *dataset == "locomo" {
+		load = bench.LoadLoCoMo
+	}
+	qs, err := load(*data)
 	if err != nil {
 		return fail(err)
 	}
@@ -197,6 +202,16 @@ func report(results []bench.QAResult, model string, k int, reader, split string)
 	}
 	fmt.Printf("model %s, top %d sessions: %d questions, accuracy %.1f%%, abstention %d at %.1f%%\n",
 		model, k, s.N, 100*s.Accuracy, s.Abstention.N, 100*s.Abstention.Accuracy)
+	if len(results) > 0 && strings.HasPrefix(results[0].Type, "locomo-") {
+		var answerable []bench.QAResult
+		for _, r := range results {
+			if !r.Abstention {
+				answerable = append(answerable, r)
+			}
+		}
+		a := bench.SummarizeQA(answerable)
+		fmt.Printf("answerable (categories 1-4): %d at %.1f%%\n", a.N, 100*a.Accuracy)
+	}
 	types := make([]string, 0, len(s.ByType))
 	for t := range s.ByType {
 		types = append(types, t)

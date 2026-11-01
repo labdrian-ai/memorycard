@@ -3,6 +3,7 @@ package bench
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -76,12 +77,39 @@ const (
 	judgeAbstain  = "I will give you an unanswerable question, an explanation, and a response from a model. Please answer yes if the model correctly identifies the question as unanswerable. The model could say that the information is incomplete, or some other information is given but the asked information is not.\n\nQuestion: %s\n\nExplanation: %s\n\nModel Response: %s\n\nDoes the model correctly identify the question as unanswerable? Answer yes or no only."
 )
 
-// JudgePrompt returns the official LongMemEval judge prompt for q.
+// judgeLoCoMo is Mem0's LoCoMo judge (mem0ai/mem0, evaluation/metrics/
+// llm_judge.py at aae5989), byte for byte, with %s for question, gold answer
+// and generated answer.
+const judgeLoCoMo = "\nYour task is to label an answer to a question as ’CORRECT’ or ’WRONG’. You will be given the following data:\n    (1) a question (posed by one user to another user), \n    (2) a ’gold’ (ground truth) answer, \n    (3) a generated answer\nwhich you will score as CORRECT/WRONG.\n\nThe point of the question is to ask about something one user should know about the other user based on their prior conversations.\nThe gold answer will usually be a concise and short answer that includes the referenced topic, for example:\nQuestion: Do you remember what I got the last time I went to Hawaii?\nGold answer: A shell necklace\nThe generated answer might be much longer, but you should be generous with your grading - as long as it touches on the same topic as the gold answer, it should be counted as CORRECT. \n\nFor time related questions, the gold answer will be a specific date, month, year, etc. The generated answer might be much longer or use relative time references (like \"last Tuesday\" or \"next month\"), but you should be generous with your grading - as long as it refers to the same date or time period as the gold answer, it should be counted as CORRECT. Even if the format differs (e.g., \"May 7th\" vs \"7 May\"), consider it CORRECT if it's the same date.\n\nNow it's time for the real question:\nQuestion: %s\nGold answer: %s\nGenerated answer: %s\n\nFirst, provide a short (one sentence) explanation of your reasoning, then finish with CORRECT or WRONG. \nDo NOT include both CORRECT and WRONG in your response, or it will break the evaluation script.\n\nJust return the label CORRECT or WRONG in a json format with the key as \"label\".\n"
+
+var (
+	locomoLabel = regexp.MustCompile(`"label"\s*:\s*"(CORRECT|WRONG)"`)
+	locomoWord  = regexp.MustCompile(`\b(CORRECT|WRONG)\b`)
+)
+
+// Correct reads the judge's verdict on q. The LongMemEval evaluator counts a
+// verdict containing "yes"; Mem0's LoCoMo judge answers a JSON label, and
+// without one its last CORRECT or WRONG decides.
+func Correct(q Question, verdict string) bool {
+	if !q.IsLoCoMo() || q.Abstention() {
+		return strings.Contains(strings.ToLower(verdict), "yes")
+	}
+	if m := locomoLabel.FindStringSubmatch(verdict); m != nil {
+		return m[1] == "CORRECT"
+	}
+	words := locomoWord.FindAllString(verdict, -1)
+	return len(words) > 0 && words[len(words)-1] == "CORRECT"
+}
+
+// JudgePrompt returns the judge prompt for q: the official LongMemEval one,
+// or Mem0's for an answerable LoCoMo question.
 func JudgePrompt(q Question, hypothesis string) (string, error) {
 	tmpl := ""
 	switch {
 	case q.Abstention():
 		tmpl = judgeAbstain
+	case q.IsLoCoMo():
+		tmpl = judgeLoCoMo
 	case q.Type == "single-session-user" || q.Type == "single-session-assistant" || q.Type == "multi-session":
 		tmpl = judgeIntro + judgeSubset + " " + judgeBody
 	case q.Type == "temporal-reasoning":
@@ -151,8 +179,7 @@ func RunQA(ctx context.Context, q Question, setup Setup, dir string, qa QASetup)
 		return res, fmt.Errorf("%s: judge: %w", q.ID, err)
 	}
 	res.Verdict = strings.TrimSpace(res.Verdict)
-	// The official evaluator counts a verdict as correct when it contains "yes".
-	res.Correct = strings.Contains(strings.ToLower(res.Verdict), "yes")
+	res.Correct = Correct(q, res.Verdict)
 	return res, nil
 }
 

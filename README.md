@@ -221,6 +221,14 @@ go run ./cmd/mc-qa -data longmemeval_s_cleaned.json -cache cache.db \
 by type. Further reader changes are chosen from `dev` misses only and
 measured on `test`.
 
+`-dataset locomo` runs [LoCoMo](https://github.com/snap-research/locomo)
+(`locomo10.json`, CC BY-NC 4.0, not redistributed here) through the same
+pipeline as a held-out check: one memory per session, every question of a
+conversation over that conversation's sessions, answerable questions
+(categories 1-4) judged with
+[Mem0's LoCoMo judge prompt](https://github.com/mem0ai/mem0/blob/aae5989e78a6188b3b047c104d960c9ad0927e75/evaluation/metrics/llm_judge.py)
+and adversarial ones (category 5) as abstention.
+
 ## Development
 
 ```sh
