@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "4c44b0b21e005be8671f366b4137a11dda23ee3c",
+    "head": "31962fac0dd613d77422e4634ccfe7e27bbb0ff1",
+    "diff_sha256": "86a7539d5d774e874407fd4417f3f5dca2b0658d097fe6fb1628c69fafaf6b72",
+    "paths": [
+      "README.md",
+      "bench/results/longmemeval-s-qa-gpt-6.1-sol-k20-careful.jsonl",
+      "odd/review-results/longmemeval-benchmark/4c44b0b21e00-1.sweep.json",
+      "odd/review-results/longmemeval-benchmark/4c44b0b21e00-2.exempt.json",
+      "odd/tasks/longmemeval-benchmark.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of README.md QA table and paragraph, odd/tasks/longmemeval-benchmark.md T10 and L24",
+        "result": "pass",
+        "output": "documentation and data only; careful column matches runs/qa-full-k20-careful2.txt (94.6 %, abstention 90.0 %, per-type rows); the other columns are unchanged"
+      },
+      {
+        "command": "wc -l bench/results/longmemeval-s-qa-gpt-6.1-sol-k20-careful.jsonl",
+        "result": "pass",
+        "output": "500 lines, one per question"
+      }
+    ]
+  }
+}

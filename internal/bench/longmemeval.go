@@ -2,6 +2,7 @@ package bench
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -88,6 +89,47 @@ func Sample(qs []Question, n int, seed int64) []Question {
 		out[i] = qs[j]
 	}
 	return out
+}
+
+// Split returns the dev or test half of qs, in their original order; an
+// empty half keeps them all. Questions are grouped by type and abstention,
+// each group is ordered by a hash of the question id and alternately dealt
+// to dev and test, so the halves are balanced and do not depend on the order
+// of the file.
+func Split(qs []Question, half string) ([]Question, error) {
+	if half == "" {
+		return qs, nil
+	}
+	if half != "dev" && half != "test" {
+		return nil, fmt.Errorf("unknown split %q (dev or test)", half)
+	}
+	groups := map[string][]string{}
+	for _, q := range qs {
+		key := q.Type
+		if q.Abstention() {
+			key += "_abs"
+		}
+		groups[key] = append(groups[key], q.ID)
+	}
+	keep := map[string]bool{}
+	for _, ids := range groups {
+		sort.Slice(ids, func(i, j int) bool {
+			hi, hj := sha256.Sum256([]byte(ids[i])), sha256.Sum256([]byte(ids[j]))
+			return string(hi[:]) < string(hj[:])
+		})
+		for i, id := range ids {
+			if (i%2 == 0) == (half == "dev") {
+				keep[id] = true
+			}
+		}
+	}
+	var out []Question
+	for _, q := range qs {
+		if keep[q.ID] {
+			out = append(out, q)
+		}
+	}
+	return out, nil
 }
 
 // Doc is one memory to save, with the session it came from.

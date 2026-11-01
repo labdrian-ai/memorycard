@@ -3,6 +3,7 @@ package bench
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -150,6 +151,91 @@ func TestHybridSessionRunFindsAnswersBeyondTheEmbedWindow(t *testing.T) {
 	}
 	if r.Mode != "hybrid" || r.Ranks[0] != 1 {
 		t.Fatalf("hybrid session run: %+v, want the answer first in hybrid mode", r)
+	}
+}
+
+func TestSplitKeepsDisjointBalancedHalves(t *testing.T) {
+	var qs []Question
+	for i := 0; i < 9; i++ {
+		qs = append(qs, Question{ID: fmt.Sprintf("m%d", i), Type: "multi-session"})
+	}
+	for i := 0; i < 4; i++ {
+		qs = append(qs, Question{ID: fmt.Sprintf("t%d", i), Type: "temporal-reasoning"})
+		qs = append(qs, Question{ID: fmt.Sprintf("t%d_abs", i), Type: "temporal-reasoning"})
+	}
+	dev, err := Split(qs, "dev")
+	if err != nil {
+		t.Fatal(err)
+	}
+	test, err := Split(qs, "test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]string{}
+	count := map[string]int{}
+	for half, part := range map[string][]Question{"dev": dev, "test": test} {
+		for _, q := range part {
+			if other, ok := seen[q.ID]; ok {
+				t.Fatalf("%s is in both %s and %s", q.ID, other, half)
+			}
+			seen[q.ID] = half
+			key := q.Type
+			if q.Abstention() {
+				key += " abs"
+			}
+			count[half+" "+key]++
+		}
+	}
+	if len(seen) != len(qs) {
+		t.Fatalf("the halves hold %d questions, want all %d", len(seen), len(qs))
+	}
+	for _, key := range []string{"multi-session", "temporal-reasoning", "temporal-reasoning abs"} {
+		if d := count["dev "+key] - count["test "+key]; d < -1 || d > 1 {
+			t.Fatalf("%s: dev %d, test %d, want them within 1", key, count["dev "+key], count["test "+key])
+		}
+	}
+
+	reversed := make([]Question, len(qs))
+	for i, q := range qs {
+		reversed[len(qs)-1-i] = q
+	}
+	again, _ := Split(reversed, "dev")
+	ids := map[string]bool{}
+	for _, q := range again {
+		ids[q.ID] = true
+	}
+	for _, q := range dev {
+		if !ids[q.ID] {
+			t.Fatalf("%s moved out of dev when the file order changed", q.ID)
+		}
+	}
+	if len(again) != len(dev) {
+		t.Fatalf("dev holds %d questions after reordering, want %d", len(again), len(dev))
+	}
+	for i := 1; i < len(dev); i++ {
+		if indexOf(qs, dev[i-1].ID) > indexOf(qs, dev[i].ID) {
+			t.Fatalf("dev is not in file order: %s before %s", dev[i-1].ID, dev[i].ID)
+		}
+	}
+}
+
+func indexOf(qs []Question, id string) int {
+	for i, q := range qs {
+		if q.ID == id {
+			return i
+		}
+	}
+	return -1
+}
+
+func TestSplitRejectsAnUnknownHalf(t *testing.T) {
+	_, err := Split([]Question{{ID: "a"}}, "train")
+	if err == nil || err.Error() != `unknown split "train" (dev or test)` {
+		t.Fatalf("err %v, want the unknown split named", err)
+	}
+	all, err := Split([]Question{{ID: "a"}, {ID: "b"}}, "")
+	if err != nil || len(all) != 2 {
+		t.Fatalf("an empty split kept %d questions (err %v), want all 2", len(all), err)
 	}
 }
 
