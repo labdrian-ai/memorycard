@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "aa69cb17f382d15fca29bda67f62a33521f2f850",
+    "head": "4c44b0b21e005be8671f366b4137a11dda23ee3c",
+    "diff_sha256": "12a794a36dc4dc440371586a31b741fd74dea23ec697d0faa99226e05a24c82e",
+    "paths": [
+      "odd/review-results/longmemeval-benchmark/aa69cb17f382-1.sweep.json",
+      "odd/review-results/longmemeval-benchmark/aa69cb17f382-2.exempt.json",
+      "odd/tasks/longmemeval-benchmark.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of odd/tasks/longmemeval-benchmark.md T10 and L23",
+        "result": "pass",
+        "output": "documentation only; figures match runs/qa-full-k20-careful2.txt (500 lines, 94.6 %, abstention 90.0 %); 8 gained / 7 lost vs official and 4 / 3 vs the first careful recounted with jq"
+      }
+    ]
+  }
+}

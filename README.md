@@ -176,33 +176,45 @@ model and scores its answer with a judge model, both through the
 reader and judge prompts (abstention questions included). With `gpt-6.1-sol`
 as reader and judge, on all 500 questions:
 
-| Question type | n | top 5 | top 10 | top 20 |
-|---|---|---|---|---|
-| single-session-user | 70 | 98.6 % | 100.0 % | 98.6 % |
-| single-session-assistant | 56 | 100.0 % | 100.0 % | 100.0 % |
-| single-session-preference | 30 | 93.3 % | 93.3 % | 96.7 % |
-| knowledge-update | 78 | 91.0 % | 94.9 % | 93.6 % |
-| temporal-reasoning | 133 | 85.0 % | 90.2 % | 94.0 % |
-| multi-session | 133 | 73.7 % | 81.2 % | 90.2 % |
-| abstention (subset of the above) | 30 | 80.0 % | 86.7 % | 80.0 % |
-| **all** | 500 | **87.0 %** | **91.2 %** | **94.4 %** |
+| Question type | n | top 5 | top 10 | top 20 | top 20, careful reader |
+|---|---|---|---|---|---|
+| single-session-user | 70 | 98.6 % | 100.0 % | 98.6 % | 98.6 % |
+| single-session-assistant | 56 | 100.0 % | 100.0 % | 100.0 % | 100.0 % |
+| single-session-preference | 30 | 93.3 % | 93.3 % | 96.7 % | 93.3 % |
+| knowledge-update | 78 | 91.0 % | 94.9 % | 93.6 % | 97.4 % |
+| temporal-reasoning | 133 | 85.0 % | 90.2 % | 94.0 % | 94.7 % |
+| multi-session | 133 | 73.7 % | 81.2 % | 90.2 % | 88.7 % |
+| abstention (subset of the above) | 30 | 80.0 % | 86.7 % | 80.0 % | 90.0 % |
+| **all** | 500 | **87.0 %** | **91.2 %** | **94.4 %** | **94.6 %** |
 
 Reading 10 sessions instead of 5 fixes 21 questions and breaks none. Reading
 20 instead of 10 fixes 24 more and breaks 8: with more sessions the reader
 sometimes picks an outdated value or answers a question it should decline.
 Of the 22 answerable questions still wrong at top 20, 17 read all of their
 answer sessions. The judge runs without temperature control, so a rerun can
-move a question or two. Per-question results:
+move a question or two.
+
+The last column is not the official reader: `-reader careful` adds four
+rules to its prompt (take the most recent value of a fact that changed, list
+items before counting them, write down the dates in time arithmetic, decline
+when the exact thing asked about is never mentioned). The rules were written
+and then narrowed by looking at the misses of these same 500 questions, so
+treat it as tuned. Its total is one question above the official reader,
+within the judge's noise; what changes is the mix: it declines unanswerable
+questions far more often and picks the updated value, at the cost of a few
+multi-session and preference questions. Per-question results:
 [`bench/results/longmemeval-s-qa-gpt-6.1-sol.jsonl`](bench/results/longmemeval-s-qa-gpt-6.1-sol.jsonl)
 (top 5),
 [`bench/results/longmemeval-s-qa-gpt-6.1-sol-k10.jsonl`](bench/results/longmemeval-s-qa-gpt-6.1-sol-k10.jsonl)
-(top 10) and
+(top 10),
 [`bench/results/longmemeval-s-qa-gpt-6.1-sol-k20.jsonl`](bench/results/longmemeval-s-qa-gpt-6.1-sol-k20.jsonl)
-(top 20).
+(top 20) and
+[`bench/results/longmemeval-s-qa-gpt-6.1-sol-k20-careful.jsonl`](bench/results/longmemeval-s-qa-gpt-6.1-sol-k20-careful.jsonl)
+(top 20, careful reader).
 
 ```sh
 go run ./cmd/mc-qa -data longmemeval_s_cleaned.json -cache cache.db \
-  -model gpt-6.1-sol -k 20 -out qa.jsonl
+  -model gpt-6.1-sol -k 20 -out qa.jsonl   # add -reader careful for the last column
 ```
 
 ## Development

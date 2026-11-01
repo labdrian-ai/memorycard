@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "ceb773ab779f0ed8763cdb7b1041d4211044983e",
+    "head": "5db9ed3a30163d10aaf2165fb217716e18e60cb6",
+    "diff_sha256": "f7957a9e66afe33af4cd7d627d6bd75d1030a77f68478a44539288d39225de23",
+    "paths": [
+      "cmd/mc-qa/main.go",
+      "internal/bench/qa.go",
+      "internal/bench/qa_test.go",
+      "odd/review-results/longmemeval-benchmark/07e458efda48-1.sweep.json",
+      "odd/review-results/longmemeval-benchmark/07e458efda48-2.exempt.json",
+      "odd/tasks/longmemeval-benchmark.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go test ./internal/bench/ -run RunQA (before the change)",
+        "result": "pass",
+        "output": "RED as expected: unknown field Prompt in struct literal of type QASetup"
+      },
+      {
+        "command": "go vet ./... && go test ./...",
+        "result": "pass",
+        "output": "all packages ok; the careful prompt holds the official intro, the four rules and the official body; an unknown reader prompt errors before the reader is asked; the default prompt holds no careful rule"
+      },
+      {
+        "command": "go run ./cmd/mc-qa -data x -cache y -out z -reader clever",
+        "result": "pass",
+        "output": "error: unknown reader prompt \"clever\" (official or careful), exit status 2"
+      },
+      {
+        "command": "gofmt -l ./cmd ./internal",
+        "result": "pass",
+        "output": "no files listed"
+      }
+    ]
+  }
+}
