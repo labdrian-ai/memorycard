@@ -50,10 +50,10 @@ const (
 // miscounts, date arithmetic and answering a nearby topic instead of
 // declining. Results with them are not comparable with the official reader.
 const carefulRules = " Follow these rules:\n" +
-	"1. If the chats give different values for the same thing at different times, the value from the most recent session is the current one; answer with it.\n" +
+	"1. If a later session gives a new value for the same fact stated in an earlier one, the value from the most recent session is the current one; answer with it. Different figures about different things are not updates.\n" +
 	"2. Before counting or adding up items, list each one with the date of the session it comes from, and count each distinct item once.\n" +
 	"3. For questions about time, write down the dates involved and compute the difference explicitly, using the Current Date for questions about how long ago.\n" +
-	"4. Check that the chats mention the exact thing the question asks about, not just something similar. If they do not, say that the information is not in the chat history instead of guessing."
+	"4. Check that the chats mention the exact thing the question asks about, not just something similar. If they do not, say that the information is not in the chat history instead of guessing. This rule does not apply to requests for advice, suggestions or recommendations: answer those using what the chats tell you about the user."
 
 // ReaderPrompt returns the reader prompt template called name.
 func ReaderPrompt(name string) (string, error) {

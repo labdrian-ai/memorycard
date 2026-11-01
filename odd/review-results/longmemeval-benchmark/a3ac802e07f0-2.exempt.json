@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "5db9ed3a30163d10aaf2165fb217716e18e60cb6",
+    "head": "a3ac802e07f0878bdf4261a4eacb5cbee6a6c68b",
+    "diff_sha256": "dc8810206f975815c138dcb06702c074111e854566c016995591bb76c4593874",
+    "paths": [
+      "odd/review-results/longmemeval-benchmark/5db9ed3a3016-1.sweep.json",
+      "odd/review-results/longmemeval-benchmark/5db9ed3a3016-2.exempt.json",
+      "odd/tasks/longmemeval-benchmark.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of odd/tasks/longmemeval-benchmark.md T10, L20, L21",
+        "result": "pass",
+        "output": "documentation only; figures match runs/qa-sample50-k20-careful.txt and runs/qa-full-k20-careful.txt (500 lines, 94.4 %, abstention 93.3 %); 8 gained and 8 lost recounted with jq against bench/results/longmemeval-s-qa-gpt-6.1-sol-k20.jsonl"
+      }
+    ]
+  }
+}

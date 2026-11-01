@@ -79,9 +79,11 @@ func TestRunQACarefulReaderAddsRulesToTheOfficialPrompt(t *testing.T) {
 	for _, want := range []string{
 		"I will give you several history chats between you and a user. Please answer the question based on the relevant chat history. Answer the question step by step",
 		"the most recent session",
+		"Different figures about different things are not updates.",
 		"list each one with the date of the session",
 		"write down the dates involved",
 		"say that the information is not in the chat history",
+		"This rule does not apply to requests for advice, suggestions or recommendations",
 		"Session Date: 2023/05/02\nSession Content:\n",
 		"Current Date: 2023/05/04\nQuestion: Where did I say I moved to? denver\nAnswer (step by step):",
 	} {
