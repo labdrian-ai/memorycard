@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "a3ac802e07f0878bdf4261a4eacb5cbee6a6c68b",
+    "head": "aa69cb17f382d15fca29bda67f62a33521f2f850",
+    "diff_sha256": "3aab164de8ead3614145bd783992a1ace40f03236f7bb037ac0ff6f1994c8475",
+    "paths": [
+      "internal/bench/qa.go",
+      "internal/bench/qa_test.go",
+      "odd/review-results/longmemeval-benchmark/a3ac802e07f0-1.sweep.json",
+      "odd/review-results/longmemeval-benchmark/a3ac802e07f0-2.exempt.json",
+      "odd/tasks/longmemeval-benchmark.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go test ./internal/bench/ -run Careful (before the change)",
+        "result": "pass",
+        "output": "RED as expected: careful reader prompt lacks \"Different figures about different things are not updates.\""
+      },
+      {
+        "command": "go vet ./... && go test ./...",
+        "result": "pass",
+        "output": "all packages ok; the careful prompt holds the narrowed rules 1 and 4; the default official prompt still holds no careful rule"
+      },
+      {
+        "command": "gofmt -l ./internal ./cmd",
+        "result": "pass",
+        "output": "no files listed"
+      }
+    ]
+  }
+}
