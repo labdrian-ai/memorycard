@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "134a352843c21475e9db82331fc4057081b22844",
+    "head": "fc0e4ee9a9f938f3e3f6866c0692bca06fd5d622",
+    "diff_sha256": "ccb867f6af427ff29a039f591e2470efd1de48263356ee11f6d606a761f78d51",
+    "paths": [
+      "odd/review-results/locomo-benchmark/134a352843c2-1.sweep.json",
+      "odd/review-results/locomo-benchmark/134a352843c2-2.exempt.json",
+      "odd/review-results/longmemeval-benchmark/134a352843c2-1.sweep.json",
+      "odd/review-results/longmemeval-benchmark/134a352843c2-2.exempt.json",
+      "odd/tasks/locomo-benchmark.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of odd/tasks/locomo-benchmark.md L4",
+        "result": "pass",
+        "output": "passive log entry; figures match runs/qa-sample400-k10-official.txt and the jq paired count on 59 questions"
+      }
+    ]
+  }
+}

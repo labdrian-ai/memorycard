@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "8cbe41a91373765cf4dc3476936ae250e3dab9ca",
+    "head": "5d54f6f261f8ff52dc50a589f25e25ebcd8946c8",
+    "diff_sha256": "40bc906fd532e20214f1f7a682bcef787581f3173bc9f134abf24ce8d8f14526",
+    "paths": [
+      "README.md",
+      "cmd/mc-qa/main.go",
+      "internal/bench/longmemeval.go",
+      "internal/bench/longmemeval_test.go",
+      "odd/review-results/longmemeval-benchmark/31962fac0dd6-1.sweep.json",
+      "odd/review-results/longmemeval-benchmark/31962fac0dd6-2.exempt.json",
+      "odd/tasks/longmemeval-benchmark.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go test ./internal/bench/ -run Split (before the change)",
+        "result": "pass",
+        "output": "RED as expected: undefined: Split"
+      },
+      {
+        "command": "go vet ./... && go test ./...",
+        "result": "pass",
+        "output": "all packages ok; halves disjoint, cover all questions, balanced within 1 per type and abstention, unchanged by file order, in file order; unknown half errors; empty half keeps all"
+      },
+      {
+        "command": "mc-qa -k 20 -out <copy of official k20 results> (no -split) vs runs/qa-full-k20.txt",
+        "result": "pass",
+        "output": "identical report"
+      },
+      {
+        "command": "mc-qa -split dev|test over the existing k20 results",
+        "result": "pass",
+        "output": "251 dev / 249 test, 15 abstention each; no Codex call"
+      },
+      {
+        "command": "mc-qa -data x -cache y -out z -split train",
+        "result": "pass",
+        "output": "error: unknown split \"train\" (dev or test), exit 2"
+      }
+    ]
+  }
+}

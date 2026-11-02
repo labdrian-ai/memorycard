@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "5d54f6f261f8ff52dc50a589f25e25ebcd8946c8",
+    "head": "134a352843c21475e9db82331fc4057081b22844",
+    "diff_sha256": "a64b6f504f5c008951c890b7c258acecf6b977eabbaceb3c8e93561862786f94",
+    "paths": [
+      "README.md",
+      "cmd/mc-qa/main.go",
+      "internal/bench/locomo.go",
+      "internal/bench/locomo_test.go",
+      "internal/bench/qa.go",
+      "odd/review-results/longmemeval-benchmark/5d54f6f261f8-1.sweep.json",
+      "odd/review-results/longmemeval-benchmark/5d54f6f261f8-2.exempt.json",
+      "odd/tasks/locomo-benchmark.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go test ./internal/bench/ -run LoCoMo (before each change)",
+        "result": "pass",
+        "output": "RED as expected: undefined: LoadLoCoMo, then undefined: Correct"
+      },
+      {
+        "command": "go vet ./... && go test ./...",
+        "result": "pass",
+        "output": "all packages ok; LongMemEval verdicts still count only a yes and its judge prompts are unchanged (existing tests)"
+      },
+      {
+        "command": "LoadLoCoMo on locomo10.json (sha256 79fa87e9...)",
+        "result": "pass",
+        "output": "1986 questions, 446 adversarial, 272 sessions, 0 evidence to an unknown session; every question has a judge prompt"
+      },
+      {
+        "command": "mc-qa -k 20 -out <copy of official k20 results> vs runs/qa-full-k20.txt",
+        "result": "pass",
+        "output": "identical report"
+      },
+      {
+        "command": "mc-qa -data x -cache y -out z -dataset foo",
+        "result": "pass",
+        "output": "usage, exit 2"
+      }
+    ]
+  }
+}
