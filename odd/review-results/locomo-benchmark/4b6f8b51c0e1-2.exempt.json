@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "fc0e4ee9a9f938f3e3f6866c0692bca06fd5d622",
+    "head": "4b6f8b51c0e14418caa7f8dfebcae33cbd480b70",
+    "diff_sha256": "80e5bdddc5165af62a3d0931f7f6e6d95b831321d47f6a20b12452f6cdf05e3a",
+    "paths": [
+      "odd/review-results/locomo-benchmark/fc0e4ee9a9f9-1.sweep.json",
+      "odd/review-results/locomo-benchmark/fc0e4ee9a9f9-2.exempt.json",
+      "odd/tasks/locomo-benchmark.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of odd/tasks/locomo-benchmark.md L5 and T3",
+        "result": "pass",
+        "output": "passive log entry; figures match runs/qa-sample400-k10-careful.txt and the jq flip counts against the official results"
+      }
+    ]
+  }
+}
