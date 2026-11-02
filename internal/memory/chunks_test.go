@@ -94,6 +94,41 @@ func TestEmbedPendingAddsMissingChunksToAnExistingStore(t *testing.T) {
 	}
 }
 
+func TestEmbedderRequestsCarryAtMostEmbedBatchTexts(t *testing.T) {
+	fe := &fakeEmbedder{fn: axis, fail: true}
+	s := withEmbedder(t, fe)
+	for _, title := range []string{"T", "V"} {
+		save(t, s, SaveInput{Project: "p", Title: title, Body: strings.Repeat("a ", 5*EmbedBodyRunes)}) // 10 chunks
+	}
+	fe.fail = false
+	if n, err := s.EmbedPending(context.Background(), 8); err != nil || n != 2 {
+		t.Fatalf("EmbedPending = %d, %v; want 2", n, err)
+	}
+	save(t, s, SaveInput{Project: "p", Title: "U", Body: strings.Repeat("b ", 5*EmbedBodyRunes)})
+	total := 0
+	for _, b := range fe.batches {
+		if b > EmbedBatch {
+			t.Errorf("a request carried %d texts, want at most %d (batches %v)", b, EmbedBatch, fe.batches)
+		}
+		total += b
+	}
+	if total != 30 {
+		t.Errorf("embedded %d texts, want 30 (3 memories of 10 chunks)", total)
+	}
+}
+
+func TestMaxChunksOneLeavesNoLongMemoryPending(t *testing.T) {
+	s := withEmbedder(t, &fakeEmbedder{fn: axis})
+	s.SetMaxChunks(1)
+	save(t, s, SaveInput{Project: "p", Title: "T", Body: strings.Repeat("a", 2*EmbedBodyRunes)})
+	if n, err := s.EmbedPending(context.Background(), 10); err != nil || n != 0 {
+		t.Errorf("EmbedPending = %d, %v; want 0: one chunk per memory is complete", n, err)
+	}
+	if st, err := s.Stats(context.Background()); err != nil || st.WithoutEmbedding != 0 {
+		t.Errorf("without embedding = %d, %v; want 0", st.WithoutEmbedding, err)
+	}
+}
+
 func TestMaxChunksCapsHowMuchOfTheBodyIsEmbedded(t *testing.T) {
 	fe := &fakeEmbedder{fn: axis}
 	s := withEmbedder(t, fe)

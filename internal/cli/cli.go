@@ -263,7 +263,7 @@ func (a *app) embed(ctx context.Context, svc *memory.Service, emb embed.Embedder
 		return a.fail(errors.New("the embedder is off (MEMORYCARD_EMBED=off)"))
 	}
 	fs := a.flags("embed")
-	limit := fs.Int("limit", 8, "memories per embedder request (large notes time out in bigger batches)")
+	limit := fs.Int("limit", 8, "memories embedded per round; each embedder request carries at most 8 chunks of 1,500 characters")
 	if fs.Parse(args) != nil {
 		return 2
 	}

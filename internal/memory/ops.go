@@ -299,13 +299,14 @@ type Stats struct {
 // Stats returns the counts shown by the CLI's stats command.
 func (s *Service) Stats(ctx context.Context) (Stats, error) {
 	var st Stats
+	missing, args := s.missingChunks("")
 	err := s.db.SQL().QueryRowContext(ctx,
 		`select count(*),
 		        coalesce(sum(status = 'active'), 0),
 		        coalesce(sum(status = 'superseded'), 0),
 		        coalesce(sum(status = 'archived'), 0),
-		        coalesce(sum(`+missingChunks+`), 0)
-		 from memories m`, "", "", "", "").
+		        coalesce(sum(`+missing+`), 0)
+		 from memories m`, args...).
 		Scan(&st.Total, &st.Active, &st.Superseded, &st.Archived, &st.WithoutEmbedding)
 	return st, err
 }
