@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "3bb9800656de210152c6999087f952e540a8a196",
+    "head": "68e977d6a251e5bfbf6027f0d18394c39225012d",
+    "diff_sha256": "9bbe5374f31a0fe9fbc8a859ef6e62f3b878236efe2f55448d800e02613f7f1c",
+    "paths": [
+      "odd/review-results/longmemeval-benchmark/3bb9800656de-1.sweep.json",
+      "odd/review-results/longmemeval-benchmark/3bb9800656de-2.exempt.json",
+      "odd/tasks/longmemeval-benchmark.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of odd/tasks/longmemeval-benchmark.md L27 and T12",
+        "result": "pass",
+        "output": "passive log entry; figures match runs/qa-dev-k20-doubt.txt and the jq flips against the committed k20 official and careful results"
+      }
+    ]
+  }
+}
