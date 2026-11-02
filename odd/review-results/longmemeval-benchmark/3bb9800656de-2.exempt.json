@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "75a047ad3e3e0cc5e81689ae2f59e9f0986158aa",
+    "head": "3bb9800656de210152c6999087f952e540a8a196",
+    "diff_sha256": "74aa214c4583e97424e864d288a33405ddc391f47937acb2647824e27e5ed13a",
+    "paths": [
+      "cmd/mc-qa/main.go",
+      "internal/bench/qa.go",
+      "internal/bench/qa_test.go",
+      "odd/review-results/longmemeval-benchmark/75a047ad3e3e-1.sweep.json",
+      "odd/review-results/longmemeval-benchmark/75a047ad3e3e-2.exempt.json",
+      "odd/tasks/longmemeval-benchmark.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go test ./internal/bench/ -run ReaderPrompt|DoubtReader (before the change)",
+        "result": "pass",
+        "output": "RED as expected: unknown reader prompt \"doubt\" (official or careful)"
+      },
+      {
+        "command": "go vet ./... && go test ./...",
+        "result": "pass",
+        "output": "all packages ok"
+      },
+      {
+        "command": "sha256 of ReaderPrompt(official) and ReaderPrompt(careful), base copy vs change",
+        "result": "pass",
+        "output": "identical: official 0fea8e68..., careful 730e2749..."
+      }
+    ]
+  }
+}
