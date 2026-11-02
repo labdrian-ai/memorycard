@@ -244,35 +244,87 @@ func (s *Service) dense(ctx context.Context, q string, f filter, k int) ([]candi
 		return nil, err
 	}
 	qv := unit(vecs[0])
+	// A memory scores the cosine of its closest chunk.
+	model := s.embedder.Model()
 	rows, err := s.db.SQL().QueryContext(ctx,
-		`select m.id, m.type, m.title, m.body, m.updated_at, m.project, v.vec
-		 from vectors v join memories m on m.id = v.memory_id
-		 where v.model = ? and `+f.where,
-		append([]any{s.embedder.Model()}, f.args...)...)
+		`select m.id, v.vec from vectors v join memories m on m.id = v.memory_id
+		 where v.model = ? and `+f.where+`
+		 union all
+		 select m.id, c.vec from chunk_vectors c join memories m on m.id = c.memory_id
+		 where c.model = ? and `+f.where,
+		append(append(append([]any{model}, f.args...), model), f.args...)...)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	var out []candidate
+	best := map[int64]float64{}
 	for rows.Next() {
-		var c candidate
+		var id int64
 		var blob []byte
-		if err := rows.Scan(&c.ID, &c.Type, &c.Title, &c.body, &c.updated, &c.Project, &blob); err != nil {
+		if err := rows.Scan(&id, &blob); err != nil {
+			_ = rows.Close()
 			return nil, err
 		}
 		v := decodeVec(blob)
 		if len(v) != len(qv) {
 			continue
 		}
-		c.Score = dot(qv, v)
-		out = append(out, c)
+		if score, seen := best[id]; !seen || dot(qv, v) > score {
+			best[id] = dot(qv, v)
+		}
+	}
+	_ = rows.Close() // closed before candidates runs its own query
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	ids := make([]int64, 0, len(best))
+	for id := range best {
+		ids = append(ids, id)
+	}
+	sort.Slice(ids, func(i, j int) bool {
+		if best[ids[i]] != best[ids[j]] {
+			return best[ids[i]] > best[ids[j]]
+		}
+		return ids[i] < ids[j]
+	})
+	if len(ids) > k {
+		ids = ids[:k]
+	}
+	return s.candidates(ctx, ids, best)
+}
+
+// candidates loads the memories ids, in that order, scored by score.
+func (s *Service) candidates(ctx context.Context, ids []int64, score map[int64]float64) ([]candidate, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+	rows, err := s.db.SQL().QueryContext(ctx,
+		`select m.id, m.type, m.title, m.body, m.updated_at, m.project from memories m
+		 where m.id in (?`+strings.Repeat(",?", len(ids)-1)+`)`, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	byID := map[int64]candidate{}
+	for rows.Next() {
+		var c candidate
+		if err := rows.Scan(&c.ID, &c.Type, &c.Title, &c.body, &c.updated, &c.Project); err != nil {
+			return nil, err
+		}
+		c.Score = score[c.ID]
+		byID[c.ID] = c
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Score > out[j].Score })
-	if len(out) > k {
-		out = out[:k]
+	out := make([]candidate, 0, len(ids))
+	for _, id := range ids {
+		if c, ok := byID[id]; ok {
+			out = append(out, c)
+		}
 	}
 	return out, nil
 }

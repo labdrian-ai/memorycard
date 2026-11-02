@@ -75,7 +75,7 @@ func fixture(t *testing.T) string {
 	return path
 }
 
-func TestRoundGranularityFindsAnswersBeyondTheEmbedWindow(t *testing.T) {
+func TestBothGranularitiesFindAnswersBeyondTheFirstChunk(t *testing.T) {
 	ctx := context.Background()
 	qs, err := Load(fixture(t))
 	if err != nil {
@@ -93,8 +93,8 @@ func TestRoundGranularityFindsAnswersBeyondTheEmbedWindow(t *testing.T) {
 	if bySession.Docs != 3 || bySession.Mode != "dense" {
 		t.Fatalf("session run: %+v, want 3 docs in dense mode", bySession)
 	}
-	if r := bySession.Ranks[0]; r <= 1 {
-		t.Fatalf("session granularity ranked the answer %d; its answer lies beyond the embed window, so it must not be first", r)
+	if r := bySession.Ranks[0]; r != 1 {
+		t.Fatalf("session granularity ranked the answer %d, want 1: its answer lies beyond the first chunk, which a later chunk embeds", r)
 	}
 
 	byRound, err := RunQuestion(ctx, qs[0], Setup{Granularity: Round, Embedder: emb}, t.TempDir())
@@ -116,7 +116,8 @@ func TestRoundGranularityFindsAnswersBeyondTheEmbedWindow(t *testing.T) {
 		t.Fatalf("abstention question must be skipped, got %+v", abs)
 	}
 
-	s := Summarize([]Result{bySession, byRound, abs}, []int{1, 5})
+	third := Result{ID: "q3", Ranks: []int{3}} // an answer found third, so the averages are not all 1
+	s := Summarize([]Result{bySession, third, abs}, []int{1, 5})
 	if s.Scored != 2 || s.Abstentions != 1 {
 		t.Fatalf("summary counts: %+v", s)
 	}

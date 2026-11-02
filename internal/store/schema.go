@@ -1,7 +1,7 @@
 package store
 
 // SchemaVersion is the number of entries in migrations.
-const SchemaVersion = 3
+const SchemaVersion = 4
 
 // migrations[i] upgrades a database from version i to i+1.
 var migrations = [...]string{
@@ -97,5 +97,17 @@ update memories set topic_key = topic_key || '~' || id
 where id in (select id from ranked where rn > 1);
 create unique index idx_memories_topic_live on memories(project, scope, topic_key)
 	where topic_key is not null and status != 'superseded';
+`,
+	// v4: vectors of the body beyond its first embedded part. The vectors row
+	// stays chunk 0, so existing vectors are kept as they are.
+	`
+create table chunk_vectors (
+	memory_id integer not null references memories(id) on delete cascade,
+	chunk     integer not null check (chunk > 0),
+	model     text not null,
+	dim       integer not null,
+	vec       blob not null,
+	primary key (memory_id, chunk)
+);
 `,
 }

@@ -293,7 +293,7 @@ func (s *Service) Context(ctx context.Context, project string, budget int) (Dige
 // Stats counts stored memories for diagnostics.
 type Stats struct {
 	Total, Active, Superseded, Archived int
-	WithoutEmbedding                    int // memories with no vector yet
+	WithoutEmbedding                    int // memories whose vectors are missing or incomplete
 }
 
 // Stats returns the counts shown by the CLI's stats command.
@@ -304,8 +304,8 @@ func (s *Service) Stats(ctx context.Context) (Stats, error) {
 		        coalesce(sum(status = 'active'), 0),
 		        coalesce(sum(status = 'superseded'), 0),
 		        coalesce(sum(status = 'archived'), 0),
-		        coalesce(sum(not exists (select 1 from vectors v where v.memory_id = m.id)), 0)
-		 from memories m`).
+		        coalesce(sum(`+missingChunks+`), 0)
+		 from memories m`, "", "", "", "").
 		Scan(&st.Total, &st.Active, &st.Superseded, &st.Archived, &st.WithoutEmbedding)
 	return st, err
 }

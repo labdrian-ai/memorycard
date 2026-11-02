@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "68e977d6a251e5bfbf6027f0d18394c39225012d",
+    "head": "9c0d09c336576369c1f17862f97c9575e2ba8cd9",
+    "diff_sha256": "e7bece177a9a70354c3703e7f8e2db789bc147fc16fc545a86a7a39b2772d295",
+    "paths": [
+      "odd/review-results/longmemeval-benchmark/68e977d6a251-1.sweep.json",
+      "odd/review-results/longmemeval-benchmark/68e977d6a251-2.exempt.json",
+      "odd/tasks/locomo-benchmark.md",
+      "odd/tasks/longmemeval-benchmark.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of L28 (longmemeval) and L6 (locomo)",
+        "result": "pass",
+        "output": "passive log entries; figures match evidence_offset.py and locomo_offset.py over the committed and lab results"
+      }
+    ]
+  }
+}

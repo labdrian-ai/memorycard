@@ -75,7 +75,7 @@ func TestSaveStoresNormalizedVector(t *testing.T) {
 func TestEmbedInputIsTitlePlusTruncatedBody(t *testing.T) {
 	fe := &fakeEmbedder{fn: axis}
 	s := withEmbedder(t, fe)
-	save(t, s, SaveInput{Project: "p", Title: "T", Body: strings.Repeat("é", 3000)})
+	save(t, s, SaveInput{Project: "p", Title: "T", Body: strings.Repeat("é", 1500)})
 	if len(fe.seen) != 1 {
 		t.Fatalf("embed calls = %d", len(fe.seen))
 	}

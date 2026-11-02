@@ -119,6 +119,7 @@ func TestUpgradeFromV1KeepsDataAndAddsImportMap(t *testing.T) {
 		`insert into memories(project,title,body,content_hash,created_at,updated_at) values('p','kept','b','h','x','x')`,
 		`drop table import_map`,
 		`drop index idx_memories_topic_live`,
+		`drop table chunk_vectors`,
 		`pragma user_version = 1`, // what a database created by the v1 build looks like
 	} {
 		if _, err := first.SQL().Exec(q); err != nil {
@@ -141,6 +142,52 @@ func TestUpgradeFromV1KeepsDataAndAddsImportMap(t *testing.T) {
 	}
 }
 
+func TestUpgradeToV4KeepsVectorsAndAddsChunkVectors(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "memory.db")
+	first, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`insert into memories(project,title,body,content_hash,created_at,updated_at) values('p','kept','b','h','x','x')`,
+		`insert into vectors(memory_id, model, dim, vec) values (1, 'm', 1, x'0000803f')`,
+		`drop table chunk_vectors`,
+		`pragma user_version = 3`, // what a database created by the v3 build looks like
+	} {
+		if _, err := first.SQL().Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	db, err := Open(path)
+	if err != nil {
+		t.Fatalf("upgrade: %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	var model string
+	var vec []byte
+	if err := db.SQL().QueryRow(`select model, vec from vectors where memory_id = 1`).Scan(&model, &vec); err != nil ||
+		model != "m" || fmt.Sprintf("%x", vec) != "0000803f" {
+		t.Errorf("vector after upgrade: %q %x, %v", model, vec, err)
+	}
+	if _, err := db.SQL().Exec(`insert into chunk_vectors(memory_id, chunk, model, dim, vec) values (1, 1, 'm', 1, x'00')`); err != nil {
+		t.Fatalf("chunk_vectors missing after upgrade: %v", err)
+	}
+	if _, err := db.SQL().Exec(`insert into chunk_vectors(memory_id, chunk, model, dim, vec) values (1, 1, 'm', 1, x'00')`); err == nil {
+		t.Errorf("a second row for the same memory and chunk was accepted")
+	}
+	if _, err := db.SQL().Exec(`delete from memories where id = 1`); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	if err := db.SQL().QueryRow(`select count(*) from chunk_vectors`).Scan(&n); err != nil || n != 0 {
+		t.Errorf("chunk vectors after deleting their memory: %d, %v; want 0", n, err)
+	}
+}
+
 func TestUpgradeToV3RekeysLiveTopicKeyCollisionsAndEnforcesThem(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "memory.db")
 	first, err := Open(path)
@@ -148,7 +195,7 @@ func TestUpgradeToV3RekeysLiveTopicKeyCollisionsAndEnforcesThem(t *testing.T) {
 		t.Fatal(err)
 	}
 	ins := `insert into memories(project,title,body,topic_key,status,content_hash,created_at,updated_at) values('p',?,'b',?,?,?,'x','x')`
-	for _, q := range []string{`drop index if exists idx_memories_topic_live`, `pragma user_version = 2`} {
+	for _, q := range []string{`drop index if exists idx_memories_topic_live`, `drop table chunk_vectors`, `pragma user_version = 2`} {
 		if _, err := first.SQL().Exec(q); err != nil {
 			t.Fatal(err)
 		}

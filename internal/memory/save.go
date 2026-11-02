@@ -55,6 +55,8 @@ type Service struct {
 	now      func() time.Time
 	embedder embed.Embedder // optional; nil means text-only
 	hybrid   bool           // fuse dense and lexical rankings when searching
+	// maxChunks caps the vectors of one memory, chunk 0 included; 0 means no cap.
+	maxChunks int
 }
 
 // New returns a Service over db.

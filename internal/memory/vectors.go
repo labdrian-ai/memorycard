@@ -10,7 +10,9 @@ import (
 )
 
 const (
-	// EmbedBodyRunes is how much of the body is embedded along with the title.
+	// EmbedBodyRunes is how much of the body one vector embeds along with the
+	// title. A longer body gets one vector per EmbedBodyRunes: chunk 0 in
+	// vectors, the rest in chunk_vectors.
 	EmbedBodyRunes = 1500
 	// DuplicateHintCosine is the similarity at which Save hints at a duplicate.
 	// The starting value is calibrated later on held-out data.
@@ -32,6 +34,11 @@ func (s *Service) SetEmbedder(e embed.Embedder) { s.embedder = e }
 // without one, search stays lexical.
 func (s *Service) SetHybrid(on bool) { s.hybrid = on }
 
+// SetMaxChunks caps how many vectors one memory gets, chunk 0 included, so
+// only the first n·EmbedBodyRunes runes of a body are embedded; 0 means no
+// cap. It applies to memories embedded afterwards.
+func (s *Service) SetMaxChunks(n int) { s.maxChunks = n }
+
 func embedText(title, body string) string {
 	r := []rune(body)
 	if len(r) > EmbedBodyRunes {
@@ -40,37 +47,84 @@ func embedText(title, body string) string {
 	return title + "\n" + string(r)
 }
 
-// index embeds one memory and replaces its stored vector.
+// chunkTexts returns what each vector of a memory embeds: chunk 0 is
+// embedText, chunk i the title and the i-th EmbedBodyRunes of the body.
+func (s *Service) chunkTexts(title, body string) []string {
+	texts := []string{embedText(title, body)}
+	r := []rune(body)
+	for start := EmbedBodyRunes; start < len(r); start += EmbedBodyRunes {
+		if s.maxChunks > 0 && len(texts) >= s.maxChunks {
+			break
+		}
+		end := min(start+EmbedBodyRunes, len(r))
+		texts = append(texts, title+"\n"+string(r[start:end]))
+	}
+	return texts
+}
+
+// missingChunks is the SQL condition, over memories m, for a memory whose
+// vectors are incomplete: no chunk 0, or a body longer than one chunk and no
+// other chunk. Its four arguments are the model twice for each table, or an
+// empty string for any model. Runes counted by Go are never fewer than characters counted
+// by SQLite, so a memory it selects always gets a chunk and stops matching.
+var missingChunks = fmt.Sprintf(`(not exists (select 1 from vectors v where v.memory_id = m.id and (? = '' or v.model = ?))
+	or (length(m.body) > %d and not exists (select 1 from chunk_vectors c where c.memory_id = m.id and (? = '' or c.model = ?))))`,
+	EmbedBodyRunes)
+
+// index embeds every chunk of one memory and replaces its stored vectors. It
+// returns the vector of chunk 0.
 func (s *Service) index(ctx context.Context, id int64, title, body string) ([]float32, error) {
-	vecs, err := s.embedder.Embed(ctx, []string{embedText(title, body)}, embed.KindDocument)
+	vecs, err := s.embedder.Embed(ctx, s.chunkTexts(title, body), embed.KindDocument)
 	if err != nil {
 		return nil, err
 	}
-	v := unit(vecs[0])
-	if err := s.putVector(ctx, id, v); err != nil {
+	if err := s.putVectors(ctx, id, vecs); err != nil {
 		return nil, err
 	}
-	return v, nil
+	return unit(vecs[0]), nil
 }
 
-func (s *Service) putVector(ctx context.Context, id int64, v []float32) error {
-	_, err := s.db.SQL().ExecContext(ctx,
+// putVectors stores the vectors of one memory, chunk 0 first, in one
+// transaction, dropping chunks it had before.
+func (s *Service) putVectors(ctx context.Context, id int64, vecs [][]float32) error {
+	tx, err := s.db.SQL().BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }() // a no-op once committed
+	model := s.embedder.Model()
+	v := unit(vecs[0])
+	if _, err := tx.ExecContext(ctx,
 		`insert or replace into vectors(memory_id, model, dim, vec) values (?,?,?,?)`,
-		id, s.embedder.Model(), len(v), encodeVec(v))
-	return err
+		id, model, len(v), encodeVec(v)); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `delete from chunk_vectors where memory_id = ?`, id); err != nil {
+		return err
+	}
+	for i, raw := range vecs[1:] {
+		v := unit(raw)
+		if _, err := tx.ExecContext(ctx,
+			`insert into chunk_vectors(memory_id, chunk, model, dim, vec) values (?,?,?,?,?)`,
+			id, i+1, model, len(v), encodeVec(v)); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
-// EmbedPending embeds memories that have no vector for the current model,
-// up to limit per call, and returns how many it embedded.
+// EmbedPending embeds memories whose vectors for the current model are
+// missing or incomplete, up to limit per call, and returns how many it
+// embedded.
 func (s *Service) EmbedPending(ctx context.Context, limit int) (int, error) {
 	if s.embedder == nil {
 		return 0, nil
 	}
+	model := s.embedder.Model()
 	rows, err := s.db.SQL().QueryContext(ctx,
 		`select m.id, m.title, m.body from memories m
-		 left join vectors v on v.memory_id = m.id
-		 where v.memory_id is null or v.model != ?
-		 order by m.id limit ?`, s.embedder.Model(), limit)
+		 where `+missingChunks+`
+		 order by m.id limit ?`, model, model, model, model, limit)
 	if err != nil {
 		return 0, err
 	}
@@ -91,16 +145,19 @@ func (s *Service) EmbedPending(ctx context.Context, limit int) (int, error) {
 	if err := rows.Err(); err != nil || len(items) == 0 {
 		return 0, err
 	}
-	texts := make([]string, len(items))
+	var texts []string
+	first := make([]int, len(items)+1) // texts[first[i]:first[i+1]] belong to items[i]
 	for i, it := range items {
-		texts[i] = embedText(it.title, it.body)
+		first[i] = len(texts)
+		texts = append(texts, s.chunkTexts(it.title, it.body)...)
 	}
+	first[len(items)] = len(texts)
 	vecs, err := s.embedder.Embed(ctx, texts, embed.KindDocument)
 	if err != nil {
 		return 0, err
 	}
 	for i, it := range items {
-		if err := s.putVector(ctx, it.id, unit(vecs[i])); err != nil {
+		if err := s.putVectors(ctx, it.id, vecs[first[i]:first[i+1]]); err != nil {
 			return i, err
 		}
 	}
