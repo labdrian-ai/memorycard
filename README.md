@@ -217,6 +217,10 @@ go run ./cmd/mc-qa -data longmemeval_s_cleaned.json -cache cache.db \
   -model gpt-6.1-sol -k 20 -out qa.jsonl   # add -reader careful for the last column
 ```
 
+`-split dev` or `-split test` runs a fixed half of the questions, balanced
+by type. Further reader changes are chosen from `dev` misses only and
+measured on `test`.
+
 ## Development
 
 ```sh
