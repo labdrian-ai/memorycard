@@ -33,7 +33,7 @@ func run() int {
 	cachePath := flag.String("cache", "", "embedding cache file")
 	dense := flag.Bool("dense", false, "rank by meaning only instead of the default hybrid search")
 	k := flag.Int("k", 5, "sessions given to the reader")
-	reader := flag.String("reader", "official", "reader prompt: official (LongMemEval's) or careful (official plus rules for recency, counting, dates and abstention)")
+	reader := flag.String("reader", "official", "reader prompt: official (LongMemEval's) careful (official plus rules for recency, counting, dates and abstention) or doubt (careful, answering the plausible reading with its doubt instead of declining)")
 	model := flag.String("model", "gpt-6.1-sol", "reader and judge model, run through codex exec")
 	out := flag.String("out", "", "results file, one JSON line per question; questions already in it are skipped")
 	flag.Parse()

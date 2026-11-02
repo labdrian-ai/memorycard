@@ -93,6 +93,41 @@ func TestRunQACarefulReaderAddsRulesToTheOfficialPrompt(t *testing.T) {
 	}
 }
 
+func TestRunQADoubtReaderAnswersThePlausibleReadingInsteadOfDeclining(t *testing.T) {
+	qs, err := Load(fixture(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	emb := keywordEmbedder{words: []string{"denver", "moved", "pizza"}}
+	reader := &scripted{replies: []string{"You moved to Denver."}}
+	r, err := RunQA(context.Background(), qs[0], Setup{Granularity: Round, Embedder: emb}, t.TempDir(),
+		QASetup{K: 2, Prompt: "doubt", Reader: reader, Judge: &scripted{replies: []string{"yes"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !r.Correct || r.Read != 2 {
+		t.Fatalf("result %+v, want correct with 2 sessions read", r)
+	}
+	p := reader.prompts[0]
+	for _, want := range []string{
+		"Please answer the question based on the relevant chat history. Answer the question step by step",
+		"Different figures about different things are not updates.",
+		"list each one with the date of the session",
+		"write down the dates involved",
+		"give it as the answer and state your doubt in one sentence",
+		"only when the chats say nothing about the thing asked, or contradict what the question assumes",
+		"This rule does not apply to requests for advice, suggestions or recommendations",
+		"Current Date: 2023/05/04\nQuestion: Where did I say I moved to? denver\nAnswer (step by step):",
+	} {
+		if !strings.Contains(p, want) {
+			t.Fatalf("doubt reader prompt lacks %q:\n%s", want, p)
+		}
+	}
+	if strings.Contains(p, "not just something similar") {
+		t.Fatalf("doubt reader prompt keeps the careful rule 4:\n%s", p)
+	}
+}
+
 func TestRunQARejectsAnUnknownReaderPrompt(t *testing.T) {
 	qs, err := Load(fixture(t))
 	if err != nil {
@@ -101,7 +136,7 @@ func TestRunQARejectsAnUnknownReaderPrompt(t *testing.T) {
 	reader := &scripted{}
 	_, err = RunQA(context.Background(), qs[0], Setup{Granularity: Round, Embedder: keywordEmbedder{}}, t.TempDir(),
 		QASetup{K: 2, Prompt: "clever", Reader: reader, Judge: &scripted{}})
-	if err == nil || !strings.Contains(err.Error(), `unknown reader prompt "clever" (official or careful)`) {
+	if err == nil || !strings.Contains(err.Error(), `unknown reader prompt "clever" (official, careful or doubt)`) {
 		t.Fatalf("err %v, want the unknown reader prompt named", err)
 	}
 	if len(reader.prompts) != 0 {

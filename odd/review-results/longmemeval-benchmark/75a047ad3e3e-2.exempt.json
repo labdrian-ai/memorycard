@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "5f4094f76542a4322f559975cc20bc50bc0017ee",
+    "head": "75a047ad3e3e0cc5e81689ae2f59e9f0986158aa",
+    "diff_sha256": "bbaa023ed40ad830d6b858e07cfd1bb03b3fb706e2636c54b9d390a58d5321ef",
+    "paths": [
+      "odd/review-results/locomo-benchmark/4b6f8b51c0e1-1.sweep.json",
+      "odd/review-results/locomo-benchmark/4b6f8b51c0e1-2.exempt.json",
+      "odd/tasks/longmemeval-benchmark.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of odd/tasks/longmemeval-benchmark.md L26",
+        "result": "pass",
+        "output": "passive log entry; ids, ranks and counts match dev_detail.py over the committed k20 careful and official results"
+      }
+    ]
+  }
+}
