@@ -126,6 +126,21 @@ func TestBothGranularitiesFindAnswersBeyondTheFirstChunk(t *testing.T) {
 	}
 }
 
+func TestMaxChunksOneEmbedsOnlyTheFirstChunkAsBefore(t *testing.T) {
+	qs, err := Load(fixture(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	emb := keywordEmbedder{words: []string{"denver", "moved", "pizza"}}
+	r, err := RunQuestion(context.Background(), qs[0], Setup{Granularity: Session, Embedder: emb, MaxChunks: 1}, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Ranks[0] <= 1 {
+		t.Fatalf("ranked the answer %d with one chunk per memory; its answer lies beyond the first chunk, so it must not be first", r.Ranks[0])
+	}
+}
+
 func TestLexicalRunWithoutEmbedder(t *testing.T) {
 	qs, err := Load(fixture(t))
 	if err != nil {

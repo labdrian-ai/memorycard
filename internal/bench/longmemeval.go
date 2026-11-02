@@ -200,6 +200,7 @@ type Setup struct {
 	Granularity Granularity
 	Embedder    embed.Embedder // nil runs lexical only
 	Hybrid      bool           // fuse dense and lexical rankings
+	MaxChunks   int            // vectors per memory, chunk 0 included; 0 means no cap
 }
 
 // RunQuestion builds a fresh database in dir from the haystack of q, embeds it
@@ -266,8 +267,11 @@ func build(ctx context.Context, q Question, setup Setup, dir string) (*haystack,
 	if setup.Embedder != nil {
 		h.svc.SetEmbedder(setup.Embedder)
 		h.svc.SetHybrid(setup.Hybrid)
+		h.svc.SetMaxChunks(setup.MaxChunks)
 		for {
-			n, err := h.svc.EmbedPending(ctx, 32)
+			// A session can have a dozen chunks; 4 sessions keep one embedder
+			// request well under its timeout.
+			n, err := h.svc.EmbedPending(ctx, 4)
 			if err != nil {
 				db.Close()
 				return nil, fmt.Errorf("%s: embed: %w", q.ID, err)

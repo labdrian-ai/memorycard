@@ -24,7 +24,9 @@ func main() { os.Exit(run()) }
 
 func run() int {
 	data := flag.String("data", "", "LongMemEval JSON file (longmemeval_s_cleaned.json)")
+	dataset := flag.String("dataset", "longmemeval", "format of -data: longmemeval (longmemeval_s_cleaned.json) or locomo (locomo10.json)")
 	gran := flag.String("granularity", "session", "what one memory holds: session or round")
+	maxChunks := flag.Int("max-chunks", 0, "vectors per memory, the first 1,500 runes of the body included (0 = embed the whole body, 1 = only its first 1,500 runes)")
 	sample := flag.Int("sample", 0, "questions to run, picked with -seed (0 = all)")
 	seed := flag.Int64("seed", 20261029, "sample seed")
 	cachePath := flag.String("cache", "", "embedding cache file (required unless -lexical)")
@@ -33,12 +35,17 @@ func run() int {
 	out := flag.String("out", "", "results file, one JSON line per question; questions already in it are skipped")
 	flag.Parse()
 	g := bench.Granularity(*gran)
-	if *data == "" || *out == "" || (g != bench.Session && g != bench.Round) || (*cachePath == "" && !*lexical) || (*hybrid && *lexical) {
-		fmt.Fprintln(os.Stderr, "usage: mc-bench -data longmemeval_s_cleaned.json -out results.jsonl [-granularity session|round] [-sample 50] [-cache cache.db [-hybrid] | -lexical]")
+	if *data == "" || *out == "" || (g != bench.Session && g != bench.Round) || (*cachePath == "" && !*lexical) || (*hybrid && *lexical) ||
+		(*dataset != "longmemeval" && *dataset != "locomo") || *maxChunks < 0 {
+		fmt.Fprintln(os.Stderr, "usage: mc-bench -data longmemeval_s_cleaned.json -out results.jsonl [-dataset longmemeval|locomo] [-granularity session|round] [-sample 50] [-max-chunks 0] [-cache cache.db [-hybrid] | -lexical]")
 		return 2
 	}
 
-	qs, err := bench.Load(*data)
+	load := bench.Load
+	if *dataset == "locomo" {
+		load = bench.LoadLoCoMo
+	}
+	qs, err := load(*data)
 	if err != nil {
 		return fail(err)
 	}
@@ -83,7 +90,7 @@ func run() int {
 			return fail(err)
 		}
 		t := time.Now()
-		r, err := bench.RunQuestion(ctx, q, bench.Setup{Granularity: g, Embedder: emb, Hybrid: *hybrid}, dir)
+		r, err := bench.RunQuestion(ctx, q, bench.Setup{Granularity: g, Embedder: emb, Hybrid: *hybrid, MaxChunks: *maxChunks}, dir)
 		os.RemoveAll(dir)
 		if err != nil {
 			return fail(err)
