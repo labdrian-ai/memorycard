@@ -15,12 +15,12 @@ memory they can save to and search by meaning, across sessions and across
 agents, without a service or a cloud account. It speaks MCP, so it works with
 Claude Code, Codex, OpenCode, Pi and any other MCP client.
 
-Status: v0.2, episodic memory (decisions, fixes, discoveries, session summaries).
+Status: v0.3.0, episodic memory (decisions, fixes, discoveries, session summaries).
 
 ## Why
 
-- **Cheap in tokens.** The six tool definitions cost about 720 tokens (budget
-  1,500). A default search returns about 330 tokens for five results.
+- **Cheap in tokens.** The six tool definitions cost about 970 tokens (budget
+  1,500; estimated as bytes / 3.6 by the server test). A default search returns about 330 tokens for five results.
 - **Finds what you mean.** Retrieval is dense (`bge-m3` through a local
   [ollama](https://ollama.com)), boosted by the query's keywords. On
   190 held-out natural questions over a real 3,400-memory store: hit@5 88 %,
