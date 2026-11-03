@@ -1,0 +1,76 @@
+{
+  "kind": "polisher",
+  "base": "0af622d661a007e3e5ec778d9c43011094eaf9ca",
+  "head": "83c1bd811d6ec261db83e220865a3caaaa6dd42d",
+  "diff_sha256": "73c6f0d3b399e7729574d1e9c3d269a604ff5c941c24c06cf4dd276b0d3b3406",
+  "findings": {
+    "findings": [
+      {
+        "location": "internal/memory/save.go:290-310",
+        "severity": "WARNING",
+        "claim": "The identical-content scan ignores rows.Err(). If iteration stops early on a driver error, such as a busy or I/O error, the loop ends silently and rows.Close() returns nil. The save then falls through to the insert, which can create a second copy of a duplicate it failed to see. It can also skip the restore of an archived memory.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "evidence": [
+          "The diff replaces a single-row QueryRow.Scan, which surfaced errors, with a QueryContext plus rows.Next() loop. There is no rows.Err() call after the loop; only rows.Close() is checked.",
+          "I did not reproduce an iteration error."
+        ]
+      },
+      {
+        "location": "internal/memory/save.go:105",
+        "severity": "WARNING",
+        "claim": "The save stamp is taken before BeginTx and before any wait on the SQLite write lock. A concurrent mem_update archive=true from another process that commits after the stamp is taken but before this save's transaction reads the row gets an updated_at later than the stamp. The save then fails with ErrArchivedLater, although it was issued before the archiving. This is more likely with a busy lock or several MCP processes. The same applies to equal timestamps on coarse clocks, because `now.After(at)` is strict.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "evidence": [
+          "The stamp is computed at save.go:105 before the transaction starts.",
+          "restore() in the diff returns ErrArchivedLater when !now.After(at), so an equal stamp also fails.",
+          "Update (ops.go:109) takes its own stamp, so two writers can interleave.",
+          "I did not reproduce the race."
+        ]
+      },
+      {
+        "location": "internal/memory/ops.go:170-181",
+        "severity": "SUGGESTION",
+        "claim": "updated_at now doubles as the archive time, but other Update paths still overwrite it on archived rows. Reviewed=true (ops.go:181) and a content edit via s.update (ops.go:156) both set updated_at. Both leave status unchanged, so they move the recorded archiving forward and make the ErrArchivedLater guard stricter than the actual archiving. The same holds for imported rows whose updated_at is in the future.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "evidence": [
+          "restore() compares the save stamp against the row's updated_at, as the diff shows.",
+          "ops.go:181 runs `update memories set updated_at = ? where id = ?` without checking status.",
+          "No dedicated archived_at column was added."
+        ]
+      },
+      {
+        "location": "internal/memory/save.go:281-310",
+        "severity": "SUGGESTION",
+        "claim": "When the same content exists as both a superseded or active row and an archived row of the same scope and topic key, the ORDER BY puts non-archived rows first. The save is returned as a duplicate and the archived memory is not restored. The archived memory stays hidden. This is consistent with the stated rule that live or superseded rows win, but it is an uncovered ordering case.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "evidence": [
+          "The query is `order by status = 'archived', id`, and the loop returns ActionDuplicate on the first non-archived row.",
+          "No test covers an archived row alongside a superseded row with the same hash."
+        ]
+      },
+      {
+        "location": "internal/memory/archive_test.go:98-109",
+        "severity": "SUGGESTION",
+        "claim": "The test compares RFC3339Nano strings lexicographically. Go trims trailing zeros, so a timestamp on a whole second ends in 'Z' (0x5A) and sorts after one with a fraction ('.' is 0x2E). `archived <= saved` can then be wrongly true, which makes the test flaky in rare cases.",
+        "evidence_class": "deterministic",
+        "causal_disposition": "introduced",
+        "evidence": [
+          "The test uses string `<=` on updated_at values written with time.RFC3339Nano.",
+          "The flakiness is theoretical, because it needs a stamp with zero nanoseconds."
+        ]
+      }
+    ],
+    "evidence": [
+      "Read the full diff at /tmp/claude-1000/-home-labdrian-memorycard/edac5f46-498c-4fe3-85f6-f95089fb9d46/scratchpad/t1.diff.",
+      "Read /home/labdrian/memorycard-worktrees/review-83c1bd8/internal/memory/save.go lines 60-260 for the Save flow, the stamp, part handling, supersedes and the shrink archiving.",
+      "Grepped for updated_at and RFC3339 in the worktree. Imported rows are re-formatted by stampOf to RFC3339Nano (import.go:301-305), so time.RFC3339Nano parsing handles no-fraction values. The non-test callers of RFC3339Nano format timestamps with fractions.",
+      "Checked that the old explicit part-restore in the Save loop is now handled by restore() inside write(), and that stamps are strictly later across separate Save calls.",
+      "Checked the restore, rollback and ErrSupersedeTarget ordering. A restore followed by a supersedes-target error rolls back through the deferred tx.Rollback().",
+      "Did not run any tests or commands."
+    ]
+  }
+}

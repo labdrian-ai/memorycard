@@ -28,7 +28,8 @@ Status: v0.2, episodic memory (decisions, fixes, discoveries, session summaries)
 - **Never silently degraded.** If the embedder is down, search falls back to
   BM25 and says `mode: lexical`. Notes over 16 KB are saved as numbered parts
   of about 12 KB, never truncated; saving the same `topic_key` again updates
-  the parts in place.
+  the parts in place. A save that lands on an archived memory (same
+  `topic_key`, or the same title and body) restores it and says so.
 - **Honest about confidence.** `confidence: low` flags results for questions
   the store knows nothing about. It cannot tell whether related memories hold
   the exact fact asked for (no retrieval score separates those cases), so the
@@ -102,6 +103,11 @@ MCP tools: `mem_save`, `mem_search`, `mem_get`, `mem_update`, `mem_context`,
 `mem_session`. Diagnostics (`stats`, `embed`, `import`, `version`) live in the
 CLI.
 
+The server resolves its default project once, from the directory it was
+started in. `mem_save` and `mem_context` also take `cwd` (or its alias
+`directory`), an absolute path that resolves the project on that call, the
+same way as `MEMORYCARD_PROJECT` below; an explicit `project` still wins.
+
 Agents use memory best when told when to save and search. A line like this in
 your agent instructions (`CLAUDE.md`, `AGENTS.md`) is enough to start:
 
@@ -131,7 +137,11 @@ memorycard embed
 
 The import is read-only on the source, resumable, merges exact duplicates,
 splits oversized notes into parts instead of truncating, and maps judged
-`supersedes` relations.
+`supersedes` relations. Rerun it to reconcile deletions: a memory that copies
+an observation Engram has since deleted (imported, or with its `topic_key` or
+its exact content) is archived, unless it was written after the deletion or a
+live observation still holds that key or content. `archived deleted` counts
+them.
 
 ## Benchmark
 

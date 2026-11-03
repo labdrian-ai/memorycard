@@ -297,9 +297,9 @@ func (a *app) importCmd(ctx context.Context, svc *memory.Service, args []string)
 	}
 	fmt.Fprintf(a.out, "imported: %d\nalready imported: %d\nmerged duplicates: %d\nempty after redaction: %d\n"+
 		"chunked: %d records into %d parts\nsuperseded links: %d (skipped %d)\n"+
-		"skipped deleted: %d\nrelations not imported: %d\nunparsable timestamps: %d\n",
+		"skipped deleted: %d\narchived deleted: %d\nrelations not imported: %d\nunparsable timestamps: %d\n",
 		res.Imported, res.AlreadyImported, res.Duplicates, res.Empty, res.Chunked, res.Parts,
-		res.Linked, res.LinksSkipped, res.SkippedDeleted, res.UnusedRelations, res.BadTimestamps)
+		res.Linked, res.LinksSkipped, res.SkippedDeleted, res.ArchivedDeleted, res.UnusedRelations, res.BadTimestamps)
 	st, err := svc.Stats(ctx)
 	if err != nil {
 		return a.fail(err)

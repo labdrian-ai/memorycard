@@ -167,11 +167,14 @@ func (s *Service) Update(ctx context.Context, id int64, in UpdateInput) (SaveRes
 		res.Action = ActionUpdated
 	}
 	if in.Archive != nil {
-		q := `update memories set status = 'archived' where id = ? and status = 'active'`
+		// Archiving records its time in updated_at, so a later save can tell
+		// whether it is newer. Restoring keeps it: a restore is no review, and
+		// must not clear a stale flag.
+		q, args := `update memories set status = 'archived', updated_at = ? where id = ? and status = 'active'`, []any{stamp, id}
 		if !*in.Archive {
-			q = `update memories set status = 'active' where id = ? and status = 'archived'`
+			q, args = `update memories set status = 'active' where id = ? and status = 'archived'`, []any{id}
 		}
-		if _, err := tx.ExecContext(ctx, q, id); err != nil {
+		if _, err := tx.ExecContext(ctx, q, args...); err != nil {
 			return SaveResult{}, err
 		}
 		res.Action = ActionUpdated

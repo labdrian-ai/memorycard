@@ -1,0 +1,15 @@
+{
+  "kind": "sweeper",
+  "base": "83c1bd811d6ec261db83e220865a3caaaa6dd42d",
+  "head": "e961a9e633b14bc868f37dd9ee975db559e1dce4",
+  "diff_sha256": "4753b0beb276346d755bf230eb7db87ecca5d9d2e1aa7d6a6f4ef4d84f68c8b6",
+  "sweep": "e961a9e633b1-1.sweep.json",
+  "commit": null,
+  "candidates": [
+    {
+      "candidate": "T3: ?? internal/importer/deleted_test.go",
+      "disposition": "live",
+      "evidence": "It is the RED test for task T2 of odd/tasks/archive-restore-and-deletes.md, written before its implementation and committed with T2. It is not a leftover of e961a9e."
+    }
+  ]
+}

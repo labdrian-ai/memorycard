@@ -45,6 +45,7 @@ var (
 	ErrBadScope        = errors.New("scope must be project, personal or global")
 	ErrTooLarge        = errors.New("body exceeds the hard size cap")
 	ErrSupersedeTarget = errors.New("supersedes must name an existing memory of the same project")
+	ErrArchivedLater   = errors.New("the memory this save would restore was archived after it")
 )
 
 var privateTag = regexp.MustCompile(`(?s)<private>.*?</private>`)
@@ -129,20 +130,17 @@ func (s *Service) Save(ctx context.Context, in SaveInput) (SaveResult, error) {
 	ids := make([]int64, len(pieces))
 	actions := make([]string, len(pieces))
 	for i, p := range pieces {
-		if ids[i], actions[i], err = s.write(ctx, tx, p, contentHash(p.Title, p.Body), stamp); err != nil {
+		var restored bool
+		if ids[i], actions[i], restored, err = s.write(ctx, tx, p, contentHash(p.Title, p.Body), stamp); err != nil {
 			return SaveResult{}, err
+		}
+		// A later part archived when the document shrank is restored silently:
+		// that archiving was the store's own, not the user's.
+		if restored && i == 0 {
+			res.Warnings = append(res.Warnings, fmt.Sprintf("restored #%d from the archive", ids[i]))
 		}
 		if in.Supersedes == ids[i] {
 			return SaveResult{}, ErrSupersedeTarget
-		}
-		// A part archived when the document shrank is in use again. The key
-		// check keeps a duplicate match elsewhere from being revived.
-		if i > 0 && p.TopicKey != "" {
-			if _, err := tx.ExecContext(ctx,
-				`update memories set status='active', updated_at=? where id=? and topic_key=? and status='archived'`,
-				stamp, ids[i], p.TopicKey); err != nil {
-				return SaveResult{}, err
-			}
 		}
 	}
 	// Parts the previous version had beyond the new count are left over.
@@ -244,34 +242,77 @@ func overallAction(actions []string) string {
 	return actions[0]
 }
 
-func (s *Service) write(ctx context.Context, tx *sql.Tx, in SaveInput, hash, stamp string) (int64, string, error) {
+// write stores one piece. A save that lands on an archived memory, by topic
+// key or by identical content, restores it: the save is the newer word on that
+// memory. restored reports it.
+func (s *Service) write(ctx context.Context, tx *sql.Tx, in SaveInput, hash, stamp string) (id int64, action string, restored bool, err error) {
 	if in.TopicKey != "" {
-		var id int64
-		var oldHash, oldTitle, oldBody string
+		var oldHash, oldTitle, oldBody, status, updated string
 		err := tx.QueryRowContext(ctx,
-			`select id, content_hash, title, body from memories
+			`select id, content_hash, title, body, status, updated_at from memories
 			 where project=? and scope=? and topic_key=? and status != 'superseded'
 			 order by id desc limit 1`,
-			in.Project, in.Scope, in.TopicKey).Scan(&id, &oldHash, &oldTitle, &oldBody)
+			in.Project, in.Scope, in.TopicKey).Scan(&id, &oldHash, &oldTitle, &oldBody, &status, &updated)
 		switch {
-		case err == nil && oldHash == hash:
-			return id, ActionUnchanged, nil
 		case err == nil:
-			return id, ActionUpdated, s.update(ctx, tx, id, oldTitle, oldBody, in, hash, stamp)
+			if status == "archived" {
+				if err := restore(ctx, tx, id, updated, stamp); err != nil {
+					return 0, "", false, err
+				}
+				restored = true
+			}
+			if oldHash == hash {
+				if restored {
+					return id, ActionUpdated, true, nil
+				}
+				return id, ActionUnchanged, false, nil
+			}
+			return id, ActionUpdated, restored, s.update(ctx, tx, id, oldTitle, oldBody, in, hash, stamp)
 		case !errors.Is(err, sql.ErrNoRows):
-			return 0, "", err
+			return 0, "", false, err
 		}
 	}
 
-	var dup int64
-	err := tx.QueryRowContext(ctx,
-		`select id from memories where project=? and content_hash=? order by id limit 1`,
-		in.Project, hash).Scan(&dup)
-	if err == nil {
-		return dup, ActionDuplicate, nil
+	// Identical content: a live or superseded memory makes this a duplicate.
+	// An archived one is restored only when it is the same memory (same scope
+	// and topic key); an archived memory of another key is left alone and this
+	// save creates its own.
+	rows, err := tx.QueryContext(ctx,
+		`select id, status, updated_at, scope, coalesce(topic_key, '') from memories
+		 where project=? and content_hash=? order by status = 'archived', id`,
+		in.Project, hash)
+	if err != nil {
+		return 0, "", false, err
 	}
-	if !errors.Is(err, sql.ErrNoRows) {
-		return 0, "", err
+	var same int64
+	var sameUpdated string
+	for rows.Next() {
+		var dup int64
+		var status, updated, scope, topic string
+		if err := rows.Scan(&dup, &status, &updated, &scope, &topic); err != nil {
+			_ = rows.Close()
+			return 0, "", false, err
+		}
+		if status != "archived" {
+			_ = rows.Close()
+			return dup, ActionDuplicate, false, nil
+		}
+		if same == 0 && scope == in.Scope && topic == in.TopicKey {
+			same, sameUpdated = dup, updated
+		}
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return 0, "", false, err
+	}
+	if err := rows.Close(); err != nil {
+		return 0, "", false, err
+	}
+	if same != 0 {
+		if err := restore(ctx, tx, same, sameUpdated, stamp); err != nil {
+			return 0, "", false, err
+		}
+		return same, ActionUpdated, true, nil
 	}
 
 	var topic any
@@ -283,10 +324,31 @@ func (s *Service) write(ctx context.Context, tx *sql.Tx, in SaveInput, hash, sta
 		 values (?,?,?,?,?,?,?,?,?)`,
 		in.Project, in.Scope, in.Type, in.Title, in.Body, topic, hash, stamp, stamp)
 	if err != nil {
-		return 0, "", err
+		return 0, "", false, err
 	}
-	id, err := r.LastInsertId()
-	return id, ActionCreated, err
+	id, err = r.LastInsertId()
+	return id, ActionCreated, false, err
+}
+
+// restore reactivates archived memory id for a save stamped stamp, only when
+// the save is newer than the archiving recorded in archivedAt (RFC 3339 with
+// nanoseconds). Otherwise the save fails: writing into a memory that stays
+// archived would lose it silently.
+func restore(ctx context.Context, tx *sql.Tx, id int64, archivedAt, stamp string) error {
+	at, err := time.Parse(time.RFC3339Nano, archivedAt)
+	if err != nil {
+		return fmt.Errorf("memory #%d: archive time %q: %w", id, archivedAt, err)
+	}
+	now, err := time.Parse(time.RFC3339Nano, stamp)
+	if err != nil {
+		return err
+	}
+	if !now.After(at) {
+		return fmt.Errorf("%w: #%d was archived at %s; restore it with mem_update archive=false first",
+			ErrArchivedLater, id, archivedAt)
+	}
+	_, err = tx.ExecContext(ctx, `update memories set status='active', updated_at=? where id=?`, stamp, id)
+	return err
 }
 
 func (s *Service) update(ctx context.Context, tx *sql.Tx, id int64, oldTitle, oldBody string, in SaveInput, hash, stamp string) error {

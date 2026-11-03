@@ -1,0 +1,30 @@
+{
+  "kind": "polisher",
+  "base": "e961a9e633b14bc868f37dd9ee975db559e1dce4",
+  "head": "895bacf21a38375f5ac20db576053393d7004f50",
+  "diff_sha256": "40a7aeea5796862b31554b5341ed23dcffedb4a0a8da50fc302c21b4193b8647",
+  "findings": {
+    "findings": [
+      {
+        "location": "internal/memory/deleted.go:deletedHolders",
+        "severity": "SUGGESTION",
+        "claim": "Some memories are matched only by topic key or exact content because their observation was never imported. That fallback cannot tell a mirror from an independent memory that shares the key or text, so such a memory is archived if it was last written before the deletion. Keys that claimTopicKey moved to <key>~N are never found, which is a miss and loses nothing.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "evidence": [
+          "deletedHolders matches only on project, scope, and topic_key or content_hash.",
+          "This is intended by the spec (L4) and documented in the README."
+        ]
+      }
+    ],
+    "evidence": [
+      "Read the full diff and spec S2/L4.",
+      "Indexes idx_memories_hash, idx_memories_topic and idx_import_map_memory exist, so 1,200 deleted rows cost a few indexed queries each.",
+      "The live set in FromEngram covers every row with deleted_at null.",
+      "The recordParts refactor keeps the order of defaulting, redaction, splitting, empty check, title fallback and part naming.",
+      "Kept: unparsable updated_at; at or after deletion+1s; live key, hash or mapping. Explicit restores survive a rerun.",
+      "Split parts, the unassigned project and scope handling are consistent on both sides.",
+      "No tests run."
+    ]
+  }
+}

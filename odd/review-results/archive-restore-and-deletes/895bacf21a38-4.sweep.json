@@ -1,0 +1,37 @@
+{
+  "kind": "sweep",
+  "base": "e961a9e633b14bc868f37dd9ee975db559e1dce4",
+  "head": "895bacf21a38375f5ac20db576053393d7004f50",
+  "diff_sha256": "40a7aeea5796862b31554b5341ed23dcffedb4a0a8da50fc302c21b4193b8647",
+  "outcome": "fired",
+  "t1": {
+    "deleted_or_renamed": [],
+    "removed_names": []
+  },
+  "t2": [
+    {
+      "tool": "errcheck",
+      "module": ".",
+      "new": [
+        "internal/cli/import_test.go: unchecked error: edb.Close()",
+        "internal/importer/deleted_test.go: unchecked error: defer db.Close()",
+        "internal/importer/engram.go: unchecked error: defer rows.Close()",
+        "internal/memory/deleted.go: unchecked error: defer keys.Close()",
+        "internal/memory/deleted.go: unchecked error: defer rows.Close()",
+        "internal/memory/deleted.go: unchecked error: defer tx.Rollback()"
+      ]
+    },
+    {
+      "tool": "nilerr",
+      "module": ".",
+      "new": [
+        "internal/memory/deleted.go: error is not nil but it returns nil"
+      ]
+    }
+  ],
+  "t3": [],
+  "t4": {
+    "leftovers": [],
+    "orphaned_fixtures": []
+  }
+}

@@ -56,6 +56,32 @@ func TestImportEngramCommand(t *testing.T) {
 	}
 }
 
+func TestImportEngramArchivesWhatEngramDeleted(t *testing.T) {
+	db, src := newDB(t), fakeEngramDB(t)
+	if code, _, errOut := run(t, db, "", "import", "engram", src); code != 0 {
+		t.Fatalf("code=%d err=%q", code, errOut)
+	}
+	edb, err := sql.Open("sqlite", src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := edb.Exec(`update observations set deleted_at = '2099-01-01 00:00:00' where id = 2`); err != nil {
+		t.Fatal(err)
+	}
+	edb.Close()
+
+	code, out, errOut := run(t, db, "", "import", "engram", src)
+	if code != 0 || !strings.Contains(out, "archived deleted: 1\n") {
+		t.Fatalf("code=%d out=%q err=%q", code, out, errOut)
+	}
+	if _, out, _ := run(t, db, "", "search", "--project", "proj", "beta"); strings.Contains(out, "Second") {
+		t.Errorf("archived memory still found without --all: %q", out)
+	}
+	if _, out, _ := run(t, db, "", "import", "engram", src); !strings.Contains(out, "archived deleted: 0\n") {
+		t.Errorf("rerun output = %q", out)
+	}
+}
+
 func TestImportEngramFailuresAndUsage(t *testing.T) {
 	db := newDB(t)
 	if code, _, errOut := run(t, db, "", "import", "engram", filepath.Join(t.TempDir(), "missing.db")); code != 1 || !strings.Contains(errOut, "missing.db") {

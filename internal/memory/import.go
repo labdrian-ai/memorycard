@@ -106,20 +106,13 @@ func (s *Service) importOne(ctx context.Context, tx *sql.Tx, r ImportRecord, rep
 		return err
 	}
 
-	project := strings.TrimSpace(r.Project)
-	if project == "" {
-		project = unassignedProject
+	parts, err := recordParts(r)
+	if err != nil {
+		return err
 	}
-	title := redact(strings.TrimSpace(r.Title))
-	body := redact(strings.TrimSpace(r.Body))
-	parts := contentParts(body)
 	if len(parts) == 0 {
 		rep.Empty++
 		return nil
-	}
-	// A fully private title must not drop a body that still has content.
-	if !hasContent(title) {
-		title = titleFromBody(parts[0])
 	}
 
 	created, updated := stampOf(r.CreatedAt, s.now), stampOf(r.UpdatedAt, s.now)
@@ -127,18 +120,8 @@ func (s *Service) importOne(ctx context.Context, tx *sql.Tx, r ImportRecord, rep
 		updated = created
 	}
 
-	for i, part := range parts {
-		in := SaveInput{Project: project, Scope: r.Scope, Type: r.Type, Title: title, Body: part, TopicKey: r.TopicKey}
-		if len(parts) > 1 {
-			in.Title = fmt.Sprintf("%s (part %d/%d)", title, i+1, len(parts))
-			if i > 0 && in.TopicKey != "" {
-				in.TopicKey = fmt.Sprintf("%s/part-%d", topicKey(in.TopicKey), i+1)
-			}
-		}
-		in, err := normalize(in)
-		if err != nil {
-			return err
-		}
+	for i, in := range parts {
+		var err error
 		if in.TopicKey != "" {
 			if in.TopicKey, err = claimTopicKey(ctx, tx, in, i > 0); err != nil {
 				return err
@@ -168,6 +151,43 @@ func (s *Service) importOne(ctx context.Context, tx *sql.Tx, r ImportRecord, rep
 		rep.Chunked++
 	}
 	return nil
+}
+
+// recordParts returns the normalized memories a record is stored as: one, or
+// numbered parts when its body is too large. It returns none when nothing is
+// left after redaction. Topic keys are the source's, before claimTopicKey
+// moves a taken one.
+func recordParts(r ImportRecord) ([]SaveInput, error) {
+	project := strings.TrimSpace(r.Project)
+	if project == "" {
+		project = unassignedProject
+	}
+	title := redact(strings.TrimSpace(r.Title))
+	body := redact(strings.TrimSpace(r.Body))
+	parts := contentParts(body)
+	if len(parts) == 0 {
+		return nil, nil
+	}
+	// A fully private title must not drop a body that still has content.
+	if !hasContent(title) {
+		title = titleFromBody(parts[0])
+	}
+	ins := make([]SaveInput, len(parts))
+	for i, part := range parts {
+		in := SaveInput{Project: project, Scope: r.Scope, Type: r.Type, Title: title, Body: part, TopicKey: r.TopicKey}
+		if len(parts) > 1 {
+			in.Title = fmt.Sprintf("%s (part %d/%d)", title, i+1, len(parts))
+			if i > 0 && in.TopicKey != "" {
+				in.TopicKey = fmt.Sprintf("%s/part-%d", topicKey(in.TopicKey), i+1)
+			}
+		}
+		in, err := normalize(in)
+		if err != nil {
+			return nil, err
+		}
+		ins[i] = in
+	}
+	return ins, nil
 }
 
 // claimTopicKey returns the topic key a new imported row may use, keeping one

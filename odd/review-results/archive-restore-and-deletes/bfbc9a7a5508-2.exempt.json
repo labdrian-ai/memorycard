@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "895bacf21a38375f5ac20db576053393d7004f50",
+    "head": "bfbc9a7a5508256ec112f4ce463aff2ef9c19eb3",
+    "diff_sha256": "f4f66e5ad619a3dfef86ff290cf3f9e260cd296b80ef0e9f3ba6858b3822260c",
+    "paths": [
+      "README.md",
+      "internal/mcpserver/server.go",
+      "internal/mcpserver/server_test.go",
+      "odd/review-results/archive-restore-and-deletes/895bacf21a38-1.sweep.json",
+      "odd/review-results/archive-restore-and-deletes/895bacf21a38-2.sweep.json",
+      "odd/review-results/archive-restore-and-deletes/895bacf21a38-3.sweep.json",
+      "odd/review-results/archive-restore-and-deletes/895bacf21a38-4.sweep.json",
+      "odd/review-results/archive-restore-and-deletes/895bacf21a38-5.sweeper.json",
+      "odd/review-results/archive-restore-and-deletes/895bacf21a38-6.polisher.json",
+      "odd/review-results/archive-restore-and-deletes/895bacf21a38-7.json",
+      "odd/tasks/archive-restore-and-deletes.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go vet ./...",
+        "result": "pass",
+        "output": "no output"
+      },
+      {
+        "command": "go test ./...",
+        "result": "pass",
+        "output": "all packages ok (accept, bench, cli, embed, importer, mcpserver, memory, project, render, store)"
+      },
+      {
+        "command": "go test ./internal/mcpserver -v -run 'TestCwd|TestExposes|TestProjectDefault'",
+        "result": "pass",
+        "output": "TestCwdResolvesTheProjectOnEachCall, TestCwdMustBeAnExistingAbsoluteDirectory, TestProjectDefaultAndExplicit and TestExposesExactlySixToolsWithinTokenBudget pass; definitions about 971 tokens, budget 1500"
+      }
+    ]
+  }
+}

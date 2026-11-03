@@ -1,0 +1,19 @@
+{
+  "kind": "sweep",
+  "base": "83c1bd811d6ec261db83e220865a3caaaa6dd42d",
+  "head": "e961a9e633b14bc868f37dd9ee975db559e1dce4",
+  "diff_sha256": "4753b0beb276346d755bf230eb7db87ecca5d9d2e1aa7d6a6f4ef4d84f68c8b6",
+  "outcome": "fired",
+  "t1": {
+    "deleted_or_renamed": [],
+    "removed_names": []
+  },
+  "t2": [],
+  "t3": [
+    "?? internal/importer/deleted_test.go"
+  ],
+  "t4": {
+    "leftovers": [],
+    "orphaned_fixtures": []
+  }
+}
