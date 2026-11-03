@@ -15,7 +15,7 @@ memory they can save to and search by meaning, across sessions and across
 agents, without a service or a cloud account. It speaks MCP, so it works with
 Claude Code, Codex, OpenCode, Pi and any other MCP client.
 
-Status: v0.1, episodic memory (decisions, fixes, discoveries, session summaries).
+Status: v0.2, episodic memory (decisions, fixes, discoveries, session summaries).
 
 ## Why
 
@@ -227,7 +227,18 @@ pipeline as a held-out check: one memory per session, every question of a
 conversation over that conversation's sessions, answerable questions
 (categories 1-4) judged with
 [Mem0's LoCoMo judge prompt](https://github.com/mem0ai/mem0/blob/aae5989e78a6188b3b047c104d960c9ad0927e75/evaluation/metrics/llm_judge.py)
-and adversarial ones (category 5) as abstention.
+and adversarial ones (category 5) as abstention. On a 400-question sample
+(seed 20261029), top 10 sessions, `gpt-6.1-sol` as reader and judge:
+
+| Reader | all | answerable (1-4) | adversarial (5) |
+|---|---|---|---|
+| official | 82.8 % | 90.2 % | 58.9 % |
+| careful | 88.0 % | 88.9 % | 85.3 % |
+
+Nothing was tuned on LoCoMo. The careful reader gains 25 adversarial
+questions and loses none, at the cost of 5 answerable ones: the same trade
+as on the LongMemEval `test` half. Per-question results are not published
+because they quote the dataset.
 
 ## Development
 
