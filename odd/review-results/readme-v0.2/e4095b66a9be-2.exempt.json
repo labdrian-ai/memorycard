@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "5f4094f76542a4322f559975cc20bc50bc0017ee",
+    "head": "e4095b66a9be3b21e4cec9c099559cfbc298aef2",
+    "diff_sha256": "95f658701d21118c79f6051ca9c08444926b2dbb7a99294a722b7ecbabe8342f",
+    "paths": [
+      "README.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "git diff --stat main",
+        "result": "pass",
+        "output": "README.md only: status line and a LoCoMo results table"
+      }
+    ]
+  }
+}
