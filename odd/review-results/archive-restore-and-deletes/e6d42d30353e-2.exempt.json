@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "bfbc9a7a5508256ec112f4ce463aff2ef9c19eb3",
+    "head": "e6d42d30353e1c08fe6252aa0fd9c8c10015aa37",
+    "diff_sha256": "c88b82e94179be2f2d6ba63e257e4e1b8c13b20cdb3a82598c22ddd777a1a9d3",
+    "paths": [
+      "odd/review-results/archive-restore-and-deletes/bfbc9a7a5508-1.sweep.json",
+      "odd/review-results/archive-restore-and-deletes/bfbc9a7a5508-2.exempt.json",
+      "odd/tasks/archive-restore-and-deletes.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of odd/tasks/archive-restore-and-deletes.md",
+        "result": "pass",
+        "output": "L7 appended; records are JSON added unchanged"
+      }
+    ]
+  }
+}
