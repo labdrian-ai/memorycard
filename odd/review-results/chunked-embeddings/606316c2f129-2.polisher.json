@@ -1,0 +1,31 @@
+{
+  "kind": "polisher",
+  "base": "9c0d09c336576369c1f17862f97c9575e2ba8cd9",
+  "head": "606316c2f129762706db2392ac9ab1d11fc13aab",
+  "diff_sha256": "c4a604260eb5db72f4a75f74c0ef9c810e48b5fdfa63787b89fdf0e407a4f201",
+  "findings": {
+    "findings": [
+      {
+        "location": "internal/memory/vectors.go:56-61",
+        "severity": "SUGGESTION",
+        "claim": "SetMaxChunks(1) makes every memory with a body over 1,500 characters match missingChunks permanently. chunkTexts then never produces a chunk above 0, so no chunk_vectors row is ever written. EmbedPending would re-embed those memories on every call and return a non-zero count each time, and Stats.WithoutEmbedding would never reach 0. The comment on missingChunks says a selected memory 'always gets a chunk and stops matching', which is false when the cap is 1. A cap of 2 or more is fine, and the test covers 2.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "evidence": [
+          "missingChunks selects a memory when length(m.body) > 1500 and it has no chunk_vectors row.",
+          "chunkTexts breaks out of its loop when len(texts) >= maxChunks, so with maxChunks == 1 it returns only chunk 0.",
+          "putVectors then inserts no chunk_vectors rows, so the pending condition holds on the next call.",
+          "grep over the worktree found no production caller of SetMaxChunks. Only chunks_test.go uses it, with a cap of 2, so nothing reaches the loop today. I did not run it."
+        ]
+      }
+    ],
+    "evidence": [
+      "Read the full diff at /tmp/claude-1000/-home-labdrian-memorycard/edac5f46-498c-4fe3-85f6-f95089fb9d46/scratchpad/t1.diff.",
+      "Read buildFilter, Search and the dense pool size in search.go. The union query argument order (model, f.args, model, f.args) is correct. The filter parts are joined with 'and' and the project clause is parenthesised, so there is no precedence problem.",
+      "The v4 migration only creates chunk_vectors, with a cascade foreign key and a primary key on (memory_id, chunk). It does not touch vectors, so no data is lost.",
+      "putVectors writes chunk 0, deletes old chunks and inserts new ones in a single transaction, so an update or a model change replaces all chunks atomically.",
+      "EmbedPending: with no cap and the rune/character comparison reasoned from the diff text, a memory selected as pending always gets a chunk 1 and stops matching. I did not run the tests or the code.",
+      "Read the first line of the spec file's '## Log' heading but not the spec text above it in full. The review rests on the diff, the search.go excerpt and the task description in the prompt."
+    ]
+  }
+}

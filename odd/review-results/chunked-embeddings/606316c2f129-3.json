@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "9c0d09c336576369c1f17862f97c9575e2ba8cd9",
+    "head": "606316c2f129762706db2392ac9ab1d11fc13aab",
+    "diff_sha256": "c4a604260eb5db72f4a75f74c0ef9c810e48b5fdfa63787b89fdf0e407a4f201",
+    "paths": [
+      "internal/bench/longmemeval_test.go",
+      "internal/memory/chunks_test.go",
+      "internal/memory/embed_test.go",
+      "internal/memory/ops.go",
+      "internal/memory/save.go",
+      "internal/memory/search.go",
+      "internal/memory/vectors.go",
+      "internal/store/schema.go",
+      "internal/store/store_test.go",
+      "odd/review-results/locomo-benchmark/9c0d09c33657-1.sweep.json",
+      "odd/review-results/locomo-benchmark/9c0d09c33657-2.exempt.json",
+      "odd/review-results/longmemeval-benchmark/9c0d09c33657-1.sweep.json",
+      "odd/review-results/longmemeval-benchmark/9c0d09c33657-2.exempt.json",
+      "odd/tasks/chunked-embeddings.md"
+    ]
+  },
+  "rows": [
+    "default",
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "9c0d09c336576369c1f17862f97c9575e2ba8cd9",
+      "head": "606316c2f129762706db2392ac9ab1d11fc13aab",
+      "diff_sha256": "c4a604260eb5db72f4a75f74c0ef9c810e48b5fdfa63787b89fdf0e407a4f201"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "internal/bench/longmemeval_test.go",
+        "internal/memory/chunks_test.go",
+        "internal/memory/embed_test.go",
+        "internal/memory/ops.go",
+        "internal/memory/save.go",
+        "internal/memory/search.go",
+        "internal/memory/vectors.go",
+        "internal/store/schema.go",
+        "internal/store/store_test.go",
+        "odd/review-results/locomo-benchmark/9c0d09c33657-1.sweep.json",
+        "odd/review-results/locomo-benchmark/9c0d09c33657-2.exempt.json",
+        "odd/review-results/longmemeval-benchmark/9c0d09c33657-1.sweep.json",
+        "odd/review-results/longmemeval-benchmark/9c0d09c33657-2.exempt.json",
+        "odd/tasks/chunked-embeddings.md"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "location": "internal/memory/vectors.go:148-161",
+        "severity": "WARNING",
+        "claim": "Before this change, one embedder request held at most 8 texts (the `embed` --limit), each capped at 1,500 runes. Now index() and EmbedPending send every chunk of every selected memory in a single Embed call. maxChunks defaults to 0 (no cap), SetMaxChunks is called only from a test, and no body size limit exists. So one request can hold 8 x ceil(len/1500) texts, about 88 for the store's longest body of 16,277 characters and more for larger bodies. The Ollama client has a fixed 60 s HTTP timeout (internal/embed/ollama.go:34), and the help text of the cli `embed --limit` flag already warns 'large notes time out in bigger batches' (internal/cli/cli.go:266). If a batch times out, EmbedPending returns 0 with an error and stores nothing. It always picks the same first pending memories (`order by m.id limit ?`), so rerunning `embed` fails on the same batch, and every later memory, including memories that have no chunk 0 at all, never gets embedded. Lowering --limit to 1 does not help once a single memory's chunks exceed the timeout. On save, the same failure means a long memory no longer gets even the chunk-0 vector it always got before. Its save returns only an 'embedding pending' warning and it drops out of dense search. This puts at risk the S3 in-place upgrade through `memorycard embed` on the live store (about 7,100 extra chunks on CPU, per L1).",
+        "evidence_class": "inferential",
+        "causal_disposition": "worsened",
+        "proof_refs": [
+          "diff hunk internal/memory/vectors.go @@ -91,16 +145,19 @@: texts = append(texts, s.chunkTexts(it.title, it.body)...) followed by a single s.embedder.Embed(ctx, texts, ...)",
+          "diff hunk internal/memory/vectors.go @@ -40,37 +47,84 @@: index now embeds s.chunkTexts(title, body) instead of []string{embedText(title, body)}",
+          "internal/memory/save.go:58-59 maxChunks zero value means no cap; the only caller of SetMaxChunks is internal/memory/chunks_test.go:100",
+          "internal/embed/ollama.go:34 http.Client{Timeout: 60 * time.Second}",
+          "internal/cli/cli.go:266-282 limit default 8 'large notes time out in bigger batches'; the loop aborts on the first error"
+        ]
+      }
+    ],
+    "evidence": [
+      "Read the full candidate diff at /tmp/claude-1000/-home-labdrian-memorycard/edac5f46-498c-4fe3-85f6-f95089fb9d46/scratchpad/t1-full.diff (all 14 changed paths)",
+      "Read the S2-S4 criteria in odd/tasks/chunked-embeddings.md as shown in the diff",
+      "Read /home/labdrian/memorycard-worktrees/review-606316c2f129/internal/memory/vectors.go:120-229 (EmbedPending, nearest, afterWrite)",
+      "Read /home/labdrian/memorycard-worktrees/review-606316c2f129/internal/embed/ollama.go (single request per Embed call, 60 s timeout, vector count check)",
+      "Read /home/labdrian/memorycard-worktrees/review-606316c2f129/internal/cli/cli.go:250-285 (embed loop and default --limit 8)",
+      "Read /home/labdrian/memorycard-worktrees/review-606316c2f129/internal/bench/longmemeval.go:255-281 (EmbedPending limit 32 in the bench)",
+      "Grep of the worktree for vectors/index/maxChunks usage: index is called only from afterWrite, and no other code path writes or deletes vectors that could leave stale chunk_vectors",
+      "Checked schema v4: it only adds the chunk_vectors table, with an on-delete cascade and a (memory_id, chunk) primary key, and leaves existing vectors rows untouched (S2)",
+      "Checked that the duplicate hint (nearest) still reads only vectors, i.e. chunk 0 (S3), and that dense scores each memory by its best chunk with deterministic tie-breaking by id (S4)",
+      "Checked that putVectors is transactional, so a memory cannot be left with only some of its chunks, and that missingChunks therefore terminates for maxChunks=0 or >=2",
+      "No tests or commands were run (reviewer role is read-only)"
+    ]
+  }
+}

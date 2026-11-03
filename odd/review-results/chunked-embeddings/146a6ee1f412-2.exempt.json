@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "8d70560121f562a693cc031c3c9d4b2d3328f30e",
+    "head": "146a6ee1f412046dddfe1afd3493735b4307d943",
+    "diff_sha256": "808c84ee16427b97223ccd4f7fd9dc03f4e808c29e9cc2a15616e6bcc21a2fac",
+    "paths": [
+      "cmd/mc-bench/main.go",
+      "internal/bench/longmemeval.go",
+      "internal/bench/longmemeval_test.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go test ./internal/bench/ -run MaxChunksOne (before the change)",
+        "result": "pass",
+        "output": "RED as expected: unknown field MaxChunks in struct literal of type Setup"
+      },
+      {
+        "command": "go vet ./... && go test ./...",
+        "result": "pass",
+        "output": "all 10 packages ok; with MaxChunks 1 the answer beyond the first chunk is not ranked first, as before v4"
+      }
+    ]
+  }
+}

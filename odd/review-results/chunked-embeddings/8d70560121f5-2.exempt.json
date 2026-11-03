@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "606316c2f129762706db2392ac9ab1d11fc13aab",
+    "head": "8d70560121f562a693cc031c3c9d4b2d3328f30e",
+    "diff_sha256": "932221be4b0297e89267c3610b7d23b31f77936d39be3e31dd3fefd82e1c6b27",
+    "paths": [
+      "internal/cli/cli.go",
+      "internal/memory/chunks_test.go",
+      "internal/memory/embed_test.go",
+      "internal/memory/ops.go",
+      "internal/memory/vectors.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go test ./internal/memory/ -run MaxChunksOne|EmbedBatch (before the change)",
+        "result": "pass",
+        "output": "RED as expected: without embedding = 1, want 0; undefined: EmbedBatch"
+      },
+      {
+        "command": "go vet ./... && go test ./...",
+        "result": "pass",
+        "output": "all 10 packages ok"
+      }
+    ]
+  }
+}
