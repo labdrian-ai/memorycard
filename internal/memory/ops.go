@@ -167,11 +167,12 @@ func (s *Service) Update(ctx context.Context, id int64, in UpdateInput) (SaveRes
 		res.Action = ActionUpdated
 	}
 	if in.Archive != nil {
-		q := `update memories set status = 'archived' where id = ? and status = 'active'`
+		// updated_at records when, so a later save can tell whether it is newer.
+		q := `update memories set status = 'archived', updated_at = ? where id = ? and status = 'active'`
 		if !*in.Archive {
-			q = `update memories set status = 'active' where id = ? and status = 'archived'`
+			q = `update memories set status = 'active', updated_at = ? where id = ? and status = 'archived'`
 		}
-		if _, err := tx.ExecContext(ctx, q, id); err != nil {
+		if _, err := tx.ExecContext(ctx, q, stamp, id); err != nil {
 			return SaveResult{}, err
 		}
 		res.Action = ActionUpdated

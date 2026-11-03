@@ -28,7 +28,8 @@ Status: v0.2, episodic memory (decisions, fixes, discoveries, session summaries)
 - **Never silently degraded.** If the embedder is down, search falls back to
   BM25 and says `mode: lexical`. Notes over 16 KB are saved as numbered parts
   of about 12 KB, never truncated; saving the same `topic_key` again updates
-  the parts in place.
+  the parts in place. A save that lands on an archived memory (same
+  `topic_key`, or the same title and body) restores it and says so.
 - **Honest about confidence.** `confidence: low` flags results for questions
   the store knows nothing about. It cannot tell whether related memories hold
   the exact fact asked for (no retrieval score separates those cases), so the

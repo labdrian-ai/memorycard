@@ -173,6 +173,21 @@ func TestUpdateThenContext(t *testing.T) {
 	}
 }
 
+func TestSaveOverAnArchivedMemoryRestoresIt(t *testing.T) {
+	cs := connect(t, "p")
+	call(t, cs, "mem_save", map[string]any{"title": "Plan", "body": "v1", "topic_key": "plan"})
+	if out, isErr := call(t, cs, "mem_update", map[string]any{"id": 1, "archive": true}); isErr {
+		t.Fatalf("archive: %q", out)
+	}
+	out, isErr := call(t, cs, "mem_save", map[string]any{"title": "Plan", "body": "v2", "topic_key": "plan"})
+	if isErr || !strings.Contains(out, "updated #1") || !strings.Contains(out, "restored #1 from the archive") {
+		t.Errorf("save = %q (error=%v), want updated #1 and a restored warning", out, isErr)
+	}
+	if out, _ := call(t, cs, "mem_context", nil); !strings.Contains(out, "#1") {
+		t.Errorf("restored memory missing from the digest: %q", out)
+	}
+}
+
 func TestSessionActions(t *testing.T) {
 	cs := connect(t, "p")
 	if out, isErr := call(t, cs, "mem_session", map[string]any{"action": "start", "id": "s1"}); isErr {
