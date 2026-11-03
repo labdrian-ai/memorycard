@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "146a6ee1f412046dddfe1afd3493735b4307d943",
+    "head": "58f0d7928286bf6d12df7c61617c4ef612510f24",
+    "diff_sha256": "77284df32cf41842bdb7a6ab812cfcaab7bce1b029d4676a783c4e46175be9aa",
+    "paths": [
+      "odd/review-results/chunked-embeddings/146a6ee1f412-1.sweep.json",
+      "odd/review-results/chunked-embeddings/146a6ee1f412-2.exempt.json",
+      "odd/review-results/chunked-embeddings/606316c2f129-1.sweep.json",
+      "odd/review-results/chunked-embeddings/606316c2f129-2.polisher.json",
+      "odd/review-results/chunked-embeddings/606316c2f129-3.json",
+      "odd/review-results/chunked-embeddings/8d70560121f5-1.sweep.json",
+      "odd/review-results/chunked-embeddings/8d70560121f5-2.exempt.json",
+      "odd/tasks/chunked-embeddings.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "git diff --stat 146a6ee 58f0d79",
+        "result": "pass",
+        "output": "docs and review records only:  8 files changed, 232 insertions(+), 4 deletions(-)"
+      }
+    ]
+  }
+}
