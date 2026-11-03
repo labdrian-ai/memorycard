@@ -132,7 +132,11 @@ memorycard embed
 
 The import is read-only on the source, resumable, merges exact duplicates,
 splits oversized notes into parts instead of truncating, and maps judged
-`supersedes` relations.
+`supersedes` relations. Rerun it to reconcile deletions: a memory that copies
+an observation Engram has since deleted (imported, or with its `topic_key` or
+its exact content) is archived, unless it was written after the deletion or a
+live observation still holds that key or content. `archived deleted` counts
+them.
 
 ## Benchmark
 

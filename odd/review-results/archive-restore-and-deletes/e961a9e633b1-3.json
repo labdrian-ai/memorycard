@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "83c1bd811d6ec261db83e220865a3caaaa6dd42d",
+    "head": "e961a9e633b14bc868f37dd9ee975db559e1dce4",
+    "diff_sha256": "4753b0beb276346d755bf230eb7db87ecca5d9d2e1aa7d6a6f4ef4d84f68c8b6",
+    "paths": [
+      "internal/memory/archive_test.go",
+      "internal/memory/ops.go",
+      "internal/memory/save.go",
+      "odd/review-results/archive-restore-and-deletes/83c1bd811d6e-1.sweep.json",
+      "odd/review-results/archive-restore-and-deletes/83c1bd811d6e-2.polisher.json",
+      "odd/review-results/archive-restore-and-deletes/83c1bd811d6e-3.json"
+    ]
+  },
+  "rows": [
+    "default",
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "83c1bd811d6ec261db83e220865a3caaaa6dd42d",
+      "head": "e961a9e633b14bc868f37dd9ee975db559e1dce4",
+      "diff_sha256": "4753b0beb276346d755bf230eb7db87ecca5d9d2e1aa7d6a6f4ef4d84f68c8b6"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "internal/memory/ops.go",
+        "internal/memory/save.go",
+        "internal/memory/archive_test.go",
+        "odd/review-results/archive-restore-and-deletes/83c1bd811d6e-1.sweep.json",
+        "odd/review-results/archive-restore-and-deletes/83c1bd811d6e-2.polisher.json",
+        "odd/review-results/archive-restore-and-deletes/83c1bd811d6e-3.json"
+      ],
+      "reason": ""
+    },
+    "findings": [],
+    "evidence": [
+      "Read t1fix.diff.",
+      "ops.go:169-181: archive still stamps; restore keeps the archive time; args stay aligned with the placeholders.",
+      "save.go:301-310: rows.Err() is checked before Close.",
+      "archive_test now compares parsed times and pins that a restore keeps the archive time.",
+      "Risk: 1 is consistent with the diff; no migration was added.",
+      "Not run: tests and builds."
+    ]
+  }
+}

@@ -26,14 +26,17 @@ const (
 type Result struct {
 	memory.ImportReport
 	SkippedDeleted  int // soft-deleted observations, not imported
+	ArchivedDeleted int // memories archived because their observation was deleted
 	UnusedRelations int // relations that are not judged supersedes (pending, related, ...)
 	BadTimestamps   int // timestamps that could not be parsed and fell back to now
 }
 
-// FromEngram imports the live observations of an Engram database and maps
-// its judged "supersedes" relations to superseded_by. It is resumable: rerun
-// it and only what is missing is imported. progress, if set, is called after
-// each batch with the number of source rows handled and the total.
+// FromEngram imports the live observations of an Engram database, maps its
+// judged "supersedes" relations to superseded_by, and archives the memories
+// that copy an observation Engram has since deleted (see
+// memory.Service.ArchiveDeleted). It is resumable: rerun it and only what is
+// missing is done. progress, if set, is called after each batch with the
+// number of source rows handled and the total.
 func FromEngram(ctx context.Context, dst *memory.Service, path string, progress func(done, total int)) (Result, error) {
 	var res Result
 	abs, err := filepath.Abs(path)
@@ -71,7 +74,7 @@ func FromEngram(ctx context.Context, dst *memory.Service, path string, progress 
 	}
 	defer rows.Close()
 
-	var batch []memory.ImportRecord
+	var batch, live []memory.ImportRecord
 	done := 0
 	flush := func() error {
 		if len(batch) == 0 {
@@ -105,6 +108,7 @@ func FromEngram(ctx context.Context, dst *memory.Service, path string, progress 
 		r.UpdatedAt, bad = parseTime(updated, bad)
 		res.BadTimestamps += bad
 		batch = append(batch, r)
+		live = append(live, r)
 		if len(batch) == batchSize {
 			if err := flush(); err != nil {
 				return res, err
@@ -129,7 +133,49 @@ func FromEngram(ctx context.Context, dst *memory.Service, path string, progress 
 	}
 	res.ImportReport.Add(rep)
 	res.LinksSkipped += dangling
+
+	deleted, err := deletedRows(ctx, src)
+	if err != nil {
+		return res, err
+	}
+	if res.ArchivedDeleted, err = dst.ArchiveDeleted(ctx, deleted, live); err != nil {
+		return res, err
+	}
 	return res, nil
+}
+
+// deletedRows returns the soft-deleted observations. Engram stores deleted_at
+// to the second, so a deletion is taken to end with its second: a copy
+// written in that same second is treated as older.
+func deletedRows(ctx context.Context, src *sql.DB) ([]memory.DeletedRecord, error) {
+	rows, err := src.QueryContext(ctx,
+		`select id, type, title, content, project, scope, topic_key, deleted_at
+		 from observations where deleted_at is not null order by id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []memory.DeletedRecord
+	for rows.Next() {
+		var id int64
+		var d memory.DeletedRecord
+		var project, topic sql.NullString
+		var deletedAt string
+		if err := rows.Scan(&id, &d.Type, &d.Title, &d.Body, &project, &d.Scope, &topic, &deletedAt); err != nil {
+			return nil, err
+		}
+		at, bad := parseTime(deletedAt, 0)
+		if bad > 0 {
+			continue // no time to compare against: never archive on a guess
+		}
+		if at.Nanosecond() == 0 {
+			at = at.Add(time.Second)
+		}
+		d.Source, d.Key = sourceName, fmt.Sprint(id)
+		d.Project, d.TopicKey, d.Before = project.String, topic.String, at
+		out = append(out, d)
+	}
+	return out, rows.Err()
 }
 
 // supersessions returns the judged supersedes relations whose two ends exist

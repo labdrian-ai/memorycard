@@ -1,0 +1,40 @@
+{
+  "kind": "polisher",
+  "base": "83c1bd811d6ec261db83e220865a3caaaa6dd42d",
+  "head": "e961a9e633b14bc868f37dd9ee975db559e1dce4",
+  "diff_sha256": "4753b0beb276346d755bf230eb7db87ecca5d9d2e1aa7d6a6f4ef4d84f68c8b6",
+  "findings": {
+    "findings": [
+      {
+        "location": "internal/memory/ops.go:169-181",
+        "severity": "WARNING",
+        "claim": "Archiving still stamps updated_at with the current time, so an archive followed by a restore leaves a long-stale memory looking fresh. Only the restore-time stamp was removed.",
+        "evidence_class": "deterministic",
+        "causal_disposition": "pre-existing",
+        "evidence": [
+          "ops.go:173 stamps updated_at on archive.",
+          "ops.go:175 restore keeps it.",
+          "Context() groups stale memories by updated_at."
+        ]
+      },
+      {
+        "location": "internal/memory/save.go:337-352",
+        "severity": "SUGGESTION",
+        "claim": "No defect found: restore-then-save and restore-then-re-archive behave correctly, and the rows.Err() check is correct.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "evidence": [
+          "save.go:258 calls restore() only for archived rows.",
+          "ops.go:173 re-archive stamps a fresh time.",
+          "save.go:304-307 closes rows on the error path."
+        ]
+      }
+    ],
+    "evidence": [
+      "Read t1fix.diff in full.",
+      "Read save.go 244-352 and ops.go 125-194 in the worktree.",
+      "Grepped for updated_at and stale under internal/.",
+      "No tests run."
+    ]
+  }
+}
