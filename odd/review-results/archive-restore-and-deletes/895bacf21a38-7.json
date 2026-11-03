@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "e961a9e633b14bc868f37dd9ee975db559e1dce4",
+    "head": "895bacf21a38375f5ac20db576053393d7004f50",
+    "diff_sha256": "40a7aeea5796862b31554b5341ed23dcffedb4a0a8da50fc302c21b4193b8647",
+    "paths": [
+      "README.md",
+      "internal/cli/cli.go",
+      "internal/cli/import_test.go",
+      "internal/importer/deleted_test.go",
+      "internal/importer/engram.go",
+      "internal/memory/deleted.go",
+      "internal/memory/import.go",
+      "odd/review-results/archive-restore-and-deletes/e961a9e633b1-1.sweep.json",
+      "odd/review-results/archive-restore-and-deletes/e961a9e633b1-2.polisher.json",
+      "odd/review-results/archive-restore-and-deletes/e961a9e633b1-3.json",
+      "odd/review-results/archive-restore-and-deletes/e961a9e633b1-4.sweeper.json",
+      "odd/tasks/archive-restore-and-deletes.md"
+    ]
+  },
+  "rows": [
+    "default",
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "e961a9e633b14bc868f37dd9ee975db559e1dce4",
+      "head": "895bacf21a38375f5ac20db576053393d7004f50",
+      "diff_sha256": "40a7aeea5796862b31554b5341ed23dcffedb4a0a8da50fc302c21b4193b8647"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "README.md",
+        "internal/cli/cli.go",
+        "internal/cli/import_test.go",
+        "internal/importer/deleted_test.go",
+        "internal/importer/engram.go",
+        "internal/memory/deleted.go",
+        "internal/memory/import.go",
+        "odd/tasks/archive-restore-and-deletes.md",
+        "odd/review-results/archive-restore-and-deletes/e961a9e633b1-1.sweep.json",
+        "odd/review-results/archive-restore-and-deletes/e961a9e633b1-2.polisher.json",
+        "odd/review-results/archive-restore-and-deletes/e961a9e633b1-3.json",
+        "odd/review-results/archive-restore-and-deletes/e961a9e633b1-4.sweeper.json"
+      ],
+      "reason": ""
+    },
+    "findings": [],
+    "evidence": [
+      "Read the full code diff t2.diff. The review-record JSON files are review output and were not code-reviewed. No commands were run.",
+      "ArchiveDeleted touches only active rows. A row is kept when its updated_at is not before the rounded-up deletion, or is unparsable, or when a live record holds its key, hash or import_map key. All of this runs in one transaction.",
+      "The archive UPDATE has the same shape as Service.Update (ops.go:173), and a rerun archives 0.",
+      "The recordParts refactor is behavior-preserving: normalize runs before the claimTopicKey loop with the same inputs.",
+      "Deleted rows with an unparsable deleted_at are skipped.",
+      "Tests cover imported, mirrored by key or content, written after the deletion, live holders, and the CLI line.",
+      "The accepted limit L3 is pre-existing."
+    ]
+  }
+}

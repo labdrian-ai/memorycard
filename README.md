@@ -103,6 +103,11 @@ MCP tools: `mem_save`, `mem_search`, `mem_get`, `mem_update`, `mem_context`,
 `mem_session`. Diagnostics (`stats`, `embed`, `import`, `version`) live in the
 CLI.
 
+The server resolves its default project once, from the directory it was
+started in. `mem_save` and `mem_context` also take `cwd` (or its alias
+`directory`), an absolute path that resolves the project on that call, the
+same way as `MEMORYCARD_PROJECT` below; an explicit `project` still wins.
+
 Agents use memory best when told when to save and search. A line like this in
 your agent instructions (`CLAUDE.md`, `AGENTS.md`) is enough to start:
 

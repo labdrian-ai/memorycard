@@ -7,10 +7,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/labdrian-ai/memorycard/internal/memory"
+	"github.com/labdrian-ai/memorycard/internal/project"
 	"github.com/labdrian-ai/memorycard/internal/render"
 )
 
@@ -56,6 +59,30 @@ func (h *handlers) proj(p string) string {
 	return h.project
 }
 
+// projIn is proj for a call that may name the caller's working directory:
+// an explicit project wins, then the project resolved from cwd (or its
+// alias directory) on this call, then the server default.
+func (h *handlers) projIn(p, cwd, directory string) (string, error) {
+	if p != "" {
+		return p, nil
+	}
+	if cwd == "" {
+		cwd = directory
+	} else if directory != "" && filepath.Clean(directory) != filepath.Clean(cwd) {
+		return "", fmt.Errorf("cwd %q and directory %q differ: pass one", cwd, directory)
+	}
+	if cwd == "" {
+		return h.project, nil
+	}
+	if !filepath.IsAbs(cwd) {
+		return "", fmt.Errorf("cwd %q must be an absolute path", cwd)
+	}
+	if fi, err := os.Stat(cwd); err != nil || !fi.IsDir() {
+		return "", fmt.Errorf("cwd %q is not an existing directory", cwd)
+	}
+	return project.Resolve(cwd, ""), nil
+}
+
 type saveArgs struct {
 	Title      string `json:"title" jsonschema:"short title"`
 	Body       string `json:"body" jsonschema:"what, why, where, learned"`
@@ -64,11 +91,17 @@ type saveArgs struct {
 	Scope      string `json:"scope,omitempty" jsonschema:"project (default), personal or global"`
 	Supersedes int64  `json:"supersedes,omitempty" jsonschema:"id of the memory this replaces"`
 	Project    string `json:"project,omitempty"`
+	Cwd        string `json:"cwd,omitempty" jsonschema:"absolute dir to resolve project from"`
+	Directory  string `json:"directory,omitempty" jsonschema:"alias of cwd"`
 }
 
 func (h *handlers) save(ctx context.Context, _ *mcp.CallToolRequest, a saveArgs) (*mcp.CallToolResult, any, error) {
+	p, err := h.projIn(a.Project, a.Cwd, a.Directory)
+	if err != nil {
+		return nil, nil, err
+	}
 	r, err := h.svc.Save(ctx, memory.SaveInput{
-		Project: h.proj(a.Project), Scope: a.Scope, Type: a.Type, Title: a.Title, Body: a.Body,
+		Project: p, Scope: a.Scope, Type: a.Type, Title: a.Title, Body: a.Body,
 		TopicKey: a.TopicKey, Supersedes: a.Supersedes,
 	})
 	if err != nil {
@@ -128,11 +161,16 @@ func (h *handlers) update(ctx context.Context, _ *mcp.CallToolRequest, a updateA
 }
 
 type contextArgs struct {
-	Project string `json:"project,omitempty"`
+	Project   string `json:"project,omitempty"`
+	Cwd       string `json:"cwd,omitempty" jsonschema:"absolute dir to resolve project from"`
+	Directory string `json:"directory,omitempty" jsonschema:"alias of cwd"`
 }
 
 func (h *handlers) context(ctx context.Context, _ *mcp.CallToolRequest, a contextArgs) (*mcp.CallToolResult, any, error) {
-	p := h.proj(a.Project)
+	p, err := h.projIn(a.Project, a.Cwd, a.Directory)
+	if err != nil {
+		return nil, nil, err
+	}
 	if p == "" {
 		return nil, nil, memory.ErrNoProject
 	}

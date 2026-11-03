@@ -3,6 +3,7 @@ package mcpserver
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -138,6 +139,75 @@ func TestProjectDefaultAndExplicit(t *testing.T) {
 	call(t, cs2, "mem_save", map[string]any{"title": "needle", "body": "haystack"})
 	if out, _ := call(t, cs2, "mem_search", map[string]any{"query": "needle", "project": "other"}); !strings.Contains(out, "no results") {
 		t.Errorf("other project leaked: %q", out)
+	}
+}
+
+// workspace returns a directory whose .memorycard file names project.
+func workspace(t *testing.T, project string) string {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, ".memorycard"), []byte(project+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func TestCwdResolvesTheProjectOnEachCall(t *testing.T) {
+	cs := connect(t, "dflt")
+	a, b := workspace(t, "alpha"), workspace(t, "beta")
+	for _, arg := range []string{"cwd", "directory"} {
+		dir := map[string]string{"cwd": a, "directory": b}[arg]
+		if out, isErr := call(t, cs, "mem_save", map[string]any{"title": "from " + arg, "body": "b " + arg, arg: dir}); isErr {
+			t.Fatalf("save with %s: %q", arg, out)
+		}
+	}
+	for project, want := range map[string]string{"alpha": "from cwd", "beta": "from directory"} {
+		dir := map[string]string{"alpha": a, "beta": b}[project]
+		if out, _ := call(t, cs, "mem_context", map[string]any{"cwd": dir}); !strings.Contains(out, want) {
+			t.Errorf("context of %s by cwd = %q, want %q", project, out, want)
+		}
+		if out, _ := call(t, cs, "mem_context", map[string]any{"directory": dir}); !strings.Contains(out, want) {
+			t.Errorf("context of %s by directory = %q, want %q", project, out, want)
+		}
+	}
+	// The server default and an explicit project are unchanged.
+	if out, _ := call(t, cs, "mem_context", map[string]any{}); !strings.Contains(out, "no memories yet") {
+		t.Errorf("default project got cwd saves: %q", out)
+	}
+	call(t, cs, "mem_save", map[string]any{"title": "named", "body": "explicit wins", "project": "gamma", "cwd": a})
+	if out, _ := call(t, cs, "mem_context", map[string]any{"project": "gamma"}); !strings.Contains(out, "named") {
+		t.Errorf("explicit project lost to cwd: %q", out)
+	}
+	if out, _ := call(t, cs, "mem_context", map[string]any{"cwd": a}); strings.Contains(out, "named") {
+		t.Errorf("explicit-project save landed in the cwd project: %q", out)
+	}
+}
+
+func TestCwdMustBeAnExistingAbsoluteDirectory(t *testing.T) {
+	cs := connect(t, "dflt")
+	file := filepath.Join(t.TempDir(), "f")
+	if err := os.WriteFile(file, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	a, b := workspace(t, "alpha"), workspace(t, "beta")
+	for name, args := range map[string]map[string]any{
+		"relative":  {"cwd": "some/dir"},
+		"missing":   {"cwd": filepath.Join(t.TempDir(), "nope")},
+		"file":      {"directory": file},
+		"disagreed": {"cwd": a, "directory": b},
+	} {
+		for _, tool := range []string{"mem_save", "mem_context"} {
+			in := map[string]any{}
+			if tool == "mem_save" {
+				in["title"], in["body"] = "t", "b"
+			}
+			for k, v := range args {
+				in[k] = v
+			}
+			if out, isErr := call(t, cs, tool, in); !isErr || !strings.Contains(out, "cwd") {
+				t.Errorf("%s %s: %q (error=%v), want an error naming cwd", tool, name, out, isErr)
+			}
+		}
 	}
 }
 
