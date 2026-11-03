@@ -301,6 +301,10 @@ func (s *Service) write(ctx context.Context, tx *sql.Tx, in SaveInput, hash, sta
 			same, sameUpdated = dup, updated
 		}
 	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return 0, "", false, err
+	}
 	if err := rows.Close(); err != nil {
 		return 0, "", false, err
 	}

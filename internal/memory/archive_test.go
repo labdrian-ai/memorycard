@@ -33,20 +33,31 @@ func restoredWarning(r SaveResult) bool {
 	return false
 }
 
-func TestArchiveAndRestoreRecordTheirTime(t *testing.T) {
+func stampTime(t *testing.T, v string) time.Time {
+	t.Helper()
+	at, err := time.Parse(time.RFC3339Nano, v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return at
+}
+
+// Archiving records its time; restoring does not, so it cannot clear a stale
+// flag the way a review does.
+func TestArchiveRecordsItsTimeAndRestoreKeepsIt(t *testing.T) {
 	s := newSvc(t)
 	id := save(t, s, SaveInput{Project: "p", Title: "t", Body: "b"}).ID
 	_, saved := statusOf(t, s, id)
 	archive(t, s, id)
 	status, archived := statusOf(t, s, id)
-	if status != "archived" || archived <= saved {
+	if status != "archived" || !stampTime(t, archived).After(stampTime(t, saved)) {
 		t.Fatalf("after archive: status %q updated_at %q, want archived and later than %q", status, archived, saved)
 	}
 	if _, err := s.Update(context.Background(), id, UpdateInput{Archive: ptr(false)}); err != nil {
 		t.Fatal(err)
 	}
-	if status, restored := statusOf(t, s, id); status != "active" || restored <= archived {
-		t.Errorf("after restore: status %q updated_at %q, want active and later than %q", status, restored, archived)
+	if status, restored := statusOf(t, s, id); status != "active" || restored != archived {
+		t.Errorf("after restore: status %q updated_at %q, want active and still %q", status, restored, archived)
 	}
 }
 

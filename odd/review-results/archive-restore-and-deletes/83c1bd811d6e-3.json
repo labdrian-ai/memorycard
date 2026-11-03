@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "0af622d661a007e3e5ec778d9c43011094eaf9ca",
+    "head": "83c1bd811d6ec261db83e220865a3caaaa6dd42d",
+    "diff_sha256": "73c6f0d3b399e7729574d1e9c3d269a604ff5c941c24c06cf4dd276b0d3b3406",
+    "paths": [
+      "README.md",
+      "internal/mcpserver/server.go",
+      "internal/mcpserver/server_test.go",
+      "internal/memory/archive_test.go",
+      "internal/memory/ops.go",
+      "internal/memory/save.go",
+      "odd/tasks/archive-restore-and-deletes.md"
+    ]
+  },
+  "rows": [
+    "default",
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "0af622d661a007e3e5ec778d9c43011094eaf9ca",
+      "head": "83c1bd811d6ec261db83e220865a3caaaa6dd42d",
+      "diff_sha256": "73c6f0d3b399e7729574d1e9c3d269a604ff5c941c24c06cf4dd276b0d3b3406"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "README.md",
+        "internal/mcpserver/server.go",
+        "internal/mcpserver/server_test.go",
+        "internal/memory/archive_test.go",
+        "internal/memory/ops.go",
+        "internal/memory/save.go",
+        "odd/tasks/archive-restore-and-deletes.md"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "location": "internal/memory/ops.go:169-178",
+        "severity": "WARNING",
+        "claim": "Restoring with mem_update archive=false now sets updated_at to the current time. That clears the stale flag of an old decision or policy memory without any content review. The spec only asks that archiving record its time.",
+        "evidence_class": "deterministic",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/ops.go:169-178",
+          "internal/memory/search.go:468-474",
+          "internal/memory/ops.go:180-185"
+        ]
+      },
+      {
+        "id": "F2",
+        "location": "internal/memory/save.go:329-347",
+        "severity": "SUGGESTION",
+        "claim": "Before this change, an archived later part was revived unconditionally. Now one with an unparsable or future updated_at aborts the whole save transaction.",
+        "evidence_class": "inferential",
+        "causal_disposition": "worsened",
+        "proof_refs": [
+          "internal/memory/save.go:137-141",
+          "internal/memory/save.go:147-153"
+        ]
+      },
+      {
+        "id": "F3",
+        "location": "internal/memory/save.go:245-330",
+        "severity": "SUGGESTION",
+        "claim": "The Risk line names only item 1. The mem_save result change (updated plus a warning, or the new ErrArchivedLater) is also a consumed contract (item 3).",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/save.go:270-310",
+          "internal/memory/archive_test.go"
+        ]
+      }
+    ],
+    "evidence": [
+      "Read the full diff t1.diff",
+      "Read odd/tasks/archive-restore-and-deletes.md (S1, L2)",
+      "Read ops.go Update and save.go Save in the worktree",
+      "Grepped updated_at, stamp and archived across the Go sources",
+      "Not run: tests, builds and any real-store run"
+    ]
+  }
+}
