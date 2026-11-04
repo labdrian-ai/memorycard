@@ -193,7 +193,7 @@ func (s *Service) find(ctx context.Context, in SearchInput) (SearchResult, error
 		}
 		switch {
 		case err == nil && s.hybrid:
-			lex, err := s.lexical(ctx, q, f, FusionLexPool)
+			lex, err := s.lexical(ctx, q, f, FusionLexPool, false)
 			if err != nil {
 				return SearchResult{}, err
 			}
@@ -205,7 +205,7 @@ func (s *Service) find(ctx context.Context, in SearchInput) (SearchResult, error
 		}
 	}
 	if res.Mode == "" {
-		lex, err := s.lexical(ctx, q, f, pool)
+		lex, err := s.lexical(ctx, q, f, pool, true)
 		if err != nil {
 			return SearchResult{}, err
 		}
@@ -346,23 +346,57 @@ var wordRe = regexp.MustCompile(`[\p{L}\p{N}_]+`)
 var foldAccents = strings.NewReplacer("á", "a", "é", "e", "í", "i", "ó", "o", "ú", "u", "ü", "u", "ñ", "n")
 
 // ftsQuery builds an OR query of quoted, accent-folded terms, so no FTS
-// operator in the user's text is ever interpreted.
-func ftsQuery(q string) string {
-	seen := map[string]bool{}
-	var terms []string
-	for _, w := range wordRe.FindAllString(strings.ToLower(q), -1) {
-		w = foldAccents.Replace(w)
-		if len([]rune(w)) < 3 || stopwords[w] || seen[w] {
-			continue
-		}
-		seen[w] = true
-		terms = append(terms, `"`+w+`"`)
+// operator in the user's text is ever interpreted. With translate, when the
+// query reads as Spanish (see readsSpanish), each Spanish word is followed by
+// its English equivalents (see esStems), so a Spanish question also matches
+// English notes. Only the lexical-only search translates: in hybrid search
+// the dense list already bridges languages, and translating its lexical list
+// lowered the gold set's Spanish hit@3 and MRR (S9 measurement).
+func ftsQuery(q string, translate bool) string {
+	terms := queryTerms(q, translate)
+	for i, t := range terms {
+		terms[i] = `"` + t + `"`
 	}
 	return strings.Join(terms, " OR ")
 }
 
-func (s *Service) lexical(ctx context.Context, q string, f filter, k int) ([]candidate, error) {
-	match := ftsQuery(q)
+// queryTerms returns the distinct accent-folded words of q of three letters or
+// more that are not stopwords, in order; with translate, a query that reads as
+// Spanish also gets each Spanish word's English equivalents after it.
+func queryTerms(q string, translate bool) []string {
+	lowered := strings.ToLower(q)
+	var words []string
+	for _, w := range wordRe.FindAllString(lowered, -1) {
+		words = append(words, foldAccents.Replace(w))
+	}
+	translate = translate && readsSpanish(lowered, words)
+	seen := map[string]bool{}
+	var terms []string
+	add := func(w string) {
+		if len([]rune(w)) < 3 || stopwords[w] || seen[w] {
+			return
+		}
+		seen[w] = true
+		terms = append(terms, w)
+	}
+	for _, w := range words {
+		if len([]rune(w)) < 3 || stopwords[w] {
+			continue
+		}
+		add(w)
+		if translate {
+			for _, e := range english(w) {
+				add(e)
+			}
+		}
+	}
+	return terms
+}
+
+// lexical ranks memories by BM25 over the FTS index; translate is passed to
+// ftsQuery.
+func (s *Service) lexical(ctx context.Context, q string, f filter, k int, translate bool) ([]candidate, error) {
+	match := ftsQuery(q, translate)
 	if match == "" {
 		return nil, nil
 	}
@@ -427,14 +461,10 @@ func fuse(dense, lex []candidate, k int) []candidate {
 }
 
 // boostOverlap rescales each dense score by the share of query terms in its
-// title and best body window (see OverlapBoost) and reorders the list.
+// title and best body window (see OverlapBoost) and reorders the list. Its
+// terms are the query's own words, never the Spanish lookups of ftsQuery.
 func boostOverlap(q string, cs []candidate) []candidate {
-	var terms []string
-	for _, t := range strings.Split(ftsQuery(q), " OR ") {
-		if t = strings.Trim(t, `"`); t != "" {
-			terms = append(terms, t)
-		}
-	}
+	terms := queryTerms(q, false)
 	if len(terms) == 0 {
 		return cs
 	}
