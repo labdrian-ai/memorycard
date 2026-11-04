@@ -63,6 +63,12 @@ func Save(r memory.SaveResult) string {
 	if r.Hint != nil {
 		fmt.Fprintf(&b, "possible duplicate of #%d (%.2f): %s\n", r.Hint.ID, r.Hint.Score, r.Hint.Title)
 	}
+	if len(r.Neighbours) > 0 {
+		b.WriteString("similar active memories (if one is outdated, save again with supersedes=<id>):\n")
+		for _, h := range r.Neighbours {
+			fmt.Fprintf(&b, "  #%d (%.2f): %s\n", h.ID, h.Score, h.Title)
+		}
+	}
 	return b.String()
 }
 

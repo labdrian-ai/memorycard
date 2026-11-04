@@ -43,3 +43,20 @@ func TestSaveExplainsDuplicatesWarningsAndHints(t *testing.T) {
 		t.Errorf("split save: %q", out)
 	}
 }
+
+func TestSaveNamesSimilarMemoriesAsASupersedeHint(t *testing.T) {
+	out := Save(memory.SaveResult{ID: 12, Action: memory.ActionCreated,
+		Hint:       &memory.Hint{ID: 2, Title: "Same", Score: 0.981},
+		Neighbours: []memory.Hint{{ID: 5, Title: "Close one", Score: 0.912}, {ID: 3, Title: "Less close", Score: 0.764}}})
+	want := "created #12\n" +
+		"possible duplicate of #2 (0.98): Same\n" +
+		"similar active memories (if one is outdated, save again with supersedes=<id>):\n" +
+		"  #5 (0.91): Close one\n" +
+		"  #3 (0.76): Less close\n"
+	if out != want {
+		t.Errorf("got %q\nwant %q", out, want)
+	}
+	if out := Save(memory.SaveResult{ID: 1, Action: memory.ActionCreated}); out != "created #1\n" {
+		t.Errorf("without neighbours: %q", out)
+	}
+}
