@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "c2c6fae0c3bd24c6b779879afee66650e635aa8a",
+    "head": "186604bf8479c106f311b42a261de666150d793e",
+    "diff_sha256": "c1f8639423f824b412de0a0d606e9866a0438f83eadfc239d85934ce28b9671c",
+    "paths": [
+      "README.md",
+      "odd/review-results/archive-restore-and-deletes/f0fe7d703dae-1.sweep.json",
+      "odd/review-results/archive-restore-and-deletes/f0fe7d703dae-2.exempt.json"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go test ./internal/mcpserver -count=1 -v -run TestExposes",
+        "result": "pass",
+        "output": "tool definitions: 3496 bytes, about 971 tokens"
+      },
+      {
+        "command": "structural readback of README.md lines 18-23",
+        "result": "pass",
+        "output": "Status: v0.3.0; about 970 tokens (budget 1,500; estimated as bytes / 3.6)"
+      }
+    ]
+  }
+}
