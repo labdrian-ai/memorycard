@@ -199,6 +199,89 @@ func TestEmbedMemoriesFailureLeavesThemPending(t *testing.T) {
 	}
 }
 
+// FinishDeferred gives deferred saves the duplicate hint and neighbours Save
+// would have given one by one: each sees the memories saved before it, never
+// the later ones of the same batch.
+func TestFinishDeferredGivesHintsAsSavesInOrder(t *testing.T) {
+	ctx := context.Background()
+	fe := &fakeEmbedder{fn: angle}
+	s := withEmbedder(t, fe)
+	old := save(t, s, SaveInput{Project: "p", Type: "learning", Title: "ANG0 old", Body: "already embedded"}).ID
+	var res []*SaveResult
+	for _, title := range []string{"ANG1 first", "ANG1 second", "ANG30 third", "ANG90 fourth"} {
+		r := save(t, s, SaveInput{Project: "p", Type: "learning", Title: title, Body: "b " + title, DeferEmbed: true})
+		res = append(res, &r)
+	}
+	calls := len(fe.kinds)
+	if err := s.FinishDeferred(ctx, res); err != nil {
+		t.Fatal(err)
+	}
+	if len(fe.kinds) != calls+1 || len(fe.seen) != 5 {
+		t.Errorf("embed calls = %d texts = %d, want one more call with 4 texts", len(fe.kinds)-calls, len(fe.seen)-1)
+	}
+	first, second, third, fourth := res[0], res[1], res[2], res[3]
+	// first: old is the duplicate; second (cos 1.0) came later, so it is unseen.
+	if first.Hint == nil || first.Hint.ID != old || first.Hint.Score < 0.99 {
+		t.Errorf("first hint = %+v, want #%d", first.Hint, old)
+	}
+	if first.Neighbours != nil {
+		t.Errorf("first neighbours = %v, want none", first.Neighbours)
+	}
+	// second: first is its closest earlier memory; old is then a neighbour.
+	if second.Hint == nil || second.Hint.ID != first.ID {
+		t.Errorf("second hint = %+v, want #%d", second.Hint, first.ID)
+	}
+	if got := hintIDs(second.Neighbours); len(got) != 1 || got[0] != old {
+		t.Errorf("second neighbours = %v, want [%d]", got, old)
+	}
+	// third: nothing at 0.97; first and second (0.875, id order) before old (0.866).
+	if third.Hint != nil {
+		t.Errorf("third hint = %+v, want none", third.Hint)
+	}
+	if got := hintIDs(third.Neighbours); len(got) != 3 || got[0] != first.ID || got[1] != second.ID || got[2] != old {
+		t.Errorf("third neighbours = %v, want [%d %d %d]", got, first.ID, second.ID, old)
+	}
+	if fourth.Hint != nil || fourth.Neighbours != nil {
+		t.Errorf("fourth = %+v, want no hint and no neighbours", fourth)
+	}
+	var n int
+	s.db.SQL().QueryRow(`select count(*) from vectors`).Scan(&n)
+	if n != 5 {
+		t.Errorf("vectors = %d, want 5", n)
+	}
+}
+
+// Duplicates and unchanged saves wrote nothing, and a failed batch leaves
+// everything pending with no hints.
+func TestFinishDeferredSkipsDuplicatesAndKeepsFailuresPending(t *testing.T) {
+	ctx := context.Background()
+	fe := &fakeEmbedder{fn: angle}
+	s := withEmbedder(t, fe)
+	in := SaveInput{Project: "p", Type: "learning", Title: "ANG0 one", Body: "b", DeferEmbed: true}
+	a := save(t, s, in)
+	dup := save(t, s, in)
+	if dup.Action != ActionDuplicate {
+		t.Fatalf("action = %s", dup.Action)
+	}
+	fe.fail = true
+	if err := s.FinishDeferred(ctx, []*SaveResult{&a, &dup}); err == nil {
+		t.Fatal("want the embedder error")
+	}
+	if a.Hint != nil || a.Neighbours != nil || dup.Hint != nil {
+		t.Errorf("hints after a failed batch: %+v %+v", a, dup)
+	}
+	fe.fail = false
+	if err := s.FinishDeferred(ctx, []*SaveResult{&a, &dup}); err != nil {
+		t.Fatal(err)
+	}
+	if dup.Hint != nil || dup.Neighbours != nil {
+		t.Errorf("duplicate got hints: %+v", dup)
+	}
+	if len(fe.seen) != 1 {
+		t.Errorf("embedded %d texts, want 1", len(fe.seen))
+	}
+}
+
 func TestEmbedMemoriesWithoutEmbedderIsANoOp(t *testing.T) {
 	s := newSvc(t)
 	id := save(t, s, SaveInput{Project: "p", Title: "t", Body: "b", DeferEmbed: true}).ID

@@ -73,8 +73,9 @@ type SaveInput struct {
 	TopicKey   string
 	Supersedes int64 // id of a memory this one replaces
 	// DeferEmbed skips embedding on save: no vector, duplicate hint or
-	// neighbours yet. The caller embeds later with EmbedMemories, one batch
-	// for many saves; until then the memory is pending like any other.
+	// neighbours yet. The caller finishes later with FinishDeferred, one
+	// embed batch for many saves that also sets their hints; until then the
+	// memory is pending like any other.
 	DeferEmbed bool
 }
 

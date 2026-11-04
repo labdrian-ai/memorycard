@@ -196,6 +196,38 @@ func TestCaptureEmbedsAllItemsInOneBatch(t *testing.T) {
 	}
 }
 
+// Regression: batch embedding must keep the "possible duplicate" hint that
+// capture printed when each item was embedded on save.
+func TestCaptureKeepsDuplicateHint(t *testing.T) {
+	db := newDB(t)
+	f := &fakeOllama{vec: func(s string) []float32 {
+		if strings.Contains(s, "batches every learning") {
+			return []float32{1, 0, 0}
+		}
+		return []float32{0, 0, 1}
+	}}
+	env := f.start(t)
+	first := "## Key Learnings\n1. The memorycard capture hook batches every learning of one block into a single ollama embed request, which halves the wall time.\n"
+	code, out, errOut := runEnv(t, db, env, first, "capture")
+	if code != 0 || errOut != "" || out != "created #1\ncaptured: 1 saved, 0 skipped\n" {
+		t.Fatalf("first capture: code=%d out=%q err=%q", code, out, errOut)
+	}
+	second := "## Key Learnings\n" +
+		"1. The memorycard capture hook batches every learning of one block into a single ollama embed request, which halves its wall time.\n" +
+		"2. An unrelated learning that is long enough to be kept and points elsewhere.\n"
+	code, out, errOut = runEnv(t, db, env, second, "capture")
+	want := "created #2\n" +
+		"possible duplicate of #1 (1.00): The memorycard capture hook batches every learning of one block into a single ollama embed request...\n" +
+		"created #3\n" +
+		"captured: 2 saved, 0 skipped\n"
+	if code != 0 || errOut != "" || out != want {
+		t.Errorf("second capture: code=%d err=%q\nout  %q\nwant %q", code, errOut, out, want)
+	}
+	if len(f.calls) != 2 {
+		t.Errorf("embed requests = %d, want one per capture", len(f.calls))
+	}
+}
+
 func TestCaptureKeepsMemoriesPendingWhenEmbeddingFails(t *testing.T) {
 	db := newDB(t)
 	f := &fakeOllama{fail: true, vec: func(string) []float32 { return []float32{1, 0, 0} }}

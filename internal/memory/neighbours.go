@@ -22,6 +22,14 @@ const (
 // stored vector is at least NeighbourCosine to memory id's, closest first.
 // Ids in skip are left out. Without a vector for id, it returns nothing.
 func (s *Service) similar(ctx context.Context, id int64, project, typ string, skip map[int64]bool) ([]Hint, error) {
+	return s.closest(ctx, id, project, typ, NeighbourCosine, MaxNeighbours, skip)
+}
+
+// closest returns up to limit active memories of project, and of typ unless
+// typ is empty, whose stored vector is at least min to memory id's, closest
+// first; equal scores keep id order. Ids in skip are left out. Without a
+// vector for id, it returns an error.
+func (s *Service) closest(ctx context.Context, id int64, project, typ string, min float64, limit int, skip map[int64]bool) ([]Hint, error) {
 	var blob []byte
 	err := s.db.SQL().QueryRowContext(ctx,
 		`select vec from vectors where memory_id = ? and model = ?`, id, s.embedder.Model()).Scan(&blob)
@@ -31,8 +39,9 @@ func (s *Service) similar(ctx context.Context, id int64, project, typ string, sk
 	v := decodeVec(blob)
 	rows, err := s.db.SQL().QueryContext(ctx,
 		`select m.id, m.title, v.vec from vectors v join memories m on m.id = v.memory_id
-		 where m.project = ? and m.type = ? and m.status = 'active' and v.model = ? and m.id != ?`,
-		project, typ, s.embedder.Model(), id)
+		 where m.project = ? and (? = '' or m.type = ?) and m.status = 'active' and v.model = ? and m.id != ?
+		 order by m.id`,
+		project, typ, typ, s.embedder.Model(), id)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +56,7 @@ func (s *Service) similar(ctx context.Context, id int64, project, typ string, sk
 		if skip[h.ID] || len(other) != len(v) {
 			continue
 		}
-		if h.Score = dot(v, other); h.Score >= NeighbourCosine {
+		if h.Score = dot(v, other); h.Score >= min {
 			out = append(out, h)
 		}
 	}
@@ -55,8 +64,8 @@ func (s *Service) similar(ctx context.Context, id int64, project, typ string, sk
 		return nil, err
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Score > out[j].Score })
-	if len(out) > MaxNeighbours {
-		out = out[:MaxNeighbours]
+	if len(out) > limit {
+		out = out[:limit]
 	}
 	return out, nil
 }
@@ -129,4 +138,79 @@ func (s *Service) EmbedMemories(ctx context.Context, ids []int64) (int, error) {
 		}
 	}
 	return len(pending), nil
+}
+
+// FinishDeferred completes saves made with DeferEmbed, in their order: it
+// embeds every memory they wrote in one embedder call, then fills each
+// result's duplicate hint and neighbours the way Save does. Each save sees the
+// memories saved before it, never the later ones of the same batch, so the
+// hints match what saving them one by one would have given. Duplicate and
+// unchanged results get nothing. On an embedder error nothing is stored, no
+// hint is set, and the memories stay pending for EmbedPending.
+func (s *Service) FinishDeferred(ctx context.Context, res []*SaveResult) error {
+	if s.embedder == nil {
+		return nil
+	}
+	var ids []int64
+	for _, r := range res {
+		ids = append(ids, written(r)...)
+	}
+	if _, err := s.EmbedMemories(ctx, ids); err != nil {
+		return err
+	}
+	// later holds the ids written by the current save and every save after it.
+	later := map[int64]bool{}
+	for _, id := range ids {
+		later[id] = true
+	}
+	for _, r := range res {
+		own := written(r)
+		if len(own) > 0 {
+			s.deferredHints(ctx, r, later)
+		}
+		for _, id := range own {
+			delete(later, id)
+		}
+	}
+	return nil
+}
+
+// written returns the ids a save wrote text to: all its parts, or its id.
+func written(r *SaveResult) []int64 {
+	if r.Action != ActionCreated && r.Action != ActionUpdated {
+		return nil
+	}
+	if len(r.Parts) > 0 {
+		return r.Parts
+	}
+	return []int64{r.ID}
+}
+
+// deferredHints sets r's duplicate hint (on create only, as afterWrite does)
+// and its neighbours, leaving out the ids in later. A failed lookup only
+// loses the hint; the save itself succeeded.
+func (s *Service) deferredHints(ctx context.Context, r *SaveResult, later map[int64]bool) {
+	var project, typ string
+	if err := s.db.SQL().QueryRowContext(ctx,
+		`select project, type from memories where id = ?`, r.ID).Scan(&project, &typ); err != nil {
+		return
+	}
+	if r.Action == ActionCreated {
+		if hs, err := s.closest(ctx, r.ID, project, "", DuplicateHintCosine, 1, later); err == nil && len(hs) > 0 {
+			r.Hint = &hs[0]
+		}
+	}
+	if typ == "session_summary" {
+		return
+	}
+	skip := map[int64]bool{}
+	for id := range later {
+		skip[id] = true
+	}
+	if r.Hint != nil {
+		skip[r.Hint.ID] = true
+	}
+	if hs, err := s.similar(ctx, r.ID, project, typ, skip); err == nil && len(hs) > 0 {
+		r.Neighbours = hs
+	}
 }

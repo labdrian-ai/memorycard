@@ -117,13 +117,29 @@ func (a *app) capture(ctx context.Context, svc *memory.Service) int {
 	}
 	proj := a.project()
 	skipped := map[string]int{}
-	var saved []int64 // ids to embed, parts included
+	// Output keeps item order. A save result is rendered only after the batch
+	// embed has set its duplicate hint and neighbours.
+	type line struct {
+		text string
+		res  *memory.SaveResult
+	}
+	var lines []line
+	var results []*memory.SaveResult
+	flush := func() {
+		for _, l := range lines {
+			if l.res != nil {
+				fmt.Fprint(a.out, render.Save(*l.res))
+			} else {
+				fmt.Fprint(a.out, l.text)
+			}
+		}
+	}
 	nSaved := 0
 	for _, item := range items {
 		title := captureTitle(item)
 		if why := skipReason(item); why != "" {
 			skipped[why]++
-			fmt.Fprintf(a.out, "skipped (%s): %s\n", why, title)
+			lines = append(lines, line{text: fmt.Sprintf("skipped (%s): %s\n", why, title)})
 			continue
 		}
 		r, err := svc.Save(ctx, memory.SaveInput{
@@ -131,20 +147,22 @@ func (a *app) capture(ctx context.Context, svc *memory.Service) int {
 			Title: title, Body: item, DeferEmbed: true,
 		})
 		if err != nil {
+			flush()
 			return a.fail(err)
 		}
-		fmt.Fprint(a.out, render.Save(r))
+		lines = append(lines, line{res: &r})
+		results = append(results, &r)
 		switch r.Action {
 		case memory.ActionCreated, memory.ActionUpdated:
 			nSaved++
-			saved = append(saved, r.ID)
-			saved = append(saved, r.Parts...)
 		default:
 			skipped[skipDuplicate]++
 		}
 	}
-	if _, err := svc.EmbedMemories(ctx, saved); err != nil {
-		fmt.Fprintf(a.out, "warning: embedding pending: %v\n", err)
+	embedErr := svc.FinishDeferred(ctx, results)
+	flush()
+	if embedErr != nil {
+		fmt.Fprintf(a.out, "warning: embedding pending: %v\n", embedErr)
 	}
 	fmt.Fprintf(a.out, "captured: %d saved, %d skipped%s\n", nSaved,
 		skipped[skipShort]+skipped[skipProbe]+skipped[skipDuplicate], skipDetail(skipped))
