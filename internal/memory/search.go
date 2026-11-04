@@ -3,8 +3,10 @@ package memory
 import (
 	"context"
 	"errors"
+	"fmt"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -85,6 +87,9 @@ type Hit struct {
 	Score   float64
 	Stale   bool
 	Project string
+	// Siblings are the ids of the other parts when the hit is one part of a
+	// document saved in parts; only the best-ranked part is returned.
+	Siblings []int64
 }
 
 // SearchResult is the answer to a search.
@@ -107,6 +112,12 @@ type candidate struct {
 // project does, the answer comes from all projects and is marked Widened, so
 // work filed under a different project name is still found.
 func (s *Service) Search(ctx context.Context, in SearchInput) (SearchResult, error) {
+	if s.embedder != nil && in.Project != "" {
+		// A widened search asks the same question again: embed it once.
+		memo := *s
+		memo.embedder = &queryMemo{Embedder: s.embedder}
+		s = &memo
+	}
 	res, err := s.find(ctx, in)
 	if err != nil || in.Project == "" || res.Confidence == ConfidenceOK || res.Confidence == ConfidenceUnknown {
 		return res, err
@@ -122,6 +133,27 @@ func (s *Service) Search(ctx context.Context, in SearchInput) (SearchResult, err
 	}
 	wide.Widened = true
 	return wide, nil
+}
+
+// queryMemo remembers the vectors of query texts for the length of one
+// search, failures included, so the widened pass does not embed again.
+type queryMemo struct {
+	embed.Embedder
+	text string
+	vecs [][]float32
+	err  error
+	done bool
+}
+
+func (m *queryMemo) Embed(ctx context.Context, texts []string, kind embed.Kind) ([][]float32, error) {
+	if kind != embed.KindQuery || len(texts) != 1 {
+		return m.Embedder.Embed(ctx, texts, kind)
+	}
+	if !m.done || m.text != texts[0] {
+		m.vecs, m.err = m.Embedder.Embed(ctx, texts, kind)
+		m.text, m.done = texts[0], true
+	}
+	return m.vecs, m.err
 }
 
 func (s *Service) find(ctx context.Context, in SearchInput) (SearchResult, error) {
@@ -140,20 +172,21 @@ func (s *Service) find(ctx context.Context, in SearchInput) (SearchResult, error
 
 	var topic []candidate
 	if strings.Contains(q, "/") {
+		// An exact topic key is asked for by name, so the lookup sees every
+		// type, session summaries included.
 		var err error
-		if topic, err = s.byTopic(ctx, topicKey(q), f, k); err != nil {
+		if topic, err = s.byTopic(ctx, topicKey(q), topicFilter(in), k); err != nil {
 			return SearchResult{}, err
 		}
 	}
 
+	// The ranked lists are cut to k only after the parts of one document are
+	// collapsed, so k distinct documents come back.
+	pool := max(k, FusionPool)
 	var res SearchResult
 	var found []candidate
 	var cosine float64 // best dense similarity; confidence is judged on it in every mode
 	if s.embedder != nil {
-		pool := k
-		if s.hybrid && pool < FusionPool {
-			pool = FusionPool
-		}
 		dense, err := s.dense(ctx, q, f, pool)
 		if err == nil && len(dense) > 0 {
 			cosine = dense[0].Score
@@ -164,7 +197,7 @@ func (s *Service) find(ctx context.Context, in SearchInput) (SearchResult, error
 			if err != nil {
 				return SearchResult{}, err
 			}
-			res.Mode, found = ModeHybrid, fuse(boostOverlap(q, dense), lex, k)
+			res.Mode, found = ModeHybrid, fuse(boostOverlap(q, dense), lex, len(dense)+len(lex))
 		case err == nil:
 			res.Mode, found = ModeDense, dense
 		case !errors.Is(err, embed.ErrUnavailable):
@@ -172,18 +205,24 @@ func (s *Service) find(ctx context.Context, in SearchInput) (SearchResult, error
 		}
 	}
 	if res.Mode == "" {
-		lex, err := s.lexical(ctx, q, f, k)
+		lex, err := s.lexical(ctx, q, f, pool)
 		if err != nil {
 			return SearchResult{}, err
 		}
 		res.Mode, found = ModeLexical, lex
 	}
 
-	merged := mergeUnique(topic, found, k)
+	merged := collapseParts(mergeUnique(topic, found, len(topic)+len(found)))
+	if len(merged) > k {
+		merged = merged[:k]
+	}
+	if err := s.siblings(ctx, merged); err != nil {
+		return SearchResult{}, err
+	}
 	res.Hits = s.finish(merged, in.Detail)
+	// A topic-key match is certain, but it says nothing about the rest of the
+	// list: confidence is judged as for any other query.
 	switch {
-	case len(topic) > 0:
-		res.Confidence = ConfidenceOK
 	case len(merged) == 0:
 		res.Confidence = ConfidenceLow
 	case res.Mode == ModeLexical:
@@ -201,7 +240,19 @@ type filter struct {
 	args  []any
 }
 
+// buildFilter restricts a ranked search. Session summaries recap whole
+// sessions and match almost anything, so they only compete when the caller
+// asks for that type.
 func buildFilter(in SearchInput) filter {
+	f := topicFilter(in)
+	if in.Type == "" {
+		f.where += " and m.type != 'session_summary'"
+	}
+	return f
+}
+
+// topicFilter restricts the exact topic-key lookup.
+func topicFilter(in SearchInput) filter {
 	parts := []string{"1=1"}
 	var args []any
 	if !in.IncludeOld {
@@ -450,6 +501,91 @@ func mergeUnique(first, second []candidate, k int) []candidate {
 	}
 	return out
 }
+
+// docKey names the document a candidate belongs to: its parts share project,
+// type, base title and part count. A whole memory is its own document.
+func docKey(c candidate) (string, bool) {
+	m := partTitle.FindStringSubmatch(c.Title)
+	if m == nil {
+		return "", false
+	}
+	return strings.Join([]string{c.Project, c.Type, m[1], m[3]}, "\x00"), true
+}
+
+// collapseParts keeps the first, best-ranked part of each split document.
+func collapseParts(cs []candidate) []candidate {
+	seen := map[string]bool{}
+	out := cs[:0:0]
+	for _, c := range cs {
+		if key, ok := docKey(c); ok {
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+		}
+		out = append(out, c)
+	}
+	return out
+}
+
+// siblings fills in, for each hit that is a part, the ids of the other parts
+// of its document (same project, scope, type and status), in part order.
+func (s *Service) siblings(ctx context.Context, cs []candidate) error {
+	for i := range cs {
+		m := partTitle.FindStringSubmatch(cs[i].Title)
+		if m == nil {
+			continue
+		}
+		n, err := strconv.Atoi(m[3])
+		if err != nil || n < 2 || n > maxSiblingParts {
+			continue
+		}
+		titles := make([]any, 0, n)
+		for p := 1; p <= n; p++ {
+			titles = append(titles, fmt.Sprintf("%s (part %d/%d)", m[1], p, n))
+		}
+		rows, err := s.db.SQL().QueryContext(ctx,
+			`select m.id, m.title from memories m join memories h on h.id = ?
+			 where m.id != h.id and m.project = h.project and m.scope = h.scope and m.type = h.type
+			   and m.status = h.status and m.title in (?`+strings.Repeat(",?", n-1)+`)`,
+			append([]any{cs[i].ID}, titles...)...)
+		if err != nil {
+			return err
+		}
+		type part struct {
+			id  int64
+			idx int
+		}
+		var ps []part
+		for rows.Next() {
+			var id int64
+			var title string
+			if err := rows.Scan(&id, &title); err != nil {
+				rows.Close()
+				return err
+			}
+			idx, _ := strconv.Atoi(partTitle.FindStringSubmatch(title)[2])
+			ps = append(ps, part{id, idx})
+		}
+		if err := rows.Close(); err != nil {
+			return err
+		}
+		sort.SliceStable(ps, func(a, b int) bool {
+			if ps[a].idx != ps[b].idx {
+				return ps[a].idx < ps[b].idx
+			}
+			return ps[a].id < ps[b].id
+		})
+		for _, p := range ps {
+			cs[i].Siblings = append(cs[i].Siblings, p.id)
+		}
+	}
+	return nil
+}
+
+// maxSiblingParts bounds the sibling lookup of one hit; a document is split
+// into 16 KB parts, so this is far above any real one.
+const maxSiblingParts = 200
 
 func (s *Service) finish(cs []candidate, detail string) []Hit {
 	now := s.now()
