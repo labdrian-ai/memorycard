@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "37004e59ff3ae2935ffc27323c090a57197a7b10",
+    "head": "dab2c717f29048927fceca3b972cf257af701bdf",
+    "diff_sha256": "6697c8c84df40495e02b218efb85d98a14ac7f73dcd961c634f34c5d1f634f15",
+    "paths": [
+      "internal/memory/embed_test.go",
+      "internal/memory/save.go",
+      "odd/tasks/memorycard-engram-replacement.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go test ./internal/memory -count=1 -run TestFailedReembedOnEdit",
+        "result": "pass",
+        "output": "ok github.com/labdrian-ai/memorycard/internal/memory; RED before the fix: vectors = 1, want 0 and EmbedPending = 0, want 1 on both Update and topic_key Save"
+      },
+      {
+        "command": "go vet ./...",
+        "result": "pass",
+        "output": "no findings"
+      },
+      {
+        "command": "go test ./... -count=1",
+        "result": "pass",
+        "output": "10 packages ok, 0 FAIL"
+      }
+    ]
+  }
+}

@@ -134,6 +134,55 @@ func TestUpdateReplacesVector(t *testing.T) {
 	}
 }
 
+// An edit whose re-embedding fails must not leave the old vector behind:
+// EmbedPending has to pick the memory up once the embedder is back.
+func TestFailedReembedOnEditIsPickedUpByEmbedPending(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		name string
+		edit func(s *Service, id int64) SaveResult
+	}{
+		{"Update", func(s *Service, id int64) SaveResult {
+			title, body := "plain", "two"
+			r, err := s.Update(ctx, id, UpdateInput{Title: &title, Body: &body})
+			if err != nil {
+				t.Fatal(err)
+			}
+			return r
+		}},
+		{"Save with topic_key", func(s *Service, id int64) SaveResult {
+			return save(t, s, SaveInput{Project: "p", Title: "plain", Body: "two", TopicKey: "k"})
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fe := &fakeEmbedder{fn: axis}
+			s := withEmbedder(t, fe)
+			id := save(t, s, SaveInput{Project: "p", Title: "ALPHA", Body: "one", TopicKey: "k"}).ID
+
+			fe.fail = true
+			r := tc.edit(s, id)
+			if r.Action != ActionUpdated || len(r.Warnings) == 0 {
+				t.Fatalf("got %+v, want updated with an embedding-pending warning", r)
+			}
+			if c := count(t, s, `select count(*) from vectors where memory_id=?`, id); c != 0 {
+				t.Errorf("stale vector kept after a failed re-embed: vectors = %d, want 0", c)
+			}
+
+			fe.fail = false
+			if n, err := s.EmbedPending(ctx, 10); err != nil || n != 1 {
+				t.Fatalf("EmbedPending = %d, %v; want 1", n, err)
+			}
+			var blob []byte
+			if err := s.db.SQL().QueryRow(`select vec from vectors where memory_id=?`, id).Scan(&blob); err != nil {
+				t.Fatal(err)
+			}
+			if v := decodeVec(blob); v[1] < 0.99 {
+				t.Errorf("vector does not match the edited text: %v", v)
+			}
+		})
+	}
+}
+
 func TestSaveHintsPossibleDuplicateWithoutBlocking(t *testing.T) {
 	s := withEmbedder(t, &fakeEmbedder{fn: axis})
 	first := save(t, s, SaveInput{Project: "p", Title: "ALPHA design", Body: "text one"})
