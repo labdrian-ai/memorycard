@@ -68,6 +68,24 @@ func TestUsageWithoutDBOrWorkExitsTwo(t *testing.T) {
 	}
 }
 
+// -h and -help print the flag help and exit 0, as the global flag.Parse did.
+func TestHelpFlagExitsZero(t *testing.T) {
+	for _, arg := range []string{"-h", "-help", "--help"} {
+		out, errOut, code := exec(t, env(), arg)
+		if code != 0 || out != "" || !strings.Contains(errOut, "-gold") || !strings.Contains(errOut, "-include-old") {
+			t.Errorf("%s: exit %d stdout %q stderr %q, want 0, no stdout and the flag help", arg, code, out, errOut)
+		}
+	}
+}
+
+// A malformed flag still exits 2.
+func TestBadFlagExitsTwo(t *testing.T) {
+	_, errOut, code := exec(t, env(), "-bogus")
+	if code != 2 || !strings.Contains(errOut, "flag provided but not defined: -bogus") {
+		t.Errorf("exit %d stderr %q, want 2 and the flag error", code, errOut)
+	}
+}
+
 func TestGoldNeedsTheEmbedder(t *testing.T) {
 	_, errOut, code := exec(t, env("MEMORYCARD_EMBED", "off"), "-db", digestDB(t), "-gold", t.TempDir())
 	if code != 1 || !strings.Contains(errOut, "acceptance needs the embedder") {

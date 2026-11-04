@@ -11,6 +11,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -42,7 +43,10 @@ func run(args []string, out, errOut io.Writer, getenv func(string) string) int {
 	neighbors := fs.Int("neighbors", 0, "if > 0, print the nearest-neighbour cosine distribution of every Nth memory")
 	misses := fs.Bool("misses", false, "list the dense questions whose answer is not ranked first")
 	hybrid := fs.Bool("hybrid", false, "fuse the dense and lexical rankings (top score is then a fusion score, not a cosine)")
-	if fs.Parse(args) != nil {
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0 // -h and -help exit 0, as flag.ExitOnError does
+		}
 		return 2
 	}
 	if *dbPath == "" || (*golds == "" && *digest == "") {
