@@ -4,8 +4,9 @@
 //
 // By default it measures as the lab index did: superseded and archived
 // memories compete and every project is searched. To measure what an agent
-// sees, run it with -include-old=false -project @target: only active
-// memories, searched inside the project of each question's answer.
+// sees, run it with -include-old=false -project @target -hybrid: only active
+// memories, searched inside the project of each question's answer, with the
+// product's default (hybrid) ranking.
 package main
 
 import (
@@ -28,13 +29,13 @@ const usage = "usage: mc-accept -db memory.db {-gold dir[,dir] | -digest project
 func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, os.Getenv)) }
 
 func run(args []string, out, errOut io.Writer, getenv func(string) string) int {
-	fs := flag.NewFlagSet("mc-accept", flag.ContinueOnError)
+	fs := flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
 	fs.SetOutput(errOut)
 	dbPath := fs.String("db", "", "memorycard database imported from Engram")
 	golds := fs.String("gold", "", "comma-separated gold directories (queries.tsv [+ relevant.tsv] [+ outdated.tsv]); keys are Engram ids or mc:<memorycard id>")
 	includeOld := fs.Bool("include-old", true, "let superseded and archived memories compete, as the lab index did (false = active only, what agents see)")
 	project := fs.String("project", "", "search scope: empty = all projects (default), "+accept.ProjectTarget+" = the project of each question's answer, or a project name")
-	digest := fs.String("digest", "", "comma-separated projects: report the share of their `memorycard context` lines that are session summaries, further parts of a listed document or cut titles")
+	digest := fs.String("digest", "", "comma-separated projects: report the share of their memorycard context lines that are session summaries, further parts of a listed document or cut titles")
 	sim := fs.Float64("similarity", 0, "also accept memories with cosine >= this to the target (0 = off)")
 	k := fs.Int("k", 10, "results examined per query")
 	negatives := fs.String("negatives", "", "file with one off-topic question per line: prints their top-score distribution")
@@ -155,19 +156,19 @@ func runGold(ctx context.Context, out io.Writer, dense, lexical *memory.Service,
 	if err != nil {
 		return false, err
 	}
-	scope := opts.Project
-	if scope == "" {
-		scope = "all"
+	scope := "" // the default (all projects) keeps the header it always had
+	if opts.Project != "" {
+		scope = " project=" + opts.Project
 	}
-	fmt.Fprintf(out, "== %s: %d questions, include-old=%v project=%s similarity=%v\n", dir, len(g.Queries), opts.IncludeOld, scope, opts.SimilarityAccept)
+	fmt.Fprintf(out, "== %s: %d questions, include-old=%v%s similarity=%v\n", dir, len(g.Queries), opts.IncludeOld, scope, opts.SimilarityAccept)
 	rs, err := accept.Run(ctx, dense, db, g, opts)
 	if err != nil {
 		return false, err
 	}
 	s := accept.Summarize(rs)
-	show(out, "dense", s)
+	show(out, "dense", s, !opts.IncludeOld)
 	if test := onlySplit(rs, "test"); len(test) > 0 && len(test) < len(rs) {
-		show(out, "dense/test", accept.Summarize(test))
+		show(out, "dense/test", accept.Summarize(test), !opts.IncludeOld)
 	}
 	if spreads {
 		var found, lost []float64
@@ -202,7 +203,7 @@ func runGold(ctx context.Context, out io.Writer, dense, lexical *memory.Service,
 		return false, err
 	}
 	ls := accept.Summarize(lrs)
-	show(out, "lexical (no embedder)", ls)
+	show(out, "lexical (no embedder)", ls, !opts.IncludeOld)
 	if ls.Lexical != ls.N {
 		fmt.Fprintf(out, "  FAIL: %d of %d fallback answers did not say they were lexical\n", ls.N-ls.Lexical, ls.N)
 		ok = false
@@ -222,7 +223,7 @@ func spread(xs []float64) string {
 		len(s), s[0], at(.25), at(.5), at(.75), at(.9), s[len(s)-1])
 }
 
-func show(out io.Writer, name string, s accept.Summary) {
+func show(out io.Writer, name string, s accept.Summary, activeOnly bool) {
 	fmt.Fprintf(out, "  %-22s hit@1 %3.0f%%  hit@3 %3.0f%%  hit@5 %3.0f%%  hit@10 %3.0f%%  MRR %.2f  tokens %.0f  p50 %v  non-empty %d/%d  es@5 %.0f%% en@5 %.0f%%\n",
 		name, s.Hit1*100, s.Hit3*100, s.Hit5*100, s.Hit10*100, s.MRR, s.AvgTokens, s.P50.Round(1e6), s.NonEmpty, s.N,
 		s.Hit5ByLang["es"]*100, s.Hit5ByLang["en"]*100)
@@ -230,7 +231,7 @@ func show(out io.Writer, name string, s accept.Summary) {
 		fmt.Fprintf(out, "  %-22s current above outdated %3.0f%%  outdated above current %3.0f%%  (%d questions)\n",
 			"", s.CurrentFirst*100, s.OutdatedFirst*100, s.WithOutdated)
 	}
-	if s.Inactive > 0 {
+	if activeOnly && s.Inactive > 0 { // unreachable answers matter only when old memories cannot compete
 		fmt.Fprintf(out, "  %-22s %d questions answered only by superseded or archived memories\n", "", s.Inactive)
 	}
 }

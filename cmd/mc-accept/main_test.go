@@ -3,11 +3,16 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/labdrian-ai/memorycard/internal/embed"
 	"github.com/labdrian-ai/memorycard/internal/memory"
 	"github.com/labdrian-ai/memorycard/internal/store"
 )
@@ -84,6 +89,77 @@ func TestDigestCheckRunsWithoutGoldOrEmbedder(t *testing.T) {
 	} {
 		if !strings.Contains(out, want+"\n") {
 			t.Errorf("output lacks %q:\n%s", want, out)
+		}
+	}
+}
+
+// fakeOllama embeds every text to the same vector.
+func fakeOllama(t *testing.T) string {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var req struct{ Input []string }
+		json.NewDecoder(r.Body).Decode(&req)
+		vecs := make([][]float32, len(req.Input))
+		for i := range vecs {
+			vecs[i] = []float32{1, 0, 0}
+		}
+		json.NewEncoder(w).Encode(map[string]any{"embeddings": vecs})
+	}))
+	t.Cleanup(srv.Close)
+	return srv.URL
+}
+
+// goldDB is digestDB with every memory embedded and "5" superseded by "6".
+func goldDB(t *testing.T, url string) string {
+	t.Helper()
+	path := digestDB(t)
+	db, err := store.Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	svc := memory.New(db)
+	if _, err := svc.Import(context.Background(), nil, []memory.ImportLink{{Source: "engram", Replacement: "6", Replaced: "5"}}); err != nil {
+		t.Fatal(err)
+	}
+	svc.SetEmbedder(embed.NewOllama(url, "fake"))
+	if _, err := svc.EmbedPending(context.Background(), 100); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestGoldRunKeepsTheDefaultViewAndAddsTheUserView(t *testing.T) {
+	url := fakeOllama(t)
+	db := goldDB(t, url)
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "queries.tsv"), []byte("id\tquery\tlang\n5\tplain note\ten\n"), 0o644)
+	getenv := env("MEMORYCARD_OLLAMA_URL", url)
+
+	// Default: the lab-index view, header and lines as before.
+	out, errOut, code := exec(t, getenv, "-db", db, "-gold", dir)
+	if code != 1 { // the 1-question set misses the acceptance thresholds
+		t.Fatalf("default: exit %d stderr %q", code, errOut)
+	}
+	if !strings.Contains(out, "== "+dir+": 1 questions, include-old=true similarity=0\n") {
+		t.Errorf("default header changed:\n%s", out)
+	}
+	for _, unwanted := range []string{"project=", "answered only by", "outdated"} {
+		if strings.Contains(out, unwanted) {
+			t.Errorf("default output mentions %q:\n%s", unwanted, out)
+		}
+	}
+
+	// User view: active only, project of the answer, outdated answers ranked.
+	os.WriteFile(filepath.Join(dir, "outdated.tsv"), []byte("5\t4\n"), 0o644)
+	out, _, _ = exec(t, getenv, "-db", db, "-gold", dir, "-include-old=false", "-project", "@target")
+	for _, want := range []string{
+		"== " + dir + ": 1 questions, include-old=false project=@target similarity=0\n",
+		"1 questions answered only by superseded or archived memories\n",
+		"(1 questions)\n",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("user view lacks %q:\n%s", want, out)
 		}
 	}
 }
