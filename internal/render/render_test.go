@@ -15,6 +15,14 @@ func TestSearchStaysSilentWhenEverythingIsFine(t *testing.T) {
 	}
 }
 
+func TestSearchNamesTheOtherPartsOfASplitDocument(t *testing.T) {
+	out := Search(memory.SearchResult{Mode: memory.ModeDense, Confidence: memory.ConfidenceOK,
+		Hits: []memory.Hit{{ID: 10, Type: "architecture", Title: "Doc (part 1/3)", Siblings: []int64{11, 12}}}})
+	if out != "#10 architecture: Doc (part 1/3) [other parts: #11, #12]\n" {
+		t.Errorf("got %q, want the hit line naming parts #11 and #12", out)
+	}
+}
+
 func TestSearchFlagsLowConfidenceStaleAndSnippet(t *testing.T) {
 	out := Search(memory.SearchResult{Mode: memory.ModeDense, Confidence: memory.ConfidenceLow,
 		Hits: []memory.Hit{{ID: 1, Type: "policy", Title: "Old", Stale: true, Snippet: "body text"}}})

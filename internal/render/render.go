@@ -34,6 +34,16 @@ func Search(r memory.SearchResult) string {
 		if h.Stale {
 			b.WriteString(" [stale]")
 		}
+		for i, id := range h.Siblings {
+			if i == 0 {
+				fmt.Fprintf(&b, " [other parts: #%d", id)
+			} else {
+				fmt.Fprintf(&b, ", #%d", id)
+			}
+			if i == len(h.Siblings)-1 {
+				b.WriteByte(']')
+			}
+		}
 		b.WriteByte('\n')
 		if h.Snippet != "" {
 			fmt.Fprintf(&b, "  %s\n", h.Snippet)
