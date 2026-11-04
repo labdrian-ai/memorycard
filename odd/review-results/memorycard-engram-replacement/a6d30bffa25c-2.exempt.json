@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "c1be90ce60dc899cae0a4d52d51fde378399fe81",
+    "head": "a6d30bffa25c4424d8059704231dd34d246d5051",
+    "diff_sha256": "ff90aa1a1515f4b630207056f2b08be64418babeb44749f9c348d3ae3cce0a0c",
+    "paths": [
+      "odd/tasks/memorycard-engram-replacement.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "python3 -I ~/memorycard-lab/dualwrite-check.py --since 2026-10-24T00:00:00Z",
+        "result": "pass",
+        "output": "engram 277, matched 277, problems 0 (deleted in engram, active in memorycard: 0)"
+      },
+      {
+        "command": "structural readback of odd/tasks/memorycard-engram-replacement.md T4 row and L15",
+        "result": "pass",
+        "output": "T4 marked done, PASS (L15); L15 appended at the end of the Log"
+      }
+    ]
+  }
+}
