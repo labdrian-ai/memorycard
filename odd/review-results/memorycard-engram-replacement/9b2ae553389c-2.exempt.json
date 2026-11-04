@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "2254f8004c26045d7e50d9081e7ed32ea27649eb",
+    "head": "9b2ae553389c868d2c40fd562d8f69e94fe16661",
+    "diff_sha256": "b95831b3319c3fa703f538317da2d4a958333933e3da025d7a825a9e791d2cfd",
+    "paths": [
+      "odd/tasks/memorycard-engram-replacement.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "python3 -I ~/memorycard-lab/dualwrite-check.py --since \"2026-11-03 15:12:00\"",
+        "result": "pass",
+        "output": "engram 32, matched 32, problems 0"
+      },
+      {
+        "command": "python3 -I ~/memorycard-lab/dualwrite-check.py --since \"2026-10-24 00:00:00\"",
+        "result": "pass",
+        "output": "engram 286, matched 285, problems 1 before mirroring #4518; 0 after"
+      },
+      {
+        "command": "structural readback of the T4 row and L15",
+        "result": "pass",
+        "output": "counts and --since commands corrected; date-format gotcha recorded"
+      }
+    ]
+  }
+}
