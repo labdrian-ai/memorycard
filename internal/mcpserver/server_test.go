@@ -211,13 +211,43 @@ func TestCwdMustBeAnExistingAbsoluteDirectory(t *testing.T) {
 	}
 }
 
-func TestGetShowsBodyAndHistory(t *testing.T) {
+func TestGetWithHistoryShowsBodyAndHistory(t *testing.T) {
 	cs := connect(t, "p")
 	call(t, cs, "mem_save", map[string]any{"title": "Auth", "body": "first version", "topic_key": "arch/auth"})
 	call(t, cs, "mem_save", map[string]any{"title": "Auth", "body": "second version", "topic_key": "arch/auth"})
-	out, isErr := call(t, cs, "mem_get", map[string]any{"id": 1})
-	if isErr || !strings.Contains(out, "second version") || !strings.Contains(out, "first version") || !strings.Contains(out, "arch/auth") {
+	out, isErr := call(t, cs, "mem_get", map[string]any{"id": 1, "history": true})
+	if isErr || !strings.Contains(out, "second version") || !strings.Contains(out, "--- history v1") ||
+		!strings.Contains(out, "first version") || !strings.Contains(out, "arch/auth") {
 		t.Errorf("get = %q (error=%v), want current body, history and topic key", out, isErr)
+	}
+	if strings.Contains(out, "earlier version") {
+		t.Errorf("get with history = %q, want no hint line", out)
+	}
+}
+
+func TestGetShowsOnlyTheCurrentVersionByDefault(t *testing.T) {
+	cs := connect(t, "p")
+	for _, body := range []string{"first version", "second version", "third version"} {
+		call(t, cs, "mem_save", map[string]any{"title": "Auth", "body": body, "topic_key": "arch/auth"})
+	}
+	out, isErr := call(t, cs, "mem_get", map[string]any{"id": 1})
+	if isErr || !strings.Contains(out, "third version") || !strings.Contains(out, "arch/auth") {
+		t.Fatalf("get = %q (error=%v), want the current body and topic key", out, isErr)
+	}
+	if strings.Contains(out, "first version") || strings.Contains(out, "second version") || strings.Contains(out, "--- history") {
+		t.Errorf("get = %q, want no earlier versions by default", out)
+	}
+	if !strings.HasSuffix(out, "\n(2 earlier versions not shown; history=true shows them)\n") {
+		t.Errorf("get = %q, want a closing line naming 2 earlier versions and history=true", out)
+	}
+}
+
+func TestGetOfAMemoryWithoutHistoryIsUnchanged(t *testing.T) {
+	cs := connect(t, "p")
+	call(t, cs, "mem_save", map[string]any{"title": "Solo", "body": "only version"})
+	out, isErr := call(t, cs, "mem_get", map[string]any{"id": 1})
+	if isErr || !strings.HasSuffix(out, "\n\nSolo\n\nonly version\n") {
+		t.Errorf("get = %q (error=%v), want title and body as the last lines, no hint", out, isErr)
 	}
 }
 

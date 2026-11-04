@@ -33,7 +33,7 @@ commands:
   search [--type X] [--k N] [--titles] [--all] [--project P] <query>
                            find memories by meaning; --all includes superseded
                            and archived ones, --project "" searches every project
-  get    <id>              print one memory with its history
+  get    [--history] <id>  print one memory; --history adds its earlier versions
   context                  print the project digest
   capture                  read text on stdin and save each numbered item of its
                            "## Key Learnings" block as a memory (type learning);
@@ -220,13 +220,24 @@ func (a *app) search(ctx context.Context, svc *memory.Service, args []string) in
 }
 
 func (a *app) get(ctx context.Context, svc *memory.Service, args []string) int {
-	if len(args) != 1 {
-		fmt.Fprintln(a.err, "usage: memorycard get <id>")
+	// Scanned by hand rather than with the flag package so --history may
+	// follow the id and anything else, "-1" included, still reads as the id.
+	history := false
+	var rest []string
+	for _, arg := range args {
+		if arg == "--history" || arg == "-history" {
+			history = true
+			continue
+		}
+		rest = append(rest, arg)
+	}
+	if len(rest) != 1 {
+		fmt.Fprintln(a.err, "usage: memorycard get [--history] <id>")
 		return 2
 	}
-	id, err := strconv.ParseInt(args[0], 10, 64)
+	id, err := strconv.ParseInt(rest[0], 10, 64)
 	if err != nil {
-		fmt.Fprintf(a.err, "id must be a number, got %q\n", args[0])
+		fmt.Fprintf(a.err, "id must be a number, got %q\n", rest[0])
 		return 2
 	}
 	m, err := svc.Get(ctx, id)
@@ -236,7 +247,7 @@ func (a *app) get(ctx context.Context, svc *memory.Service, args []string) int {
 	if err != nil {
 		return a.fail(err)
 	}
-	fmt.Fprint(a.out, render.Memory(m))
+	fmt.Fprint(a.out, render.Memory(m, history, "--history"))
 	return 0
 }
 

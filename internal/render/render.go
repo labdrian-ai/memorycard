@@ -66,8 +66,11 @@ func Save(r memory.SaveResult) string {
 	return b.String()
 }
 
-// Memory formats one full memory with its history.
-func Memory(m memory.Memory) string {
+// Memory formats one memory. With history it appends every earlier version;
+// without it, a memory that has earlier versions ends with one line counting
+// them and naming how to ask for them (show, as "--history" or
+// "history=true"), so the current text is not buried under old ones.
+func Memory(m memory.Memory, history bool, show string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "#%d %s project=%s scope=%s status=%s", m.ID, m.Type, m.Project, m.Scope, m.Status)
 	if m.Pinned {
@@ -80,6 +83,16 @@ func Memory(m memory.Memory) string {
 		fmt.Fprintf(&b, " superseded_by=#%d", m.SupersededBy)
 	}
 	fmt.Fprintf(&b, "\nupdated %s\n\n%s\n\n%s\n", m.UpdatedAt, m.Title, m.Body)
+	if !history {
+		switch n := len(m.History); n {
+		case 0:
+		case 1:
+			fmt.Fprintf(&b, "\n(1 earlier version not shown; %s shows it)\n", show)
+		default:
+			fmt.Fprintf(&b, "\n(%d earlier versions not shown; %s shows them)\n", n, show)
+		}
+		return b.String()
+	}
 	for _, v := range m.History {
 		fmt.Fprintf(&b, "\n--- history v%d (%s): %s\n%s\n", v.Version, v.SavedAt, v.Title, v.Body)
 	}

@@ -38,7 +38,7 @@ func New(svc *memory.Service, defaultProject string) *mcp.Server {
 	mcp.AddTool(srv, &mcp.Tool{Name: "mem_search", Annotations: read,
 		Description: "Find memories by meaning. Returns titles with a short excerpt; detail=title drops the excerpt. Results are related memories: check that they hold the fact asked for."}, h.search)
 	mcp.AddTool(srv, &mcp.Tool{Name: "mem_get", Annotations: read,
-		Description: "Read one memory in full, with its version history."}, h.get)
+		Description: "Read one memory in full. Earlier versions only with history=true."}, h.get)
 	mcp.AddTool(srv, &mcp.Tool{Name: "mem_update", Annotations: write,
 		Description: "Edit a memory by id, or pin, archive or mark it reviewed."}, h.update)
 	mcp.AddTool(srv, &mcp.Tool{Name: "mem_context", Annotations: read,
@@ -130,7 +130,8 @@ func (h *handlers) search(ctx context.Context, _ *mcp.CallToolRequest, a searchA
 }
 
 type getArgs struct {
-	ID int64 `json:"id"`
+	ID      int64 `json:"id"`
+	History bool  `json:"history,omitempty" jsonschema:"include earlier versions"`
 }
 
 func (h *handlers) get(ctx context.Context, _ *mcp.CallToolRequest, a getArgs) (*mcp.CallToolResult, any, error) {
@@ -138,7 +139,7 @@ func (h *handlers) get(ctx context.Context, _ *mcp.CallToolRequest, a getArgs) (
 	if err != nil {
 		return nil, nil, fmt.Errorf("memory #%d: %w", a.ID, err)
 	}
-	return text(render.Memory(m)), nil, nil
+	return text(render.Memory(m, a.History, "history=true")), nil, nil
 }
 
 type updateArgs struct {

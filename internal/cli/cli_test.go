@@ -46,6 +46,44 @@ func TestSaveThenSearchAndGet(t *testing.T) {
 	}
 }
 
+func TestGetHidesHistoryUnlessAsked(t *testing.T) {
+	db := newDB(t)
+	for _, body := range []string{"old body", "new body"} {
+		if code, out, errOut := run(t, db, "", "save", "--title", "Plan", "--body", body, "--topic", "plan/x"); code != 0 {
+			t.Fatalf("save: code=%d out=%q err=%q", code, out, errOut)
+		}
+	}
+	code, out, errOut := run(t, db, "", "get", "1")
+	if code != 0 || errOut != "" || !strings.Contains(out, "new body") || strings.Contains(out, "old body") {
+		t.Errorf("get: code=%d out=%q err=%q, want the current body only", code, out, errOut)
+	}
+	if !strings.HasSuffix(out, "\n(1 earlier version not shown; --history shows it)\n") {
+		t.Errorf("get = %q, want a closing line naming 1 earlier version and --history", out)
+	}
+	for _, args := range [][]string{{"get", "--history", "1"}, {"get", "1", "--history"}} {
+		code, out, errOut := run(t, db, "", args...)
+		if code != 0 || errOut != "" || !strings.Contains(out, "new body") ||
+			!strings.Contains(out, "--- history v1") || !strings.Contains(out, "old body") || strings.Contains(out, "not shown") {
+			t.Errorf("%v: code=%d out=%q err=%q, want current body and history", args, code, out, errOut)
+		}
+	}
+}
+
+func TestGetBadUsageExitsTwo(t *testing.T) {
+	db := newDB(t)
+	run(t, db, "", "save", "--title", "T", "--body", "B")
+	for _, args := range [][]string{{"get"}, {"get", "1", "2"}, {"get", "--nope", "1"}, {"get", "1", "--history", "2"}} {
+		code, out, errOut := run(t, db, "", args...)
+		if code != 2 || out != "" || !strings.Contains(errOut, "usage: memorycard get") {
+			t.Errorf("%v: code=%d out=%q err=%q, want exit 2 with the get usage", args, code, out, errOut)
+		}
+	}
+	// A negative id is still an id that does not exist, not a flag.
+	if code, out, errOut := run(t, db, "", "get", "-1"); code != 1 || out != "" || !strings.Contains(errOut, "memory #-1: not found") {
+		t.Errorf("get -1: code=%d out=%q err=%q, want exit 1 not found", code, out, errOut)
+	}
+}
+
 func TestSaveReadsBodyFromStdin(t *testing.T) {
 	db := newDB(t)
 	code, out, errOut := run(t, db, "body from a pipe\n", "save", "--title", "Piped", "--body", "-")
