@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "d8692a38609ce33950b496e45ea25cb9ff5a3938",
+    "head": "2547581604e30742df01a778e5ff37519679e70e",
+    "diff_sha256": "c616ca0a724d466cb2a49230dcb9f08fc142559dfa4ef3c233c204a8ebe68f58",
+    "paths": [
+      "odd/tasks/accuracy-efficiency.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of odd/tasks/accuracy-efficiency.md",
+        "result": "pass",
+        "output": "header, S1-S10, T1-T10, L1"
+      }
+    ]
+  }
+}
