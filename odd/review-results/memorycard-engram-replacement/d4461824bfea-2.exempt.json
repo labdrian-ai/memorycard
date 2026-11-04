@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "fb8dfff75441d3e051c92a9e6f4993111194c5d1",
+    "head": "d4461824bfea671536b04c9940d6b035ab9dd616",
+    "diff_sha256": "840f81c6c895797907d3dc5d482e21a42aa260f8b8c1c16ae53ad367c806a527",
+    "paths": [
+      "odd/goals/memorycard-engram-replacement.json"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of odd/goals/memorycard-engram-replacement.json",
+        "result": "pass",
+        "output": "valid JSON, version 3, goal_id memorycard-engram-replacement"
+      }
+    ]
+  }
+}

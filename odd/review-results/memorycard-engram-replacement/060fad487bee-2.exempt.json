@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "844c9c12774a8a5956a950a83e26f17f61f9b771",
+    "head": "060fad487bee702f245db04559909d0b1622ccbb",
+    "diff_sha256": "7e41be0b2473cced7a39f9c34c7821c2b3af2a3777d58d84358a6c567c5b7f8f",
+    "paths": [
+      "odd/tasks/memorycard-engram-replacement.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of odd/tasks/memorycard-engram-replacement.md",
+        "result": "pass",
+        "output": "T8, T9, T11 checked, T10 partial, L23 appended after L22"
+      }
+    ]
+  }
+}

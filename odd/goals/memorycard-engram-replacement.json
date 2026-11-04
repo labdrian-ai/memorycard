@@ -1,0 +1,33 @@
+{
+  "version": 3,
+  "project_id": "memorycard",
+  "goal_id": "memorycard-engram-replacement",
+  "objective": "Finish the S4 migration of odd/tasks/memorycard-engram-replacement.md today: memorycard becomes the only store for new memories and Engram is frozen as read-only history, as the owner decided in L16.",
+  "scope": "Tasks T7 to T11 of odd/tasks/memorycard-engram-replacement.md and the specs they name; one workflow and one role chain for each task.",
+  "constraints": [
+    "Finished tasks of odd/tasks/memorycard-engram-replacement.md are not redone.",
+    "The builder builds only a task the shaper designed.",
+    "The 558 vault pages that carry engram_id are not written (L16, L18).",
+    "Every commit is reviewed or exempted, and labdrian review check clears it."
+  ],
+  "non_goals": [
+    "Rewriting engram_id in vault pages.",
+    "Relations other than supersedes in memorycard."
+  ],
+  "acceptance_criteria": [
+    "T7, T8, T9, T10 and T11 of odd/tasks/memorycard-engram-replacement.md are checked off, each with its commit or evidence.",
+    "labdrian review check clears the head of each task's work unit."
+  ],
+  "memory_directive": {
+    "version": 1,
+    "scope": "project",
+    "sources": [
+      "engram",
+      "longterm-mem",
+      "procedural-skills"
+    ],
+    "write": "none"
+  },
+  "runtime_scope": "Claude Code, Codex, Pi and OpenCode, as T9 and T10 name them.",
+  "delivery_boundary": "Work-unit commits on feat/engram-migration (memorycard) and feat/longterm-mem-memorycard (labdrian-sdd-overlay); pushes, pull requests and merges follow the owner's go-ahead."
+}
