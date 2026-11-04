@@ -32,7 +32,7 @@ func (e keywordEmbedder) Embed(_ context.Context, texts []string, _ embed.Kind) 
 }
 
 // fixture: the answer to q1 sits in the second round of session "ans", after
-// 1,600 characters of filler, beyond the part of a memory that is embedded.
+// 1,600 characters of filler, beyond the first embed window of a memory.
 // Session "near" is about a related subject without the answer's words;
 // session "far" is unrelated.
 func fixture(t *testing.T) string {
@@ -93,8 +93,10 @@ func TestRoundGranularityFindsAnswersBeyondTheEmbedWindow(t *testing.T) {
 	if bySession.Docs != 3 || bySession.Mode != "dense" {
 		t.Fatalf("session run: %+v, want 3 docs in dense mode", bySession)
 	}
-	if r := bySession.Ranks[0]; r <= 1 {
-		t.Fatalf("session granularity ranked the answer %d; its answer lies beyond the embed window, so it must not be first", r)
+	// The answer lies beyond the first embed window; the session's later chunk
+	// carries it, so session granularity finds it too (S8).
+	if r := bySession.Ranks[0]; r != 1 {
+		t.Fatalf("session granularity ranked the answer %d, want 1: a later chunk carries it", r)
 	}
 
 	byRound, err := RunQuestion(ctx, qs[0], Setup{Granularity: Round, Embedder: emb}, t.TempDir())
@@ -116,7 +118,9 @@ func TestRoundGranularityFindsAnswersBeyondTheEmbedWindow(t *testing.T) {
 		t.Fatalf("abstention question must be skipped, got %+v", abs)
 	}
 
-	s := Summarize([]Result{bySession, byRound, abs}, []int{1, 5})
+	// A second-ranked answer keeps the recall arithmetic below 1.
+	second := Result{ID: "q1-second", Type: bySession.Type, Docs: 3, Mode: "dense", Ranks: []int{2}}
+	s := Summarize([]Result{second, byRound, abs}, []int{1, 5})
 	if s.Scored != 2 || s.Abstentions != 1 {
 		t.Fatalf("summary counts: %+v", s)
 	}
