@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -33,21 +34,30 @@ const (
 	sourceName    = "engram"
 )
 
-// Query is one gold question. ID is the source id of the memory that answers
-// it (and the key into Gold.Relevant).
+// Query is one gold question. ID is the key of the memory that answers it (and
+// the key into Gold.Relevant and Gold.Outdated). A key is a source id in the
+// import map (Engram), or "mc:<id>" for a memorycard memory id, which names
+// memories saved after the import.
 type Query struct {
 	ID, Text, Lang, Split string
 }
 
-// Gold is a set of questions plus optional per-question lists of source ids
-// that are all accepted answers (replacing the default of just the ID).
+// Gold is a set of questions plus optional per-question lists of keys that
+// are all accepted answers (replacing the default of just the ID), and of
+// keys of outdated memories that contradict the answer: they are never
+// accepted, and their rank is reported.
 type Gold struct {
 	Queries  []Query
 	Relevant map[string][]string
+	Outdated map[string][]string
 }
 
-// LoadGold reads queries.tsv (columns id, query, lang, optional split) and an
-// optional relevant.tsv (id, comma-separated accepted ids) from dir.
+// memoryKeyPrefix marks a gold key that is a memorycard memory id.
+const memoryKeyPrefix = "mc:"
+
+// LoadGold reads queries.tsv (columns id, query, lang, optional split), an
+// optional relevant.tsv (id, comma-separated accepted keys) and an optional
+// outdated.tsv (id, comma-separated outdated keys) from dir.
 func LoadGold(dir string) (Gold, error) {
 	f, err := os.Open(filepath.Join(dir, "queries.tsv"))
 	if err != nil {
@@ -73,21 +83,37 @@ func LoadGold(dir string) (Gold, error) {
 		}
 		return ""
 	}
-	g := Gold{Relevant: map[string][]string{}}
+	g := Gold{}
 	for _, row := range rows[1:] {
 		g.Queries = append(g.Queries, Query{ID: at(row, "id"), Text: at(row, "query"), Lang: at(row, "lang"), Split: at(row, "split")})
 	}
-	rel, err := os.ReadFile(filepath.Join(dir, "relevant.tsv"))
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
+	if g.Relevant, err = loadLists(filepath.Join(dir, "relevant.tsv")); err != nil {
 		return Gold{}, err
 	}
-	for _, line := range strings.Split(string(rel), "\n") {
-		if id, ids, ok := strings.Cut(strings.TrimSpace(line), "\t"); ok {
-			g.Relevant[id] = strings.Split(ids, ",")
-		}
+	if g.Outdated, err = loadLists(filepath.Join(dir, "outdated.tsv")); err != nil {
+		return Gold{}, err
 	}
 	return g, nil
 }
+
+// loadLists reads an optional file of "id<TAB>key,key" lines.
+func loadLists(path string) (map[string][]string, error) {
+	out := map[string][]string{}
+	raw, err := os.ReadFile(path)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, err
+	}
+	for _, line := range strings.Split(string(raw), "\n") {
+		if id, ids, ok := strings.Cut(strings.TrimSpace(line), "\t"); ok {
+			out[id] = strings.Split(ids, ",")
+		}
+	}
+	return out, nil
+}
+
+// ProjectTarget as Options.Project searches each question inside the project
+// of the memory that answers it, as an agent working in that project would.
+const ProjectTarget = "@target"
 
 // Options tune a run.
 type Options struct {
@@ -95,17 +121,23 @@ type Options struct {
 	IncludeOld       bool    // let superseded and archived memories compete
 	NoTitleAccept    bool    // do not accept memories that share the target's title
 	SimilarityAccept float64 // also accept memories with cosine >= this to the target (0 = off)
+	// Project scopes every search: empty searches all projects, ProjectTarget
+	// the project of each question's first answer, anything else that project.
+	Project string
 }
 
 // QueryResult is the outcome of one question.
 type QueryResult struct {
 	Query
-	Rank    int // 1-based position of the first accepted hit within K; 0 = miss
-	Hits    int
-	Mode    string
-	Top     float64 // score of the first hit (cosine in dense mode)
-	Tokens  float64
-	Latency time.Duration
+	Rank         int  // 1-based position of the first accepted hit within K; 0 = miss
+	OutdatedRank int  // 1-based position of the first outdated hit within K; 0 = none
+	HasOutdated  bool // the question lists outdated answers
+	Inactive     bool // every answer is superseded or archived
+	Hits         int
+	Mode         string
+	Top          float64 // score of the first hit (cosine in dense mode)
+	Tokens       float64
+	Latency      time.Duration
 }
 
 // Run asks every gold question through the real search path and ranks it.
@@ -124,22 +156,33 @@ func Run(ctx context.Context, svc *memory.Service, db *store.DB, g Gold, o Optio
 			keys = []string{q.ID}
 		}
 		accepted := ix.accepted(keys, o)
+		outdated := ix.outdated(g.Outdated[q.ID], ix.resolveAll(keys), o)
+		for id := range outdated {
+			delete(accepted, id)
+		}
 
+		project := o.Project
+		if project == ProjectTarget {
+			project = ix.project[ix.first(keys)]
+		}
 		start := time.Now()
-		res, err := svc.Search(ctx, memory.SearchInput{Query: q.Text, K: o.K, IncludeOld: o.IncludeOld})
+		res, err := svc.Search(ctx, memory.SearchInput{Query: q.Text, K: o.K, IncludeOld: o.IncludeOld, Project: project})
 		lat := time.Since(start)
 		if err != nil {
 			return nil, fmt.Errorf("query %s: %w", q.ID, err)
 		}
 		qr := QueryResult{Query: q, Hits: len(res.Hits), Mode: res.Mode, Latency: lat,
-			Tokens: float64(len(render.Search(res))) / charsPerToken}
+			Tokens: float64(len(render.Search(res))) / charsPerToken, HasOutdated: len(g.Outdated[q.ID]) > 0,
+			Inactive: ix.allInactive(keys)}
 		if len(res.Hits) > 0 {
 			qr.Top = res.Hits[0].Score
 		}
 		for i, h := range res.Hits {
-			if accepted[h.ID] {
+			if accepted[h.ID] && qr.Rank == 0 {
 				qr.Rank = i + 1
-				break
+			}
+			if outdated[h.ID] && qr.OutdatedRank == 0 {
+				qr.OutdatedRank = i + 1
 			}
 		}
 		out = append(out, qr)
@@ -148,16 +191,82 @@ func Run(ctx context.Context, svc *memory.Service, db *store.DB, g Gold, o Optio
 }
 
 type index struct {
-	byKey  map[string][]int64  // source key -> memory ids (all parts)
-	byBase map[string][]int64  // title without a "(part n/m)" suffix -> memory ids
-	base   map[int64]string    // memory id -> base title
-	vecs   map[int64][]float32 // memory id -> unit vector
+	byKey   map[string][]int64  // source key -> memory ids (all parts)
+	byBase  map[string][]int64  // title without a "(part n/m)" suffix -> memory ids
+	base    map[int64]string    // memory id -> base title
+	project map[int64]string    // memory id -> project
+	active  map[int64]bool      // memory id -> status is active
+	vecs    map[int64][]float32 // memory id -> unit vector
 }
 
 var partSuffix = regexp.MustCompile(` \(part \d+/\d+\)$`)
 
+// resolve returns the memory ids a gold key names: "mc:<id>" is a memory id
+// (when it exists), anything else a source key of the import map.
+func (ix *index) resolve(key string) []int64 {
+	if rest, ok := strings.CutPrefix(key, memoryKeyPrefix); ok {
+		id, err := strconv.ParseInt(rest, 10, 64)
+		if _, known := ix.base[id]; err != nil || !known {
+			return nil
+		}
+		return []int64{id}
+	}
+	return ix.byKey[key]
+}
+
+func (ix *index) resolveAll(keys []string) map[int64]bool {
+	set := map[int64]bool{}
+	for _, k := range keys {
+		for _, id := range ix.resolve(k) {
+			set[id] = true
+		}
+	}
+	return set
+}
+
+// first returns the first memory id the keys name, or 0.
+func (ix *index) first(keys []string) int64 {
+	for _, k := range keys {
+		if ids := ix.resolve(k); len(ids) > 0 {
+			return ids[0]
+		}
+	}
+	return 0
+}
+
+// allInactive reports whether the keys name memories and none is active.
+func (ix *index) allInactive(keys []string) bool {
+	ids := ix.resolveAll(keys)
+	for id := range ids {
+		if ix.active[id] {
+			return false
+		}
+	}
+	return len(ids) > 0
+}
+
+// outdated returns the memory ids of the outdated keys, with the other parts
+// of the same document unless title acceptance is off; a memory that is
+// itself named as an answer is never outdated.
+func (ix *index) outdated(keys []string, answers map[int64]bool, o Options) map[int64]bool {
+	set := map[int64]bool{}
+	for id := range ix.resolveAll(keys) {
+		set[id] = true
+		if !o.NoTitleAccept {
+			for _, other := range ix.byBase[ix.base[id]] {
+				set[other] = true
+			}
+		}
+	}
+	for id := range answers {
+		delete(set, id)
+	}
+	return set
+}
+
 func loadIndex(ctx context.Context, db *store.DB) (*index, error) {
-	ix := &index{byKey: map[string][]int64{}, byBase: map[string][]int64{}, base: map[int64]string{}, vecs: map[int64][]float32{}}
+	ix := &index{byKey: map[string][]int64{}, byBase: map[string][]int64{}, base: map[int64]string{},
+		project: map[int64]string{}, active: map[int64]bool{}, vecs: map[int64][]float32{}}
 	rows, err := db.SQL().QueryContext(ctx, `select source_key, memory_id from import_map where source = ?`, sourceName)
 	if err != nil {
 		return nil, err
@@ -173,20 +282,22 @@ func loadIndex(ctx context.Context, db *store.DB) (*index, error) {
 	}
 	rows.Close()
 
-	rows, err = db.SQL().QueryContext(ctx, `select id, title from memories`)
+	rows, err = db.SQL().QueryContext(ctx, `select id, title, project, status from memories`)
 	if err != nil {
 		return nil, err
 	}
 	for rows.Next() {
 		var id int64
-		var title string
-		if err := rows.Scan(&id, &title); err != nil {
+		var title, project, status string
+		if err := rows.Scan(&id, &title, &project, &status); err != nil {
 			rows.Close()
 			return nil, err
 		}
 		b := strings.ToLower(partSuffix.ReplaceAllString(title, ""))
 		ix.base[id] = b
 		ix.byBase[b] = append(ix.byBase[b], id)
+		ix.project[id] = project
+		ix.active[id] = status == "active"
 	}
 	rows.Close()
 
@@ -227,12 +338,7 @@ func dot(a, b []float32) float64 {
 
 // accepted returns the memory ids that count as a right answer for keys.
 func (ix *index) accepted(keys []string, o Options) map[int64]bool {
-	set := map[int64]bool{}
-	for _, k := range keys {
-		for _, id := range ix.byKey[k] {
-			set[id] = true
-		}
-	}
+	set := ix.resolveAll(keys)
 	targets := make([]int64, 0, len(set))
 	for id := range set {
 		targets = append(targets, id)
@@ -264,6 +370,13 @@ type Summary struct {
 	Hit5ByLang              map[string]float64
 	Lexical                 int // answers that said they were lexical
 	NonEmpty                int // answers with at least one hit
+	Inactive                int // questions whose every answer is superseded or archived
+
+	// Questions that list outdated answers, and the share of them where the
+	// current answer is ranked above every outdated one (current found, and no
+	// outdated hit before it) or an outdated one above the current one.
+	WithOutdated                int
+	CurrentFirst, OutdatedFirst float64
 }
 
 // Summarize computes the headline numbers.
@@ -296,6 +409,22 @@ func Summarize(rs []QueryResult) Summary {
 		if r.Hits > 0 {
 			s.NonEmpty++
 		}
+		if r.Inactive {
+			s.Inactive++
+		}
+		if r.HasOutdated {
+			s.WithOutdated++
+			if r.Rank > 0 && (r.OutdatedRank == 0 || r.Rank < r.OutdatedRank) {
+				s.CurrentFirst++
+			}
+			if r.OutdatedRank > 0 && (r.Rank == 0 || r.OutdatedRank < r.Rank) {
+				s.OutdatedFirst++
+			}
+		}
+	}
+	if s.WithOutdated > 0 {
+		s.CurrentFirst /= float64(s.WithOutdated)
+		s.OutdatedFirst /= float64(s.WithOutdated)
 	}
 	sort.Slice(lat, func(i, j int) bool { return lat[i] < lat[j] })
 	s.P50 = lat[len(lat)/2]
