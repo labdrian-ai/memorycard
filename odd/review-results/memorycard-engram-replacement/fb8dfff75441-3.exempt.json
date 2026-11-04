@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "7cfca51811ba8bc26862c17ec7fd56ef06ec2fbc",
+    "head": "fb8dfff75441d3e051c92a9e6f4993111194c5d1",
+    "diff_sha256": "322bbec90c2cd4e70a88ae56b0214df7c5e9aa9c04017ec116b545832b667e3b",
+    "paths": [
+      "odd/tasks/memorycard-engram-replacement.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of the T7 line and L19",
+        "result": "pass",
+        "output": "T7 [x] with commit 7cfca51; L19 appended"
+      }
+    ]
+  }
+}

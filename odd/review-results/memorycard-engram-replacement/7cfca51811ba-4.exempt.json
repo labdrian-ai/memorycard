@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "19bff35a6ac5c215403022813e945b8cbf2188d7",
+    "head": "7cfca51811ba8bc26862c17ec7fd56ef06ec2fbc",
+    "diff_sha256": "0efeae5c2f395746b09da03ae026d096e0bb3e4ed0f7d956353bcc1dce9b0a87",
+    "paths": [
+      "README.md",
+      "internal/cli/capture.go",
+      "internal/cli/capture_test.go",
+      "internal/cli/cli.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go vet ./...",
+        "result": "pass",
+        "output": "ok"
+      },
+      {
+        "command": "go test ./... -count=1",
+        "result": "pass",
+        "output": "all packages ok; 6 new cli tests, 5 RED before (unknown command \"capture\")"
+      },
+      {
+        "command": "differential save/context vs main",
+        "result": "pass",
+        "output": "stdout, stderr and exit codes identical"
+      },
+      {
+        "command": "parent spot check: capture twice into a scratch DB",
+        "result": "pass",
+        "output": "created #1, #2; second run duplicate of #1 and #2, nothing written"
+      }
+    ]
+  }
+}
