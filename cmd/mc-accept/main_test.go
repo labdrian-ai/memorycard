@@ -100,9 +100,9 @@ func TestDigestCheckRunsWithoutGoldOrEmbedder(t *testing.T) {
 	}
 	for _, want := range []string{
 		"== digest noise (session summaries, further parts, cut titles)",
-		"  d                      lines   6  summaries 1  parts 1  cut 1  noisy 3 (50%)",
+		"  d                      lines   5  summaries 1  parts 0  cut 1  noisy 2 (40%)",
 		"  empty                  lines   0  summaries 0  parts 0  cut 0  noisy 0 (0%)",
-		"  total                  lines   6  summaries 1  parts 1  cut 1  noisy 3 (50%)",
+		"  total                  lines   5  summaries 1  parts 0  cut 1  noisy 2 (40%)",
 		"RESULT: PASS",
 	} {
 		if !strings.Contains(out, want+"\n") {

@@ -340,16 +340,19 @@ func TestDigestNoiseClassifiesLines(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("got %d projects, want 2", len(got))
 	}
+	// The digest lists a split document once and caps the stale tier at 3
+	// lines, so the guide's two parts are one clean line and the five old
+	// decisions of p show as three.
 	d := got[0]
-	if d.Project != "d" || d.Lines != 5 || d.Summaries != 1 || d.Parts != 1 || d.Truncated != 1 || d.Noisy != 3 {
-		t.Errorf("project d = %+v, want 5 lines, 1 summary, 1 part, 1 truncated, 3 noisy", d)
+	if d.Project != "d" || d.Lines != 4 || d.Summaries != 1 || d.Parts != 0 || d.Truncated != 1 || d.Noisy != 2 {
+		t.Errorf("project d = %+v, want 4 lines, 1 summary, 0 parts, 1 truncated, 2 noisy", d)
 	}
-	if got[1].Project != "p" || got[1].Lines != 5 || got[1].Noisy != 0 {
-		t.Errorf("project p = %+v, want 5 clean lines", got[1])
+	if got[1].Project != "p" || got[1].Lines != 3 || got[1].Noisy != 0 {
+		t.Errorf("project p = %+v, want 3 clean lines", got[1])
 	}
 	tot := Total(got)
-	if tot.Lines != 10 || tot.Noisy != 3 || tot.Share() != 0.3 {
-		t.Errorf("total = %+v share %v, want 10 lines, 3 noisy, 0.3", tot, tot.Share())
+	if tot.Lines != 7 || tot.Noisy != 2 || tot.Share() != 2.0/7 {
+		t.Errorf("total = %+v share %v, want 7 lines, 2 noisy, 2/7", tot, tot.Share())
 	}
 }
 

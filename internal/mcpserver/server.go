@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -42,7 +43,7 @@ func New(svc *memory.Service, defaultProject string) *mcp.Server {
 	mcp.AddTool(srv, &mcp.Tool{Name: "mem_update", Annotations: write,
 		Description: "Edit a memory by id, or pin, archive or mark it reviewed."}, h.update)
 	mcp.AddTool(srv, &mcp.Tool{Name: "mem_context", Annotations: read,
-		Description: "Short digest of a project: pinned, stale, then recent memories."}, h.context)
+		Description: "Short digest of a project: pinned, stale, then recent memories, one line per document. query adds the top hits for a task."}, h.context)
 	mcp.AddTool(srv, &mcp.Tool{Name: "mem_session", Annotations: write,
 		Description: "Session bookkeeping: action start, end or summary."}, h.session)
 	return srv
@@ -165,6 +166,7 @@ type contextArgs struct {
 	Project   string `json:"project,omitempty"`
 	Cwd       string `json:"cwd,omitempty" jsonschema:"absolute dir to resolve project from"`
 	Directory string `json:"directory,omitempty" jsonschema:"alias of cwd"`
+	Query     string `json:"query,omitempty" jsonschema:"current task: appends its top 5 search hits"`
 }
 
 func (h *handlers) context(ctx context.Context, _ *mcp.CallToolRequest, a contextArgs) (*mcp.CallToolResult, any, error) {
@@ -175,14 +177,33 @@ func (h *handlers) context(ctx context.Context, _ *mcp.CallToolRequest, a contex
 	if p == "" {
 		return nil, nil, memory.ErrNoProject
 	}
-	d, err := h.svc.Context(ctx, p, memory.ContextBudgetBytes)
+	s, err := DigestText(ctx, h.svc, p, a.Query)
 	if err != nil {
 		return nil, nil, err
 	}
-	if len(d.Entries) == 0 {
-		return text("no memories yet\n"), nil, nil
+	return text(s), nil, nil
+}
+
+// DigestText renders a project's digest, then, when query is not blank, the
+// top memory.DigestHitsK search hits for it. The CLI context command and
+// mem_context share it, so both print the same text.
+func DigestText(ctx context.Context, svc *memory.Service, project, query string) (string, error) {
+	d, err := svc.Context(ctx, project, memory.ContextBudgetBytes)
+	if err != nil {
+		return "", err
 	}
-	return text(d.Text()), nil, nil
+	out := d.Text()
+	if len(d.Entries) == 0 {
+		out = "no memories yet\n"
+	}
+	if strings.TrimSpace(query) == "" {
+		return out, nil
+	}
+	r, err := svc.ContextSearch(ctx, project, query)
+	if err != nil {
+		return "", err
+	}
+	return out + fmt.Sprintf("\ntop hits for %q:\n", strings.TrimSpace(query)) + render.Search(r), nil
 }
 
 type sessionArgs struct {

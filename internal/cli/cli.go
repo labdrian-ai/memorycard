@@ -34,7 +34,11 @@ commands:
                            find memories by meaning; --all includes superseded
                            and archived ones, --project "" searches every project
   get    [--history] <id>  print one memory; --history adds its earlier versions
-  context                  print the project digest
+  context [--project P] [--query Q | <query>]
+                           print the project digest: pinned, up to 3 stale
+                           decisions, then recent memories, one line per
+                           document; session summaries and sdd/ odd/ project/
+                           mirrors one line each; a query appends its top 5 hits
   capture                  read text on stdin and save each numbered item of its
                            "## Key Learnings" block as a memory (type learning);
                            no block or no items saves nothing
@@ -109,7 +113,7 @@ func Run(args []string, in io.Reader, out, errOut io.Writer, getenv func(string)
 	case "get":
 		return a.get(ctx, svc, rest)
 	case "context":
-		return a.context(ctx, svc)
+		return a.context(ctx, svc, rest)
 	case "stats":
 		return a.stats(ctx, svc, emb)
 	case "import":
@@ -251,16 +255,21 @@ func (a *app) get(ctx context.Context, svc *memory.Service, args []string) int {
 	return 0
 }
 
-func (a *app) context(ctx context.Context, svc *memory.Service) int {
-	d, err := svc.Context(ctx, a.project(), memory.ContextBudgetBytes)
+func (a *app) context(ctx context.Context, svc *memory.Service, args []string) int {
+	fs := a.flags("context")
+	proj := fs.String("project", a.project(), "project")
+	query := fs.String("query", "", "task or question: append its top search hits")
+	if fs.Parse(args) != nil {
+		return 2
+	}
+	if *query == "" {
+		*query = strings.Join(fs.Args(), " ")
+	}
+	text, err := mcpserver.DigestText(ctx, svc, *proj, *query)
 	if err != nil {
 		return a.fail(err)
 	}
-	if len(d.Entries) == 0 {
-		fmt.Fprintln(a.out, "no memories yet")
-		return 0
-	}
-	fmt.Fprint(a.out, d.Text())
+	fmt.Fprint(a.out, text)
 	return 0
 }
 

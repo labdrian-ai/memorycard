@@ -142,6 +142,20 @@ func TestProjectDefaultAndExplicit(t *testing.T) {
 	}
 }
 
+func TestContextQueryAppendsTopHits(t *testing.T) {
+	cs := connect(t, "p")
+	call(t, cs, "mem_save", map[string]any{"title": "Rollout plan", "body": "canary first", "type": "decision"})
+	call(t, cs, "mem_save", map[string]any{"title": "Lunch", "body": "pasta"})
+	out, isErr := call(t, cs, "mem_context", map[string]any{"query": "canary"})
+	want := "#2 [recent] manual: Lunch\n#1 [recent] decision: Rollout plan\n\ntop hits for \"canary\":\nmode: lexical (embedder unavailable)\n#1 decision: Rollout plan\n"
+	if isErr || out != want {
+		t.Errorf("context with query = %q (error=%v), want %q", out, isErr, want)
+	}
+	if out, _ := call(t, cs, "mem_context", map[string]any{}); strings.Contains(out, "top hits") {
+		t.Errorf("context without query = %q, want no hits section", out)
+	}
+}
+
 // workspace returns a directory whose .memorycard file names project.
 func workspace(t *testing.T, project string) string {
 	t.Helper()

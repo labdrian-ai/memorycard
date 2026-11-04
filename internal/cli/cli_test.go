@@ -166,3 +166,45 @@ func TestContextCommand(t *testing.T) {
 		t.Errorf("context: code=%d out=%q", code, out)
 	}
 }
+
+func TestContextHonoursTheProjectFlag(t *testing.T) {
+	db := newDB(t)
+	run(t, db, "", "save", "--title", "Home note", "--body", "in p")
+	run(t, db, "", "save", "--title", "Other note", "--body", "in q", "--project", "q")
+	code, out, errOut := run(t, db, "", "context", "--project", "q")
+	if code != 0 || out != "#2 [recent] manual: Other note\n" || errOut != "" {
+		t.Errorf("context --project q: code=%d out=%q err=%q, want only the q memory", code, out, errOut)
+	}
+	// Without the flag the resolved project is still used.
+	code, out, _ = run(t, db, "", "context")
+	if code != 0 || out != "#1 [recent] manual: Home note\n" {
+		t.Errorf("context: code=%d out=%q, want only the p memory", code, out)
+	}
+	if code, _, errOut := run(t, db, "", "context", "--bogus"); code != 2 || !strings.Contains(errOut, "bogus") {
+		t.Errorf("context --bogus: code=%d err=%q, want a usage error", code, errOut)
+	}
+}
+
+func TestContextQueryAppendsTheTopFiveHits(t *testing.T) {
+	db := newDB(t)
+	for i := 0; i < 7; i++ {
+		run(t, db, "", "save", "--title", "Canary step "+string(rune('a'+i)), "--body", "canary rollout "+string(rune('a'+i)))
+	}
+	run(t, db, "", "save", "--title", "Unrelated", "--body", "nothing here")
+	code, out, errOut := run(t, db, "", "context", "--query", "canary rollout")
+	if code != 0 || errOut != "" {
+		t.Fatalf("code=%d err=%q", code, errOut)
+	}
+	digest, hits, ok := strings.Cut(out, "top hits for \"canary rollout\":\n")
+	if !ok || !strings.Contains(digest, "#8 [recent] manual: Unrelated\n") {
+		t.Fatalf("out = %q, want the digest then a hits section", out)
+	}
+	n := strings.Count(hits, ": Canary step ")
+	if n != 5 || strings.Contains(hits, "Unrelated") || strings.Contains(hits, "  canary") {
+		t.Errorf("hits = %q, want 5 title-only canary hits", hits)
+	}
+	// Positional words are the query too, as in search.
+	if _, out2, _ := run(t, db, "", "context", "canary", "rollout"); out2 != out {
+		t.Errorf("positional query = %q, want the same as --query (%q)", out2, out)
+	}
+}
