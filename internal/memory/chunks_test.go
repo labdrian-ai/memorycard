@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"math"
 	"strings"
 	"testing"
 	"unicode/utf8"
@@ -108,7 +109,7 @@ func TestShortMemoryKeepsOneVectorAndNoChunks(t *testing.T) {
 	}
 }
 
-func TestDenseScoresAMemoryByItsBestChunk(t *testing.T) {
+func TestDenseLiftsAMemoryByItsBestChunk(t *testing.T) {
 	fe := &fakeEmbedder{fn: axis}
 	s := withEmbedder(t, fe)
 	s.SetHybrid(false)
@@ -121,13 +122,54 @@ func TestDenseScoresAMemoryByItsBestChunk(t *testing.T) {
 		t.Fatalf("mode = %s, want dense", r.Mode)
 	}
 	if got := ids(r); len(got) != 2 || got[0] != deep {
-		t.Fatalf("ranking = %v, want %d (best chunk) before %d", got, deep, plain)
+		t.Fatalf("ranking = %v, want %d (lifted by its best chunk) before %d", got, deep, plain)
 	}
-	if r.Hits[0].Score < 0.99 {
-		t.Errorf("top score = %f, want the best chunk's cosine (~0.995)", r.Hits[0].Score)
+	// First window cosine 0, best chunk cosine ~0.995: the score moves a
+	// ChunkLift share of the way from the first to the best.
+	best := 1 / math.Sqrt(1.01)
+	if want := ChunkLift * best; math.Abs(r.Hits[0].Score-want) > 1e-6 {
+		t.Errorf("top score = %f, want %f (first window + ChunkLift x the gap to the best chunk)", r.Hits[0].Score, want)
 	}
-	if r.Confidence != ConfidenceOK {
-		t.Errorf("confidence = %s, want ok from the best chunk", r.Confidence)
+	if r.Hits[1].Score != 0 {
+		t.Errorf("plain score = %f, want its own cosine 0", r.Hits[1].Score)
+	}
+	// The score stays on the first-window scale the confidence threshold was
+	// calibrated on, so a match that only a late chunk carries is low confidence.
+	if r.Confidence != ConfidenceLow {
+		t.Errorf("confidence = %s, want low", r.Confidence)
+	}
+}
+
+// halfAxis extends axis with HALF, a text half-way between the ALPHA query and
+// filler (cosine ~0.707 to ALPHA).
+func halfAxis(text string) []float32 {
+	if strings.Contains(text, "HALF") {
+		return []float32{1, 1, 0}
+	}
+	return axis(text)
+}
+
+// Regression for the T6 benchmark loss: scored by the plain maximum over its
+// chunks, a long note with one strong late chunk overtook a short note that
+// answers the query as a whole. A late chunk may lift a long note above other
+// long notes, never past a note matched better by its first window.
+func TestLateChunkDoesNotOvertakeABetterFirstWindow(t *testing.T) {
+	s := withEmbedder(t, &fakeEmbedder{fn: halfAxis})
+	s.SetHybrid(false)
+	short := save(t, s, SaveInput{Project: "p", Title: "short", Body: "HALF"}).ID
+	deep := save(t, s, SaveInput{Project: "p", Title: "deep", Body: longBody(3000, 2500, "NEAR")}).ID
+	other := save(t, s, SaveInput{Project: "p", Title: "other", Body: longBody(3000, 0, "")}).ID
+
+	r := search(t, s, SearchInput{Project: "p", Query: "ALPHA"})
+	if got := ids(r); len(got) != 3 || got[0] != short || got[1] != deep || got[2] != other {
+		t.Fatalf("ranking = %v, want short %d, deep %d, other %d", got, short, deep, other)
+	}
+	// A memory without chunks keeps exactly its single-vector cosine.
+	if want := 1 / math.Sqrt2; math.Abs(r.Hits[0].Score-want) > 1e-6 {
+		t.Errorf("short score = %f, want its cosine %f", r.Hits[0].Score, want)
+	}
+	if r.Hits[2].Score != 0 {
+		t.Errorf("other score = %f, want 0: none of its chunks match", r.Hits[2].Score)
 	}
 }
 

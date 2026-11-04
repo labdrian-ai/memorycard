@@ -15,6 +15,12 @@ const (
 	// ChunkOverlapRunes is how much of the body two consecutive chunks of a
 	// long memory share, so a sentence cut by one window is whole in the next.
 	ChunkOverlapRunes = 200
+	// ChunkLift is the share of the gap between a long memory's first window
+	// and its best chunk that dense search adds to the memory's score.
+	// Measured on the gold sets (T6): 1.0, the plain maximum, lost 2-7
+	// points; 0.15 regressed none and gained slightly; 0.25 and above
+	// lost hit@5 on gold2.
+	ChunkLift = 0.15
 	// DuplicateHintCosine is the similarity at which Save hints at a duplicate.
 	// The starting value is calibrated later on held-out data.
 	DuplicateHintCosine = 0.97

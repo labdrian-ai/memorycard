@@ -322,11 +322,18 @@ func (s *Service) dense(ctx context.Context, q string, f filter, k int) ([]candi
 		return nil, err
 	}
 	rows.Close()
-	// A long memory is scored by its best chunk.
+	// A long memory is lifted towards its best chunk: its first-window cosine
+	// plus ChunkLift times the gap up to the best chunk's cosine. A plain
+	// maximum let long notes, which hold more chunks, overtake short notes
+	// that answer the query better (T6 benchmark), and it moved scores off the
+	// first-window scale ConfidenceCosine is calibrated on.
 	pos := make(map[int64]int, len(out))
+	first := make([]float64, len(out))
 	for i, c := range out {
 		pos[c.ID] = i
+		first[i] = c.Score
 	}
+	best := append([]float64(nil), first...)
 	chunks, err := s.db.SQL().QueryContext(ctx,
 		`select c.memory_id, c.vec from vector_chunks c
 		 join vectors v on v.memory_id = c.memory_id
@@ -348,12 +355,15 @@ func (s *Service) dense(ctx context.Context, q string, f filter, k int) ([]candi
 		if !ok || len(v) != len(qv) {
 			continue
 		}
-		if sc := dot(qv, v); sc > out[i].Score {
-			out[i].Score = sc
+		if sc := dot(qv, v); sc > best[i] {
+			best[i] = sc
 		}
 	}
 	if err := chunks.Err(); err != nil {
 		return nil, err
+	}
+	for i := range out {
+		out[i].Score = first[i] + ChunkLift*(best[i]-first[i])
 	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Score > out[j].Score })
 	if len(out) > k {
