@@ -366,9 +366,15 @@ func (s *Service) update(ctx context.Context, tx *sql.Tx, id int64, oldTitle, ol
 		`delete from memory_versions where memory_id=? and version <= ?`, id, next-MaxVersions); err != nil {
 		return err
 	}
-	_, err := tx.ExecContext(ctx,
+	if _, err := tx.ExecContext(ctx,
 		`update memories set type=?, title=?, body=?, content_hash=?, updated_at=? where id=?`,
-		in.Type, in.Title, in.Body, hash, stamp, id)
+		in.Type, in.Title, in.Body, hash, stamp, id); err != nil {
+		return err
+	}
+	// The stored vector describes the old text. Drop it with the edit, so a
+	// failed re-embed leaves the memory pending for EmbedPending instead of
+	// searchable by a stale vector.
+	_, err := tx.ExecContext(ctx, `delete from vectors where memory_id=?`, id)
 	return err
 }
 
