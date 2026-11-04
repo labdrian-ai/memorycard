@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "118aff7b82caebd918e3f63e18cafadfe5b242cf",
+    "head": "2a9a0ac7a6a8211f21ea612c09080214fd78619d",
+    "diff_sha256": "a1c813547dbbe7e139ab92466114676a71765cda7afccc08487b1d983aab077a",
+    "paths": [
+      "odd/tasks/memorycard-engram-replacement.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "python3 -I ~/memorycard-lab/dualwrite-check.py --since 2026-11-03T15:12:00Z",
+        "result": "pass",
+        "output": "engram 11, matched 11, problems 0 (deleted in engram, active in memorycard: 0)"
+      },
+      {
+        "command": "structural readback of the T4 row and L15 in odd/tasks/memorycard-engram-replacement.md",
+        "result": "pass",
+        "output": "T4 marked partial (L15) with store parity and agent-only figures; Next line points to the 2026-11-07 re-run"
+      }
+    ]
+  }
+}
