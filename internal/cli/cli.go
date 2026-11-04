@@ -35,6 +35,10 @@ commands:
                            and archived ones, --project "" searches every project
   get    <id>              print one memory with its history
   context                  print the project digest
+  capture                  read text on stdin and save each numbered item of its
+                           "## Key Learnings" block as a memory (type learning);
+                           no block or no items saves nothing
+  project                  print the project the other commands resolve
   stats                    counts and embedding backlog
   embed  [--limit N]       embed every memory that has no vector yet, N per batch
   import engram <path>     copy an Engram database in (read-only, resumable)
@@ -76,7 +80,10 @@ func Run(args []string, in io.Reader, out, errOut io.Writer, getenv func(string)
 	case "version", "--version":
 		fmt.Fprintf(out, "memorycard %s\n", mcpserver.Version)
 		return 0
-	case "mcp", "save", "search", "get", "context", "stats", "embed", "import":
+	case "project":
+		fmt.Fprintln(out, a.project())
+		return 0
+	case "mcp", "save", "search", "get", "context", "stats", "embed", "import", "capture":
 	default:
 		fmt.Fprintf(errOut, "unknown command %q\n%s", cmd, usage)
 		return 2
@@ -95,6 +102,8 @@ func Run(args []string, in io.Reader, out, errOut io.Writer, getenv func(string)
 		return a.fail(mcpserver.New(svc, a.project()).Run(ctx, &mcp.StdioTransport{}))
 	case "save":
 		return a.save(ctx, svc, rest)
+	case "capture":
+		return a.capture(ctx, svc)
 	case "search":
 		return a.search(ctx, svc, rest)
 	case "get":

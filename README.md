@@ -61,6 +61,12 @@ memorycard save --title "Auth model" --body "Signed tokens, 15 min expiry"
 memorycard search "how do sessions expire"
 ```
 
+For hooks: `memorycard project` prints the project the other commands resolve, and
+`memorycard capture` reads text on stdin and saves each numbered item of its
+`## Key Learnings` block as one memory (type `learning`, scope `project`). The
+same input twice adds nothing, and input with no block or no items saves nothing
+and exits 0.
+
 ## Connect your agent
 
 memorycard serves its tools over stdio with `memorycard mcp`.
