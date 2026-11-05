@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "713badd8fdc591fdf3ab949eca6f82c293299dfa",
+    "head": "0d86ca0c72f07fca15264acaef6df236c49df4a0",
+    "diff_sha256": "4167ac2d9b836809badf9a7e0e970a6c874382f8e646db7f8a04dcdc4bdf08e5",
+    "paths": [
+      "README.md",
+      "internal/memory/ops.go",
+      "internal/memory/ops_test.go"
+    ]
+  },
+  "rows": [
+    "default",
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "713badd8fdc591fdf3ab949eca6f82c293299dfa",
+      "head": "0d86ca0c72f07fca15264acaef6df236c49df4a0",
+      "diff_sha256": "4167ac2d9b836809badf9a7e0e970a6c874382f8e646db7f8a04dcdc4bdf08e5"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "README.md",
+        "internal/memory/ops.go",
+        "internal/memory/ops_test.go"
+      ],
+      "reason": ""
+    },
+    "findings": [],
+    "evidence": [
+      "Read the full diff at /home/labdrian/memorycard-worktrees/review-0d86ca0.diff.",
+      "Read kind() in internal/memory/ops.go at head in the detached worktree. It folds a document when its topic starts with sdd/, odd/ or project/ and either its title starts with its topic key, or it is an architecture note under sdd/ or odd/. This matches the Risk line.",
+      "Grepped the Go sources at head for \"architecture\" and project/ topic usage. No other test or caller relies on a project/ architecture note with a hand title being folded.",
+      "The new test uses two hand-titled architecture notes under project/. Their entries are expected to keep plain lines, in the order b, a.",
+      "No secrets, path, exec or net imports are introduced; the only new import is slices from the standard library.",
+      "Not run: I did not run the tests, per the no-run rule."
+    ]
+  }
+}

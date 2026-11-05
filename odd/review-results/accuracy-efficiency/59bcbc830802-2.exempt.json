@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "88bc5b9d857a2a59a55d8cc6b507495264b802e5",
+    "head": "59bcbc830802264609fed275132c299554464693",
+    "diff_sha256": "48af8978ff789f6188d6d36fde087625a1faf8a74f4ccedc6592db9932d3d088",
+    "paths": [
+      "odd/review-results/accuracy-efficiency/1039e62f0dda-1.sweep.json",
+      "odd/review-results/accuracy-efficiency/1039e62f0dda-2.exempt.json",
+      "odd/review-results/accuracy-efficiency/1640cfe9b35b-1.sweep.json",
+      "odd/review-results/accuracy-efficiency/1640cfe9b35b-2.exempt.json",
+      "odd/review-results/accuracy-efficiency/25bbe508ff8c-1.sweep.json",
+      "odd/review-results/accuracy-efficiency/25bbe508ff8c-2.sweeper.json",
+      "odd/review-results/accuracy-efficiency/25bbe508ff8c-3.exempt.json",
+      "odd/review-results/accuracy-efficiency/409079b838e4-1.sweep.json",
+      "odd/review-results/accuracy-efficiency/409079b838e4-2.exempt.json",
+      "odd/review-results/accuracy-efficiency/4513ac90a7fd-1.sweep.json",
+      "odd/review-results/accuracy-efficiency/4513ac90a7fd-2.exempt.json",
+      "odd/review-results/accuracy-efficiency/47cf5b342725-1.sweep.json",
+      "odd/review-results/accuracy-efficiency/47cf5b342725-2.polisher.json",
+      "odd/review-results/accuracy-efficiency/88bc5b9d857a-1.sweep.json",
+      "odd/review-results/accuracy-efficiency/88bc5b9d857a-2.exempt.json",
+      "odd/review-results/accuracy-efficiency/8c6dbf2ab2a4-1.sweep.json",
+      "odd/review-results/accuracy-efficiency/8c6dbf2ab2a4-2.exempt.json",
+      "odd/review-results/accuracy-efficiency/8d54be1e4cb4-1.sweep.json",
+      "odd/review-results/accuracy-efficiency/8d54be1e4cb4-2.sweeper.json",
+      "odd/review-results/accuracy-efficiency/8d54be1e4cb4-3.exempt.json",
+      "odd/review-results/accuracy-efficiency/97182d4fe450-1.sweep.json",
+      "odd/review-results/accuracy-efficiency/97182d4fe450-2.sweeper.json",
+      "odd/review-results/accuracy-efficiency/97182d4fe450-3.exempt.json",
+      "odd/review-results/accuracy-efficiency/b783a55ed3ac-1.sweep.json",
+      "odd/review-results/accuracy-efficiency/b783a55ed3ac-2.sweeper.json",
+      "odd/review-results/accuracy-efficiency/b783a55ed3ac-3.polisher.json",
+      "odd/review-results/accuracy-efficiency/c7b6eee6a45d-1.sweep.json",
+      "odd/review-results/accuracy-efficiency/c7b6eee6a45d-2.sweeper.json",
+      "odd/review-results/accuracy-efficiency/c7b6eee6a45d-3.exempt.json",
+      "odd/review-results/accuracy-efficiency/cbd14effd676-1.sweep.json",
+      "odd/review-results/accuracy-efficiency/cbd14effd676-2.sweeper.json",
+      "odd/review-results/accuracy-efficiency/cbd14effd676-3.exempt.json",
+      "odd/review-results/accuracy-efficiency/db0c80a355b3-1.sweep.json",
+      "odd/review-results/accuracy-efficiency/db0c80a355b3-2.exempt.json",
+      "odd/review-results/accuracy-efficiency/ed56b57961fb-1.sweep.json",
+      "odd/review-results/accuracy-efficiency/ed56b57961fb-2.sweeper.json",
+      "odd/review-results/accuracy-efficiency/ed56b57961fb-3.polisher.json",
+      "odd/review-results/accuracy-efficiency/ef0ec5450f74-1.sweep.json",
+      "odd/review-results/accuracy-efficiency/ef0ec5450f74-2.sweeper.json",
+      "odd/review-results/accuracy-efficiency/ef0ec5450f74-3.exempt.json"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of README.md and the usage text",
+        "result": "pass",
+        "output": "sections match the behaviour each unit shipped"
+      }
+    ]
+  }
+}

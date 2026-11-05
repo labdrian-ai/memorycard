@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "c8c697d6df6e44fbe5f2a7262e545b53a587263e",
+    "head": "713badd8fdc591fdf3ab949eca6f82c293299dfa",
+    "diff_sha256": "b434917c1e821fb977c1294a32447b30159a8a558003f2b9ab9e6a6892bfa190",
+    "paths": [
+      "odd/review-results/accuracy-efficiency/47cf5b342725-3.json",
+      "odd/review-results/accuracy-efficiency/47cf5b342725-3.verifier.json",
+      "odd/review-results/accuracy-efficiency/b783a55ed3ac-4.json",
+      "odd/review-results/accuracy-efficiency/b783a55ed3ac-4.verifier.json",
+      "odd/review-results/accuracy-efficiency/ed56b57961fb-4.json",
+      "odd/review-results/accuracy-efficiency/ed56b57961fb-4.verifier.json"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of README.md and the usage text",
+        "result": "pass",
+        "output": "sections match the behaviour each unit shipped"
+      }
+    ]
+  }
+}

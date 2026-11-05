@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "0d86ca0c72f07fca15264acaef6df236c49df4a0",
+    "head": "47bea1864cc5bd3366d61cc02c3816c230f57a0c",
+    "diff_sha256": "1a57b55c7f759f81e9872d6ce620f5cf03f4684402efa1f15f382ffae30709ab",
+    "paths": [
+      "README.md",
+      "internal/memory/chunks_test.go",
+      "internal/memory/neighbours.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go vet ./... && go test ./... -count=1 at the feature head 54f6f8c",
+        "result": "pass",
+        "output": "every package ok; gofmt clean"
+      },
+      {
+        "command": "independent verifier of unit T5 (workflow wf_4c79a35e-a82), probes on snapshot copies",
+        "result": "pass",
+        "output": "fix(capture): send a capture block's chunks in requests of at most 16 texts: verdict pass after at most one correction"
+      }
+    ]
+  }
+}
