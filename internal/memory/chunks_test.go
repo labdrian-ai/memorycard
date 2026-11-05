@@ -373,6 +373,39 @@ func TestChunkBackfillDoesNotOverwriteAConcurrentEdit(t *testing.T) {
 	}
 }
 
+// A title-only edit that lands during the chunk backfill keeps its own
+// vectors too: every chunk carries the title, so chunks of the old title are
+// stale.
+func TestChunkBackfillDoesNotOverwriteAConcurrentTitleEdit(t *testing.T) {
+	ctx := context.Background()
+	fe := &fakeEmbedder{fn: axis}
+	s := withEmbedder(t, fe)
+	body := longBody(3000, 0, "")
+	id := save(t, s, SaveInput{Project: "p", Title: "Old ALPHA", Body: body}).ID
+	if _, err := s.db.SQL().Exec(`delete from vector_chunks`); err != nil {
+		t.Fatal(err)
+	}
+	newTitle := "New NEAR"
+	s.SetEmbedder(&editDuring{inner: fe, edit: func() {
+		if _, err := s.Update(ctx, id, UpdateInput{Title: &newTitle}); err != nil {
+			t.Errorf("concurrent update: %v", err)
+		}
+	}})
+	fe.seen = nil
+	if _, err := s.EmbedPending(ctx, 10); err != nil {
+		t.Fatalf("EmbedPending: %v", err)
+	}
+	var stored []byte
+	if err := s.db.SQL().QueryRow(
+		`select vec from vector_chunks where memory_id=? and chunk=1`, id).Scan(&stored); err != nil {
+		t.Fatal(err)
+	}
+	want := unit(axis(embedChunks(newTitle, body)[1]))
+	if string(stored) != string(encodeVec(want)) {
+		t.Errorf("chunk 1 holds the vector of the old title, want the edited title's")
+	}
+}
+
 // A long body with a NUL character gets its chunks from the backfill too.
 func TestChunkBackfillPicksALongBodyWithANul(t *testing.T) {
 	ctx := context.Background()
