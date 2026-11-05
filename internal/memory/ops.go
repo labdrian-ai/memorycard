@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -229,6 +230,11 @@ const (
 // workflows mirror their documents automatically.
 var mirrorPrefixes = []string{"sdd/", "odd/", "project/"}
 
+// titledOnlyPrefixes are the roots where architecture notes are also written
+// by hand (ADRs, the technical architecture): there only a document titled by
+// its topic key counts as a mirror.
+var titledOnlyPrefixes = []string{"project/"}
+
 // partTitle matches the title of one part of a document stored in parts.
 var partTitle = regexp.MustCompile(`^(.*) \(part (\d+)/(\d+)\)$`)
 
@@ -368,8 +374,12 @@ func (d *digestDoc) kind() string {
 	if d.Type == "session_summary" {
 		return kindSessions
 	}
+	titled := strings.HasPrefix(d.Title, d.topic)
 	for _, p := range mirrorPrefixes {
-		if strings.HasPrefix(d.topic, p) && (d.Type == "architecture" || strings.HasPrefix(d.Title, d.topic)) {
+		if !strings.HasPrefix(d.topic, p) {
+			continue
+		}
+		if titled || (d.Type == "architecture" && !slices.Contains(titledOnlyPrefixes, p)) {
 			return kindMirrors
 		}
 	}

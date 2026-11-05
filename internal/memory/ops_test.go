@@ -250,6 +250,23 @@ func TestContextCapsSessionSummariesAndMirrorsAtOneLineEach(t *testing.T) {
 	}
 }
 
+func TestContextKeepsTitledArchitectureNotesUnderProject(t *testing.T) {
+	s := newSvc(t)
+	a := save(t, s, SaveInput{Project: "p", Type: "architecture", Title: "ADR-001: data in three layers", Body: "a", TopicKey: "project/app/architecture/adr-001"}).ID
+	b := save(t, s, SaveInput{Project: "p", Type: "architecture", Title: "Technical architecture", Body: "b", TopicKey: "project/app/architecture"}).ID
+	d := digest(t, s, "p")
+	var got []int64
+	for _, e := range d.Entries {
+		got = append(got, e.ID)
+		if e.MoreKind != "" {
+			t.Errorf("entry %d folded as %q, want a plain line", e.ID, e.MoreKind)
+		}
+	}
+	if want := []int64{b, a}; fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Errorf("entries = %v, want %v (hand-titled architecture notes under project/ each keep a line)", got, want)
+	}
+}
+
 func TestContextCapsTheStaleTierAtThreeLines(t *testing.T) {
 	s := newSvc(t)
 	long := s.now().Add(-StaleAfter - time.Hour).UTC().Format(time.RFC3339Nano)

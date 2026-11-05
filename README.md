@@ -130,8 +130,10 @@ recent memories.
 
 A document stored in parts is one line, `#<part 1 id> ... Title (N parts)`.
 Session summaries take one line, and so do the automated mirrors (documents
-under `sdd/`, `odd/` or `project/` topic keys that are of type architecture or
-whose title starts with their topic key): the newest one with `(+N more session
+under `sdd/`, `odd/` or `project/` topic keys whose title starts with their
+topic key, and architecture notes under `sdd/` or `odd/`; a hand-titled
+architecture note under `project/`, such as an ADR, keeps its own line): the
+newest one with `(+N more session
 summaries)` or `(+N more mirrors)`. `--project` picks the project. A query
 (`--query`, or positional words) appends `top hits for "<query>":` with the top
 5 search hits. `mem_context` takes the same optional `query`.
