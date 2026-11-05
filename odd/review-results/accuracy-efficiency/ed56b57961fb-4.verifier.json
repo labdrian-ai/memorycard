@@ -1,0 +1,25 @@
+{
+  "verdicts": [
+    {
+      "id": "F1",
+      "result": "reproduced",
+      "command": "Probe TestProbeF1 (/tmp/probes/probe_f1_test.go): 3 deferred Save calls with 16000-char bodies, a fake embedder counting texts per Embed call, then EmbedMemories; go test ./internal/memory -run TestProbeF1 -v in head and base scratch copies.",
+      "output": "Head: ids=3 embedded=3 err=nil texts-per-call=[39]. Base: texts-per-call=[3]. Whether the 60 s ollama timeout trips was not run (fake embedder only). Scratch: head /tmp/tmp.yBiOgKV19B, base /tmp/tmp.24u5zl4pu3.",
+      "base_result": "not-reproduced"
+    },
+    {
+      "id": "F2",
+      "result": "reproduced",
+      "command": "Probe TestProbeF2 (/tmp/probes/probe_f23_test.go): a 4500-char memory with only a chunk-0 vector; an embedder hook runs `update memories set body='short new body'` inside Embed; then EmbedPending(ctx, 10); go test ./internal/memory -run TestProbeF2 -v.",
+      "output": "Head: n=1 err=nil, body is now 'short new body' but vector_chunks holds 3 stale rows from the old body. The edit was a raw SQL update forced inside Embed. Base has no chunk backfill, so there is nothing to race.",
+      "base_result": "not-run"
+    },
+    {
+      "id": "F3",
+      "result": "reproduced",
+      "command": "Probe TestProbeF3 (/tmp/probes/probe_f23_test.go): a memory whose body is \"head\\x00\" plus 6000 runes, only a chunk-0 vector, then EmbedPending(ctx, 10); go test ./internal/memory -run TestProbeF3 -v.",
+      "output": "Head: sql length(body)=4, Go rune count=6005, n=0, chunks=0: SQLite length() stops at the NUL, so it is never selected for backfill. Base has no chunk backfill, so no meaningful comparison.",
+      "base_result": "not-run"
+    }
+  ]
+}

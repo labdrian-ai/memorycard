@@ -1,0 +1,25 @@
+{
+  "verdicts": [
+    {
+      "id": "F1",
+      "result": "reproduced",
+      "command": "go test ./internal/memory -run TestProbeF1 -v in head and base scratch copies /tmp/mcprobe.ibupzj/head and /tmp/mcprobe.ibupzj/base (probe file internal/memory/probe_test.go): two architecture memories with topic keys project/x/a and project/x/b, then Context, expecting 2 entries.",
+      "output": "Head fails: entries=[{ID:2 Type:architecture Title:Hand note B Group:recent More:1 MoreKind:mirrors}], 1 entry where 2 were expected; note A is hidden inside '+1 more mirrors'. Base passes with both entries.",
+      "base_result": "not-reproduced"
+    },
+    {
+      "id": "F2",
+      "result": "not-run",
+      "command": "/tmp/mcprobe.ibupzj/mc-head context -query <q> with MEMORYCARD_EMBED=off MEMORYCARD_PROJECT=p MEMORYCARD_DB=/tmp/mcprobe.ibupzj/head.db; queries tried: \"unbalanced, a AND, (, NEAR(, it's, a*b, :, -",
+      "output": "Every query exited 0 and printed the digest followed by 'top hits ... no results'. No realistic input makes the search fail; only an injected store or embedder error would. The code path (server.go:202-205 returns \"\", err) was read, not triggered.",
+      "base_result": "not-run"
+    },
+    {
+      "id": "F3",
+      "result": "reproduced",
+      "command": "Built /tmp/mcprobe.ibupzj/mc-head and mc-base; ran context, context --bogus and context word with MEMORYCARD_EMBED=off MEMORYCARD_PROJECT=p MEMORYCARD_DB=/tmp/mcprobe.ibupzj/{head,base}.db holding one memory 'Alpha note'.",
+      "output": "Head: context --bogus prints 'flag provided but not defined: -bogus' plus usage and exits 2; context word prints the digest then 'top hits for \"word\": ... no results' and exits 0. Base: all three print only '#1 [recent] manual: Alpha note' and exit 0.",
+      "base_result": "not-reproduced"
+    }
+  ]
+}

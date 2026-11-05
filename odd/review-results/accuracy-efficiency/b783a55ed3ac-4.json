@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "4513ac90a7fd231755eec8593683bbe1eaae75d8",
+    "head": "b783a55ed3acb76141050ea16c2e4c121b6ca74b",
+    "diff_sha256": "88b96f7da677afc8c4ae33daea0cce15614d6f6003bfc1d6510afd62d3e29318",
+    "paths": [
+      "cmd/mc-accept/main_test.go",
+      "internal/accept/accept_test.go",
+      "internal/cli/cli.go",
+      "internal/cli/cli_test.go",
+      "internal/mcpserver/server.go",
+      "internal/mcpserver/server_test.go",
+      "internal/memory/ops.go",
+      "internal/memory/ops_test.go"
+    ]
+  },
+  "rows": [
+    "default",
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "4513ac90a7fd231755eec8593683bbe1eaae75d8",
+      "head": "b783a55ed3acb76141050ea16c2e4c121b6ca74b",
+      "diff_sha256": "88b96f7da677afc8c4ae33daea0cce15614d6f6003bfc1d6510afd62d3e29318"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "cmd/mc-accept/main_test.go",
+        "internal/accept/accept_test.go",
+        "internal/cli/cli.go",
+        "internal/cli/cli_test.go",
+        "internal/mcpserver/server.go",
+        "internal/mcpserver/server_test.go",
+        "internal/memory/ops.go",
+        "internal/memory/ops_test.go"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "WARNING",
+        "location": "internal/memory/ops.go:441-452",
+        "claim": "The digest treats a memory as a workflow mirror, and collapses it into the single 'mirrors' line, when its type is 'architecture' and its topic_key starts with 'sdd/', 'odd/' or 'project/'. It does not check that the memory is an automated mirror. A hand-saved architecture memory under a 'project/...' topic key is therefore hidden from the session-start digest. Only the newest such memory shows, with '(+N more mirrors)', and the older ones can be found only through mem_search. The test pins 'project/app/manifest/context' as a mirror but never covers a real architecture note under 'project/'. I did not run this. I read the code, and the test shows 'project/app/demo-first' is kept only because its type is 'decision'.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/ops.go:kind()",
+          "internal/memory/ops_test.go:TestContextCapsSessionSummariesAndMirrorsAtOneLineEach"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "SUGGESTION",
+        "location": "internal/mcpserver/server.go:196-215",
+        "claim": "DigestText returns an error, and no digest text, when the appended search fails after the digest was built successfully. Both 'memorycard context --query' and mem_context with a query then fail completely and discard a valid digest. A failure of the optional hits section should degrade to the digest alone, perhaps with a note. I did not find a concrete trigger, because ftsQuery sanitizes the query and the tests show a lexical fallback when the embedder is unavailable. This is a graceful-degradation concern only.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/mcpserver/server.go:DigestText"
+        ]
+      },
+      {
+        "id": "F3",
+        "severity": "SUGGESTION",
+        "location": "internal/cli/cli.go:258-272",
+        "claim": "After this change 'memorycard context' parses flags. An unknown flag exits 2, and any positional word becomes a search query. A caller that passes extra arguments, or a query beginning with '-', now gets exit 2 or an extra 'top hits' section, where before it printed the plain digest. This behaviour change was declared in the Risk line. The grep found no in-repo caller that passes arguments to 'context', so the impact is limited to external hooks. The new test covers the --bogus case.",
+        "evidence_class": "deterministic",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/cli/cli_test.go:TestContextHonoursTheProjectFlag"
+        ]
+      }
+    ],
+    "evidence": [
+      "Read the full diff at /home/labdrian/memorycard-worktrees/review-b783a55.diff.",
+      "Grepped the worktree for callers of the context command. I found none outside cli.go and the docs.",
+      "Grepped internal/memory for Search, ErrEmptyQuery and ftsQuery, and confirmed that a blank query is rejected and that ftsQuery sanitizes the query.",
+      "Read the digest folding, stale-cap and budget logic in the diff. I found no defect in part folding, the stale footer or Omitted accounting.",
+      "No commands or tests were run."
+    ]
+  }
+}

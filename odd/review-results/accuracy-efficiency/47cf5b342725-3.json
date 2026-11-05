@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "ed56b57961fb9abdc29d00b2f18b7c1461f23308",
+    "head": "47cf5b3427256bd1f7dc01fbf1078e8172588746",
+    "diff_sha256": "bb70453612c89e5228a776c09171e00c281032b67803438869d4f0855c7e77a0",
+    "paths": [
+      "internal/memory/chunks_test.go",
+      "internal/memory/search.go",
+      "internal/memory/vectors.go"
+    ]
+  },
+  "rows": [
+    "default",
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "ed56b57961fb9abdc29d00b2f18b7c1461f23308",
+      "head": "47cf5b3427256bd1f7dc01fbf1078e8172588746",
+      "diff_sha256": "bb70453612c89e5228a776c09171e00c281032b67803438869d4f0855c7e77a0"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "internal/memory/search.go",
+        "internal/memory/vectors.go",
+        "internal/memory/chunks_test.go"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "location": "internal/memory/search.go:365-367",
+        "severity": "WARNING",
+        "claim": "With ChunkLift = 0.15, a long memory whose answer sits only in a late chunk is now scored far below that chunk's cosine. Example: first window 0.1 and best chunk 0.9 give about 0.22, which is under ConfidenceCosine (0.48). Such a result is reported as low confidence. It can also rank below an unrelated short note with cosine 0.25. The updated test pins this on purpose. This is a real recall trade-off that rests on gold-set tuning alone. The comment says 0.15 was measured on the private gold sets (T6), which I could not check. Nothing in the repo tests the constant, so a different corpus could regress with no test failing.",
+        "evidence_class": "inferential",
+        "causal_disposition": "behavior-activated",
+        "proof_refs": [
+          "internal/memory/search.go:365-367",
+          "internal/memory/vectors.go:18-23",
+          "internal/memory/chunks_test.go:42-46 (diff lines 42-46)"
+        ]
+      },
+      {
+        "id": "F2",
+        "location": "internal/memory/search.go:336-367",
+        "severity": "SUGGESTION",
+        "claim": "A memory with no chunks keeps its exact first-window score. `best` starts as a copy of `first`, so the gap is 0 and the score is first + 0.15*0, which equals first exactly. The new test covers this for the short note in the ranking test (score = 1/sqrt2). The first test only asserts `Hits[1].Score == 0` for a plain memory. The Risk line says no-chunk memories must score exactly as before. No test compares a no-chunk memory's score to its raw `dot` value in a mixed corpus with non-trivial cosines, so that guarantee depends on arithmetic reasoning, not on a regression test.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/search.go:336",
+          "internal/memory/search.go:365-367"
+        ]
+      }
+    ],
+    "evidence": [
+      "Read the full diff.",
+      "Read dense() in search.go lines 270-390 in the head worktree.",
+      "Grepped ConfidenceCosine and ChunkLift across the repo.",
+      "Did not run tests or the private gold sets (not run)."
+    ]
+  }
+}

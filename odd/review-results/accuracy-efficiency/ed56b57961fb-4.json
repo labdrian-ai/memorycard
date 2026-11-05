@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "409079b838e477c7be9241152fdcec4c0cd2a46d",
+    "head": "ed56b57961fb9abdc29d00b2f18b7c1461f23308",
+    "diff_sha256": "689e19fcd6243bcf3273f2d8209250ec3c9bc4428e58bb8e135bbf74d3ee736e",
+    "paths": [
+      "internal/cli/chunks_test.go",
+      "internal/cli/cli.go",
+      "internal/memory/chunks_test.go",
+      "internal/memory/embed_test.go",
+      "internal/memory/neighbours.go",
+      "internal/memory/search.go",
+      "internal/memory/vectors.go",
+      "internal/store/schema.go",
+      "internal/store/store_test.go"
+    ]
+  },
+  "rows": [
+    "default",
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "409079b838e477c7be9241152fdcec4c0cd2a46d",
+      "head": "ed56b57961fb9abdc29d00b2f18b7c1461f23308",
+      "diff_sha256": "689e19fcd6243bcf3273f2d8209250ec3c9bc4428e58bb8e135bbf74d3ee736e"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "internal/cli/chunks_test.go",
+        "internal/cli/cli.go",
+        "internal/memory/chunks_test.go",
+        "internal/memory/embed_test.go",
+        "internal/memory/neighbours.go",
+        "internal/memory/search.go",
+        "internal/memory/vectors.go",
+        "internal/store/schema.go",
+        "internal/store/store_test.go"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "location": "internal/memory/neighbours.go:132-133",
+        "severity": "WARNING",
+        "claim": "EmbedMemories, the capture batch path, now sends every chunk of every memory in one embedder request (embedAll with batch 0). Before, it sent one text per memory. A memory can be up to 16 KB, so it can have about 12 chunks. A deferred batch of N long memories therefore makes one request with up to roughly 12N texts. The Ollama client has a fixed 60 s timeout and the request is not split. A request that was fine before can now time out or be rejected. The batch then fails as a whole and every memory in it stays pending. This degrades gracefully, because EmbedPending retries in batches of at most `limit` texts. The cost is that capture loses its single-request fast path for large batches. EmbedPending already splits by limit.",
+        "evidence_class": "inferential",
+        "causal_disposition": "worsened",
+        "proof_refs": [
+          "internal/memory/neighbours.go:132-133",
+          "internal/memory/vectors.go embedAll batch<=0 means len(texts)",
+          "internal/memory/save.go:26 HardCapBytes=16*1024",
+          "internal/embed/ollama.go:34 Timeout 60s"
+        ]
+      },
+      {
+        "id": "F2",
+        "location": "internal/memory/vectors.go:169-195",
+        "severity": "SUGGESTION",
+        "claim": "The EmbedPending backfill for memories that already have a chunk-0 vector (whole=false) reads title and body, embeds off-transaction, then writes the chunks with no check that the memory is unchanged. If another process (capture hook, update) edits the memory in between, the update drops the vectors row and re-embeds it. The stale backfill then deletes chunks and inserts chunks of the old body under the new chunk-0 vector. The foreign key only blocks the write if the vectors row is momentarily absent. This breaks the stated invariant in putVectors that a memory never mixes vectors of two texts. The effect is slightly wrong dense scores for that memory until its next edit. The window is narrow.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/vectors.go putVectors comment and EmbedPending loop",
+          "internal/memory/save.go:387 delete from vectors on edit"
+        ]
+      },
+      {
+        "id": "F3",
+        "location": "internal/memory/vectors.go:152-157",
+        "severity": "SUGGESTION",
+        "claim": "The backfill selection uses SQL length(m.body) > 1500, while chunking uses Go rune counts. SQLite length() on TEXT stops at the first NUL. A legacy body that contains a NUL and has more than 1500 runes may therefore never be selected for chunk backfill. It keeps only chunk 0 and its tail stays unsearchable densely. The diff adds a sentinel for the opposite mismatch, which suggests the two counts are known to diverge. Whether realistic data contains such bodies is unproven.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/vectors.go EmbedPending query `length(m.body) > ?`"
+        ]
+      }
+    ],
+    "evidence": [
+      "Read the full diff.",
+      "Checked the vectors schema: memory_id is the primary key, so the foreign key from vector_chunks is valid.",
+      "Checked foreign_keys(1) in internal/store/store.go.",
+      "Checked the HardCapBytes body cap of 16 KB and the Ollama HTTP timeout of 60 s.",
+      "Checked the dense() query aliases and how the new chunk query joins on them.",
+      "Checked the callers of EmbedMemories.",
+      "Ran no commands and no tests, so test results are not run."
+    ]
+  }
+}
