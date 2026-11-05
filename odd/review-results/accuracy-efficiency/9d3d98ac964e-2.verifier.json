@@ -1,0 +1,11 @@
+{
+  "verdicts": [
+    {
+      "id": "F1",
+      "result": "reproduced",
+      "command": "go test ./internal/memory -run TestF1StaleWriteCount -v (throwaway test in a mktemp copy: body edit during the embed call, asserts EmbedPending n == 0), at head 9d3d98a and at base 6a4ecc1",
+      "output": "Head: n=1 err=<nil>, F1 REPRODUCED: n = 1 for a skipped stale write, want 0. Base: n=1 err=<nil>, but from a different cause: base has no guard and overwrites the edited body's chunks with the old body's, then counts the memory.",
+      "base_result": "reproduced"
+    }
+  ]
+}
