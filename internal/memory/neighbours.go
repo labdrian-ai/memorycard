@@ -14,6 +14,9 @@ const (
 	NeighbourCosine = 0.75
 	// MaxNeighbours caps how many similar memories one save names.
 	MaxNeighbours = 3
+	// CaptureEmbedBatch caps the texts of one embedder request when the
+	// deferred saves of a capture block are embedded together.
+	CaptureEmbedBatch = 16
 )
 
 // similar returns up to MaxNeighbours active memories of project and typ whose
@@ -129,8 +132,10 @@ func (s *Service) EmbedMemories(ctx context.Context, ids []int64) (int, error) {
 	if err := rows.Err(); err != nil || len(pending) == 0 {
 		return 0, err
 	}
-	// Every chunk of every memory goes in one embedder call.
-	vecs, err := s.embedAll(ctx, texts, 0)
+	// Every chunk of every memory goes in requests of at most
+	// CaptureEmbedBatch texts, so a block of long items stays well inside
+	// the embedder's request timeout.
+	vecs, err := s.embedAll(ctx, texts, CaptureEmbedBatch)
 	if err != nil {
 		return 0, err
 	}

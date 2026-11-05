@@ -116,8 +116,8 @@ hints. Session summaries get no hints. The `possible duplicate of #N` line
 `capture` skips items shorter than 60 characters and items with a probe marker
 (a word ending in "probe" followed by digits, such as `codexprobe1730`). The
 title is the item's first sentence, cut at 100 characters on a word boundary.
-All saved items, every chunk included, are embedded in one call; if it fails
-they stay pending for `memorycard embed`. Each item then gets the same hints a
+All saved items, every chunk included, are embedded together, in requests of
+at most 16 texts; if one fails they stay pending for `memorycard embed`. Each item then gets the same hints a
 single save gives, compared only with memories saved before it. A last line
 reports the counts: `captured: 3 saved, 2 skipped (1 too short, 1 duplicate)`.
 

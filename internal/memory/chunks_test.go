@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"strings"
 	"testing"
@@ -71,6 +72,29 @@ func TestDeferredLongMemoryGetsItsChunksInTheOneBatch(t *testing.T) {
 	}
 	if c := count(t, s, `select count(*) from vectors`); c != 2 {
 		t.Errorf("vectors rows = %d, want 2", c)
+	}
+}
+
+func TestDeferredBatchSplitsRequestsAtCaptureEmbedBatch(t *testing.T) {
+	fe := &fakeEmbedder{fn: axis}
+	calls := &batchCounter{inner: fe}
+	s := withEmbedder(t, fe)
+	s.SetEmbedder(calls)
+	var ids []int64
+	for i := 0; i < 3; i++ {
+		ids = append(ids, save(t, s, SaveInput{Project: "p", Title: fmt.Sprintf("L%d", i), Body: longBody(16000, 0, ""), DeferEmbed: true}).ID)
+	}
+	got, err := s.EmbedMemories(context.Background(), ids)
+	if err != nil || got != 3 {
+		t.Fatalf("EmbedMemories = %d, %v, want 3", got, err)
+	}
+	if calls.max > CaptureEmbedBatch {
+		t.Errorf("largest request = %d texts, want at most %d", calls.max, CaptureEmbedBatch)
+	}
+	for _, id := range ids {
+		if c := chunkCount(t, s, id); c != wantChunks(16000)-1 {
+			t.Errorf("memory %d vector_chunks rows = %d, want %d", id, c, wantChunks(16000)-1)
+		}
 	}
 }
 
