@@ -49,6 +49,31 @@ func wantChunks(n int) int {
 	return 1 + (n-EmbedBodyRunes+step-1)/step
 }
 
+func TestDeferredLongMemoryGetsItsChunksInTheOneBatch(t *testing.T) {
+	fe := &fakeEmbedder{fn: axis}
+	s := withEmbedder(t, fe)
+	n := 4000
+	long := save(t, s, SaveInput{Project: "p", Title: "T", Body: longBody(n, 0, ""), DeferEmbed: true}).ID
+	short := save(t, s, SaveInput{Project: "p", Title: "S", Body: "short", DeferEmbed: true}).ID
+	got, err := s.EmbedMemories(context.Background(), []int64{long, short})
+	if err != nil || got != 2 {
+		t.Fatalf("EmbedMemories = %d, %v, want 2", got, err)
+	}
+	chunks := wantChunks(n)
+	if len(fe.kinds) != 1 || len(fe.seen) != chunks+1 {
+		t.Errorf("embed calls = %d texts = %d, want one call with %d texts", len(fe.kinds), len(fe.seen), chunks+1)
+	}
+	if c := chunkCount(t, s, long); c != chunks-1 {
+		t.Errorf("long memory vector_chunks rows = %d, want %d", c, chunks-1)
+	}
+	if c := chunkCount(t, s, short); c != 0 {
+		t.Errorf("short memory vector_chunks rows = %d, want 0", c)
+	}
+	if c := count(t, s, `select count(*) from vectors`); c != 2 {
+		t.Errorf("vectors rows = %d, want 2", c)
+	}
+}
+
 func TestLongMemoryGetsOneVectorPerChunk(t *testing.T) {
 	fe := &fakeEmbedder{fn: axis}
 	s := withEmbedder(t, fe)
