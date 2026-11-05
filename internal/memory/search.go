@@ -321,6 +321,40 @@ func (s *Service) dense(ctx context.Context, q string, f filter, k int) ([]candi
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
+	rows.Close()
+	// A long memory is scored by its best chunk.
+	pos := make(map[int64]int, len(out))
+	for i, c := range out {
+		pos[c.ID] = i
+	}
+	chunks, err := s.db.SQL().QueryContext(ctx,
+		`select c.memory_id, c.vec from vector_chunks c
+		 join vectors v on v.memory_id = c.memory_id
+		 join memories m on m.id = c.memory_id
+		 where v.model = ? and `+f.where,
+		append([]any{s.embedder.Model()}, f.args...)...)
+	if err != nil {
+		return nil, err
+	}
+	defer chunks.Close()
+	for chunks.Next() {
+		var id int64
+		var blob []byte
+		if err := chunks.Scan(&id, &blob); err != nil {
+			return nil, err
+		}
+		i, ok := pos[id]
+		v := decodeVec(blob)
+		if !ok || len(v) != len(qv) {
+			continue
+		}
+		if sc := dot(qv, v); sc > out[i].Score {
+			out[i].Score = sc
+		}
+	}
+	if err := chunks.Err(); err != nil {
+		return nil, err
+	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].Score > out[j].Score })
 	if len(out) > k {
 		out = out[:k]

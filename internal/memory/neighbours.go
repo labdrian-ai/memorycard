@@ -4,8 +4,6 @@ import (
 	"context"
 	"sort"
 	"strings"
-
-	"github.com/labdrian-ai/memorycard/internal/embed"
 )
 
 const (
@@ -113,6 +111,7 @@ func (s *Service) EmbedMemories(ctx context.Context, ids []int64) (int, error) {
 		return 0, err
 	}
 	var pending []int64
+	var chunks []int // chunk count of each pending memory
 	var texts []string
 	for rows.Next() {
 		var id int64
@@ -121,19 +120,24 @@ func (s *Service) EmbedMemories(ctx context.Context, ids []int64) (int, error) {
 			rows.Close()
 			return 0, err
 		}
+		cs := embedChunks(title, body)
 		pending = append(pending, id)
-		texts = append(texts, embedText(title, body))
+		chunks = append(chunks, len(cs))
+		texts = append(texts, cs...)
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil || len(pending) == 0 {
 		return 0, err
 	}
-	vecs, err := s.embedder.Embed(ctx, texts, embed.KindDocument)
+	// Every chunk of every memory goes in one embedder call.
+	vecs, err := s.embedAll(ctx, texts, 0)
 	if err != nil {
 		return 0, err
 	}
 	for i, id := range pending {
-		if err := s.putVector(ctx, id, unit(vecs[i])); err != nil {
+		mine := vecs[:chunks[i]]
+		vecs = vecs[chunks[i]:]
+		if err := s.putVectors(ctx, id, mine[0], mine[1:]); err != nil {
 			return i, err
 		}
 	}

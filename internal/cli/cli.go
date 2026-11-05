@@ -44,7 +44,11 @@ commands:
                            no block or no items saves nothing
   project                  print the project the other commands resolve
   stats                    counts and embedding backlog
-  embed  [--limit N]       embed every memory that has no vector yet, N per batch
+  embed  [--limit N]       embed every memory that has no vector yet, N per batch;
+                           long memories get one vector per chunk (windows of
+                           1500 characters with 200 of overlap, each with the
+                           title), and memories embedded before chunking get
+                           their missing chunks
   import engram <path>     copy an Engram database in (read-only, resumable)
   version                  print the build version
   help
