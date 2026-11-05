@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "cb387848ff58706bdf4d833fa24c863bd88ebdc8",
+    "head": "132effa50927b13531956216b412afa93d660fc4",
+    "diff_sha256": "4b852c36429d143258eb150205616498ea4caf14ff234fbb7a1646d788ee05f2",
+    "paths": [
+      "README.md",
+      "internal/memory/search.go",
+      "internal/memory/search_rank_test.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go test ./internal/memory -run SessionSummar -count=1",
+        "result": "pass",
+        "output": "ok github.com/labdrian-ai/memorycard/internal/memory (RED before the change: hits = [1], want the decision #1, then the summary #2; hits = [1], want the summary #2 first, confidence low)"
+      },
+      {
+        "command": "go vet ./... && go test ./... -count=1",
+        "result": "pass",
+        "output": "11 packages ok, no FAIL"
+      },
+      {
+        "command": "mc-accept -db <live copy> -gold gold,gold3,gold-current,gold2 -include-old=false -project @target -hybrid",
+        "result": "pass",
+        "output": "gold 67/82/85/88 unchanged; gold3 82/96/96/97 (.89); gold-current 74/79/79/89 unchanged; gold2 65/70/83/88 (.70), matching the 0.90 sweep row"
+      }
+    ]
+  }
+}
