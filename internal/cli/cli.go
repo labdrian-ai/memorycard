@@ -41,8 +41,9 @@ commands:
                            mirrors one line each; a query appends its top 5 hits
   capture                  read text on stdin and save each numbered item of its
                            "## Key Learnings" block as a memory (type learning);
-                           no block or no items saves nothing
-  project                  print the project the other commands resolve
+                           items under 60 characters or with a probe marker are
+                           skipped; no block or no items saves nothing
+  project                 print the project the other commands resolve
   stats                    counts and embedding backlog
   embed  [--limit N]       embed every memory that has no vector yet, N per batch;
                            long memories get one vector per chunk (windows of

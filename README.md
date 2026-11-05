@@ -67,6 +67,90 @@ For hooks: `memorycard project` prints the project the other commands resolve, a
 same input twice adds nothing, and input with no block or no items saves nothing
 and exits 0.
 
+## What the commands return
+
+### Search (`memorycard search`, `mem_search`)
+
+- Session summaries don't compete in a default search, because they recap whole
+  sessions and match almost anything. Use `--type session_summary` (MCP
+  `type: "session_summary"`) to search them. An exact topic-key query (one with
+  a `/`) still finds any type.
+- A document saved in parts (`<title> (part i/N)`) comes back once, as its
+  best-matching part, with the other parts' ids: `[other parts: #11, #12]`. So
+  `k` results are `k` distinct documents.
+- Confidence is judged on how similar the best match is, even when the query is
+  an exact topic key. A topic-key match is still listed first, but it no longer
+  marks the rest of the list "ok".
+- Lexical search (embedder off): a query that reads as Spanish also searches the
+  English words a note would use, so "¿por qué falló el despliegue?" also
+  matches "failed" and "deployment". A query counts as Spanish when it has more
+  Spanish than English function words (el, la, de, que, por...) or, with none,
+  when it uses Spanish spelling (an accent, ñ, ¿ or ¡). Hybrid search (the
+  default) does not translate: its dense ranking already matches across
+  languages.
+
+### Get (`memorycard get`, `mem_get`)
+
+`memorycard get [--history] <id>` prints the current version only, ending with
+a line such as `(5 earlier versions not shown; --history shows them)` when
+there are earlier ones. `--history` (before or after the id) adds them. MCP
+`mem_get` takes an optional `history` boolean.
+
+### Save and capture
+
+When a save writes text and an embedder is on, the result lists up to 3 active
+memories of the same project and type whose meaning is close (cosine ≥ 0.75),
+closest first:
+
+```text
+created #3772
+similar active memories (if one is outdated, save again with supersedes=<id>):
+  #3586 (0.87): Hybrid search hurts the private gold set; stays opt-in
+```
+
+To retire an outdated one, save the new memory again with `supersedes=<id>`
+(CLI: `--supersedes <id>`); the old one leaves search, the digest and these
+hints. Session summaries get no hints. The `possible duplicate of #N` line
+(cosine ≥ 0.97) stays as before.
+
+`capture` skips items shorter than 60 characters and items with a probe marker
+(a word ending in "probe" followed by digits, such as `codexprobe1730`). The
+title is the item's first sentence, cut at 100 characters on a word boundary.
+All saved items, every chunk included, are embedded in one call; if it fails
+they stay pending for `memorycard embed`. Each item then gets the same hints a
+single save gives, compared only with memories saved before it. A last line
+reports the counts: `captured: 3 saved, 2 skipped (1 too short, 1 duplicate)`.
+
+### Session digest (`memorycard context`, `mem_context`)
+
+`memorycard context [--project P] [--query Q | <query>]` prints a project's
+digest in up to 2048 bytes: pinned memories, then at most 3 stale decisions to
+review (`... N more stale (use mem_search)` when there are more), then the most
+recent memories.
+
+A document stored in parts is one line, `#<part 1 id> ... Title (N parts)`.
+Session summaries take one line, and so do the automated mirrors (documents
+under `sdd/`, `odd/` or `project/` topic keys that are of type architecture or
+whose title starts with their topic key): the newest one with `(+N more session
+summaries)` or `(+N more mirrors)`. `--project` picks the project. A query
+(`--query`, or positional words) appends `top hits for "<query>":` with the top
+5 search hits. `mem_context` takes the same optional `query`.
+
+### Long memories are embedded in chunks
+
+A body longer than the embed window (1500 characters) is embedded as
+overlapping chunks: windows of 1500 characters with 200 of overlap, each
+prefixed with the title. Dense search scores the memory by its first window,
+lifted by 15% of the gap up to its best chunk: a passage deep inside a long
+note can raise it above other long notes, but not past a note that matches
+better as a whole. Saving or editing a memory replaces all of its chunks.
+
+Memories embedded before chunking keep their single vector and stay searchable;
+`memorycard embed` adds their missing chunks (about one chunk per second on a
+CPU-only ollama). The database migrates to schema v4, which adds a
+`vector_chunks` table. To return to v3:
+`sqlite3 memory.db "drop table vector_chunks; pragma user_version = 3"`.
+
 ## Connect your agent
 
 memorycard serves its tools over stdio with `memorycard mcp`.
@@ -255,6 +339,30 @@ Nothing was tuned on LoCoMo. The careful reader gains 25 adversarial
 questions and loses none, at the cost of 5 answerable ones: the same trade
 as on the LongMemEval `test` half. Per-question results are not published
 because they quote the dataset.
+
+### Private acceptance run (`mc-accept`)
+
+`mc-accept -db copy.db -gold dir[,dir]` measures retrieval against private
+gold sets. By default it uses the lab-index view: superseded and archived
+memories compete, every project is searched, dense ranking. To measure what an
+agent sees:
+
+```sh
+mc-accept -db copy.db -gold dir -include-old=false -project @target -hybrid
+```
+
+This searches only active memories, inside the project of each question's
+answer, with the default hybrid ranking. `-project NAME` fixes one project.
+
+Gold format: `queries.tsv` (id, query, lang[, split]), optional `relevant.tsv`
+(id TAB accepted keys) and optional `outdated.tsv` (id TAB keys of outdated
+memories that contradict the answer). A key is an Engram id from the import
+map, or `mc:<id>` for a memorycard memory. Outdated memories are never
+accepted; the run reports how often the current answer ranks above them.
+
+`-digest p1,p2` reports, per project, the share of `memorycard context` lines
+that are session summaries, further parts of a document already listed, or
+titles cut with "...". It needs neither a gold set nor the embedder.
 
 ## Development
 
