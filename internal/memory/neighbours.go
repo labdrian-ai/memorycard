@@ -115,6 +115,7 @@ func (s *Service) EmbedMemories(ctx context.Context, ids []int64) (int, error) {
 	}
 	var pending []int64
 	var chunks []int // chunk count of each pending memory
+	var titles, bodies []string
 	var texts []string
 	for rows.Next() {
 		var id int64
@@ -126,6 +127,8 @@ func (s *Service) EmbedMemories(ctx context.Context, ids []int64) (int, error) {
 		cs := embedChunks(title, body)
 		pending = append(pending, id)
 		chunks = append(chunks, len(cs))
+		titles = append(titles, title)
+		bodies = append(bodies, body)
 		texts = append(texts, cs...)
 	}
 	rows.Close()
@@ -142,7 +145,7 @@ func (s *Service) EmbedMemories(ctx context.Context, ids []int64) (int, error) {
 	for i, id := range pending {
 		mine := vecs[:chunks[i]]
 		vecs = vecs[chunks[i]:]
-		if err := s.putVectors(ctx, id, mine[0], mine[1:]); err != nil {
+		if err := s.putVectors(ctx, id, titles[i], bodies[i], mine[0], mine[1:]); err != nil {
 			return i, err
 		}
 	}

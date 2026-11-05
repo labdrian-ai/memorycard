@@ -72,7 +72,7 @@ func (s *Service) index(ctx context.Context, id int64, title, body string) ([]fl
 	if err != nil {
 		return nil, err
 	}
-	if err := s.putVectors(ctx, id, vecs[0], vecs[1:]); err != nil {
+	if err := s.putVectors(ctx, id, title, body, vecs[0], vecs[1:]); err != nil {
 		return nil, err
 	}
 	return vecs[0], nil
@@ -103,13 +103,24 @@ func (s *Service) embedAll(ctx context.Context, texts []string, batch int) ([][]
 
 // putVectors replaces the vectors of memory id in one transaction: base, when
 // not nil, becomes its chunk-0 row, and extra its chunks 1..n. All earlier
-// chunks are dropped, so a memory never mixes vectors of two texts.
-func (s *Service) putVectors(ctx context.Context, id int64, base []float32, extra [][]float32) error {
+// chunks are dropped, so a memory never mixes vectors of two texts. The
+// vectors were embedded from title and body: when the memory no longer holds
+// that text (an edit landed during the embed call, and that edit stores its
+// own vectors), nothing is written.
+func (s *Service) putVectors(ctx context.Context, id int64, title, body string, base []float32, extra [][]float32) error {
 	tx, err := s.db.SQL().BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+	var curTitle, curBody string
+	if err := tx.QueryRowContext(ctx,
+		`select title, body from memories where id=?`, id).Scan(&curTitle, &curBody); err != nil {
+		return err
+	}
+	if curTitle != title || curBody != body {
+		return nil
+	}
 	if base != nil {
 		if _, err := tx.ExecContext(ctx,
 			`insert or replace into vectors(memory_id, model, dim, vec) values (?,?,?,?)`,
@@ -151,7 +162,7 @@ func (s *Service) EmbedPending(ctx context.Context, limit int) (int, error) {
 		`select m.id, m.title, m.body, (v.memory_id is null or v.model != ?) from memories m
 		 left join vectors v on v.memory_id = m.id
 		 where v.memory_id is null or v.model != ?
-		    or (length(m.body) > ? and not exists (select 1 from vector_chunks c where c.memory_id = m.id))
+		    or ((length(m.body) > ? or instr(cast(m.body as blob), x'00') > 0) and not exists (select 1 from vector_chunks c where c.memory_id = m.id))
 		 order by m.id limit ?`, s.embedder.Model(), s.embedder.Model(), EmbedBodyRunes, limit)
 	if err != nil {
 		return 0, err
@@ -195,7 +206,7 @@ func (s *Service) EmbedPending(ctx context.Context, limit int) (int, error) {
 		if it.whole {
 			base, mine = mine[0], mine[1:]
 		}
-		if err := s.putVectors(ctx, it.id, base, mine); err != nil {
+		if err := s.putVectors(ctx, it.id, it.title, it.body, base, mine); err != nil {
 			return i, err
 		}
 	}

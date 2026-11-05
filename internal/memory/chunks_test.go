@@ -329,3 +329,64 @@ func TestEmbedPendingBatchesChunksByLimit(t *testing.T) {
 		t.Errorf("embedded %d texts, want %d", calls.texts, wantChunks(6000))
 	}
 }
+
+// editDuring runs edit once, inside the first embedder request it sees.
+type editDuring struct {
+	inner *fakeEmbedder
+	edit  func()
+}
+
+func (e *editDuring) Model() string { return e.inner.Model() }
+func (e *editDuring) Embed(ctx context.Context, texts []string, kind embed.Kind) ([][]float32, error) {
+	if f := e.edit; f != nil {
+		e.edit = nil
+		f()
+	}
+	return e.inner.Embed(ctx, texts, kind)
+}
+
+// An edit that lands while the chunk backfill embeds the old body keeps its
+// own chunks: the backfill does not write chunks of a body that is gone.
+func TestChunkBackfillDoesNotOverwriteAConcurrentEdit(t *testing.T) {
+	ctx := context.Background()
+	fe := &fakeEmbedder{fn: axis}
+	s := withEmbedder(t, fe)
+	id := save(t, s, SaveInput{Project: "p", Title: "T", Body: longBody(3000, 0, "")}).ID
+	if _, err := s.db.SQL().Exec(`delete from vector_chunks`); err != nil {
+		t.Fatal(err)
+	}
+	newBody := longBody(6000, 0, "")
+	s.SetEmbedder(&editDuring{inner: fe, edit: func() {
+		if _, err := s.Update(ctx, id, UpdateInput{Body: &newBody}); err != nil {
+			t.Errorf("concurrent update: %v", err)
+		}
+	}})
+	if _, err := s.EmbedPending(ctx, 10); err != nil {
+		t.Fatalf("EmbedPending: %v", err)
+	}
+	if c := chunkCount(t, s, id); c != wantChunks(6000)-1 {
+		t.Errorf("chunks = %d, want %d (the edited body's), not %d (the old body's)",
+			c, wantChunks(6000)-1, wantChunks(3000)-1)
+	}
+	if n, err := s.EmbedPending(ctx, 10); err != nil || n != 0 {
+		t.Errorf("second EmbedPending = %d, %v; want 0", n, err)
+	}
+}
+
+// A long body with a NUL character gets its chunks from the backfill too.
+func TestChunkBackfillPicksALongBodyWithANul(t *testing.T) {
+	ctx := context.Background()
+	fe := &fakeEmbedder{fn: axis}
+	s := withEmbedder(t, fe)
+	body := "a\x00" + longBody(3000, 0, "")
+	id := save(t, s, SaveInput{Project: "p", Title: "T", Body: body}).ID
+	if _, err := s.db.SQL().Exec(`delete from vector_chunks`); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := s.EmbedPending(ctx, 10); err != nil || n != 1 {
+		t.Fatalf("EmbedPending = %d, %v; want 1", n, err)
+	}
+	if c, want := chunkCount(t, s, id), wantChunks(utf8.RuneCountInString(body))-1; c != want {
+		t.Errorf("chunks = %d, want %d", c, want)
+	}
+}
