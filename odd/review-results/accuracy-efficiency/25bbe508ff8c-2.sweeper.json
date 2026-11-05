@@ -1,0 +1,20 @@
+{
+  "kind": "sweeper",
+  "base": "97182d4fe45094e92afa8a7cdba7d81e3ed05233",
+  "head": "25bbe508ff8c5fd4d40afa0d66ff869d05034534",
+  "diff_sha256": "65e60cc2e157ffae510ceafbd908505bf2e62aa36c31a41a69449cf119c448a4",
+  "sweep": "25bbe508ff8c-1.sweep.json",
+  "commit": null,
+  "candidates": [
+    {
+      "candidate": "T2 errcheck .: internal/cli/capture_test.go: unchecked error: json.NewDecoder(r.Body).Decode(&req)",
+      "disposition": "finding",
+      "evidence": "Unchecked error in test scaffolding (Close in a Cleanup or defer, the fake embedder's JSON encode/decode, a fixture WriteFile). A failure there surfaces as a failing assertion of the same test; the base's tests use the same idiom. Left as is."
+    },
+    {
+      "candidate": "T2 errcheck .: internal/cli/capture_test.go: unchecked error: json.NewEncoder(w).Encode(map[string]any{\"embeddings\": vecs})",
+      "disposition": "finding",
+      "evidence": "Unchecked error in test scaffolding (Close in a Cleanup or defer, the fake embedder's JSON encode/decode, a fixture WriteFile). A failure there surfaces as a failing assertion of the same test; the base's tests use the same idiom. Left as is."
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "kind": "sweep",
+  "base": "b00885393b049e7fa9dd43ecc95670afed138cff",
+  "head": "cbd14effd67628676501c2c04f1a64d525b5d87d",
+  "diff_sha256": "62e991d7b3d8770effc96318d0dd753b796d1df69d97e1f4f097c5827835e824",
+  "outcome": "fired",
+  "t1": {
+    "deleted_or_renamed": [],
+    "removed_names": []
+  },
+  "t2": [
+    {
+      "tool": "errcheck",
+      "module": ".",
+      "new": [
+        "cmd/mc-accept/main_test.go: unchecked error: defer db.Close()",
+        "internal/accept/accept_test.go: unchecked error: os.WriteFile(filepath.Join(dir, \"outdated.tsv\"), []byte(\"mc:7\\tmc:5,9\\n\"), 0o644)",
+        "internal/accept/accept_test.go: unchecked error: os.WriteFile(filepath.Join(dir, \"queries.tsv\"), []byte(\"id\\tquery\\tlang\\nmc:7\\twhich\\ten\\n\"), 0o644)"
+      ]
+    }
+  ],
+  "t3": [],
+  "t4": {
+    "leftovers": [],
+    "orphaned_fixtures": []
+  }
+}

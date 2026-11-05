@@ -1,0 +1,18 @@
+{
+  "verdicts": [
+    {
+      "id": "F1",
+      "result": "reproduced",
+      "command": "In scratch dirs /tmp/tmp.x2Tc6waaEi/<rev>, with probe_test.go copied into internal/memory: go test ./internal/memory -run TestProbe -v -count=1. Fake embedder, query ALPHA=(1,0,0); the long memory has a first window of cos ~0.1 and a late chunk of cos 0.9; short notes at 0.25, 0.30 and 0.60. Run on head 47cf5b3 and on base ed56b57.",
+      "output": "Head: id4(0.60 short)=0.600000, id3(0.30)=0.300000, id2(0.25 unrelated short)=0.250000, id1(long, late chunk 0.9)=0.220000; the long memory ranks last, below the 0.25 unrelated note. Base: id1=0.900000 and ranks first, then 0.60, 0.30, 0.25.",
+      "base_result": "not-reproduced"
+    },
+    {
+      "id": "F2",
+      "result": "not-reproduced",
+      "command": "The same TestProbe in the same scratch dirs on head 47cf5b3 and base ed56b57: three chunkless short notes with cosines 0.25, 0.30 and 0.60; compared their scores.",
+      "output": "The scores of the no-chunk memories are identical on head and base: id4=0.600000, id3=0.300000, id2=0.250000, equal to the raw first-window dot products. The claimed missing guarantee holds; only the chunked long memory changed (0.9 to 0.22), which is F1.",
+      "base_result": "not-reproduced"
+    }
+  ]
+}

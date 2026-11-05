@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "b00885393b049e7fa9dd43ecc95670afed138cff",
+    "head": "cbd14effd67628676501c2c04f1a64d525b5d87d",
+    "diff_sha256": "62e991d7b3d8770effc96318d0dd753b796d1df69d97e1f4f097c5827835e824",
+    "paths": [
+      "cmd/mc-accept/main.go",
+      "cmd/mc-accept/main_test.go",
+      "internal/accept/accept.go",
+      "internal/accept/accept_test.go",
+      "internal/accept/digest.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go vet ./... && go test ./... -count=1 at the feature head df443bd",
+        "result": "pass",
+        "output": "every package ok; gofmt clean"
+      },
+      {
+        "command": "independent verifier of unit T1 (workflow wf_4c79a35e-a82), probes on snapshot copies",
+        "result": "pass",
+        "output": "feat(accept): measure active-only, project-scoped runs, outdated answers and digest noise: verdict pass after at most one correction"
+      }
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "59bcbc830802264609fed275132c299554464693",
+    "head": "c8c697d6df6e44fbe5f2a7262e545b53a587263e",
+    "diff_sha256": "036adf6050eaa7849291d7617ea9caac78703bd10e9de683efc588bd49a44d50",
+    "paths": [
+      "odd/tasks/accuracy-efficiency.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "structural readback of README.md and the usage text",
+        "result": "pass",
+        "output": "sections match the behaviour each unit shipped"
+      }
+    ]
+  }
+}

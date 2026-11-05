@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "8d54be1e4cb47b1085965a5bcf4e13663af150cd",
+    "head": "1640cfe9b35bed762717472d4275effb7e89cd81",
+    "diff_sha256": "a055c59348736d0cba1f9f8ae1856bf2a66386530bed17e3d41cbb186fa0f7b1",
+    "paths": [
+      "internal/render/render.go",
+      "internal/render/render_test.go",
+      "internal/render/siblings_test.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go vet ./... && go test ./... -count=1 at the feature head 88bc5b9",
+        "result": "pass",
+        "output": "every package ok; gofmt clean"
+      },
+      {
+        "command": "independent verifier of unit integration (workflow wf_4c79a35e-a82), probes on snapshot copies",
+        "result": "pass",
+        "output": "feat(search): name the other parts of a split document on its hit: verdict pass after at most one correction"
+      }
+    ]
+  }
+}

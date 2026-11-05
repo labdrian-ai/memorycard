@@ -1,0 +1,15 @@
+{
+  "kind": "sweeper",
+  "base": "ef0ec5450f74decdc9bee5e5763e34125c896761",
+  "head": "8d54be1e4cb47b1085965a5bcf4e13663af150cd",
+  "diff_sha256": "1e9f6e477c7dde95798c2b5e272ab769c9f2de19bdd8163e5bcc0b8a431aecd7",
+  "sweep": "8d54be1e4cb4-1.sweep.json",
+  "commit": null,
+  "candidates": [
+    {
+      "candidate": "T2 errcheck .: internal/memory/search.go: unchecked error: rows.Close()",
+      "disposition": "finding",
+      "evidence": "Close of a fully read result set; rows.Err() (or the scan error) is checked right after, the same idiom as the base's existing queries such as EmbedPending in vectors.go. Left as is."
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "kind": "sweeper",
+  "base": "4513ac90a7fd231755eec8593683bbe1eaae75d8",
+  "head": "b783a55ed3acb76141050ea16c2e4c121b6ca74b",
+  "diff_sha256": "88b96f7da677afc8c4ae33daea0cce15614d6f6003bfc1d6510afd62d3e29318",
+  "sweep": "b783a55ed3ac-1.sweep.json",
+  "commit": null,
+  "candidates": [
+    {
+      "candidate": "T2 staticcheck .: internal/memory/ops_test.go: this result of append is never used, except maybe in other appends (SA4010)",
+      "disposition": "finding",
+      "evidence": "`stale` in TestContextCapsTheStaleTierAtThreeLines collects ids that no assertion reads: a dead variable in a test, with no effect on what the test checks. Left as is."
+    }
+  ]
+}

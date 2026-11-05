@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "9d3d98ac964e9cb197991607c6b0dc77019e55bc",
+    "head": "055adfffc2bc6f1267c3e69632f01dfb0d2388c7",
+    "diff_sha256": "10d10caf7078f6928b02488258a1c5d6a2cf448dd91b34e2ee46f05a98d2c776",
+    "paths": [
+      "internal/memory/chunks_test.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go test ./internal/memory",
+        "result": "pass",
+        "output": "ok  \tgithub.com/labdrian-ai/memorycard/internal/memory\t(cached)"
+      }
+    ]
+  }
+}

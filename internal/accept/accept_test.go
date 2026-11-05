@@ -2,6 +2,7 @@ package accept
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -221,5 +222,149 @@ func TestLoadGoldReadsQueriesAndRelevant(t *testing.T) {
 	}
 	if _, err := LoadGold(filepath.Join(dir, "missing")); err == nil {
 		t.Error("expected an error for a missing directory")
+	}
+}
+
+// memID returns the memory id the fixture's source key was imported as.
+func memID(t *testing.T, f fixture, key string) int64 {
+	t.Helper()
+	var id int64
+	if err := f.db.SQL().QueryRow(`select memory_id from import_map where source_key = ?`, key).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	return id
+}
+
+func addRecords(t *testing.T, f fixture, recs ...memory.ImportRecord) {
+	t.Helper()
+	at := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	for i := range recs {
+		recs[i].Source, recs[i].CreatedAt, recs[i].UpdatedAt = "engram", at, at
+		if recs[i].Type == "" {
+			recs[i].Type = "decision"
+		}
+	}
+	if _, err := f.svc.Import(context.Background(), recs, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.EmbedPending(context.Background(), 100); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMemoryIDKeysNameMemorycardRows(t *testing.T) {
+	f := newFixture(t, true)
+	id := memID(t, f, "12")
+	g := Gold{Queries: []Query{{ID: fmt.Sprintf("mc:%d", id), Text: "what runs first in a deploy", Lang: "en"}}}
+	if r := run(t, f, g, Options{K: 5}); r[0].Rank != 1 {
+		t.Errorf("mc: key rank = %d, want 1", r[0].Rank)
+	}
+	g.Relevant = map[string][]string{g.Queries[0].ID: {"mc:999999"}} // an unknown id accepts nothing
+	if r := run(t, f, g, Options{K: 5}); r[0].Rank != 0 {
+		t.Errorf("unknown mc: key rank = %d, want a miss", r[0].Rank)
+	}
+}
+
+func TestOutdatedAnswersAreRankedAndNeverAccepted(t *testing.T) {
+	f := newFixture(t, true)
+	// 15 shares 12's title, so without the outdated list title acceptance would take it.
+	addRecords(t, f, memory.ImportRecord{Key: "15", Project: "p", Title: "Deploy steps", Body: "deploy signed artifacts last"})
+	g := Gold{Queries: []Query{
+		{ID: "12", Text: "deploy", Lang: "en"},        // current first
+		{ID: "12", Text: "signed deploy", Lang: "es"}, // outdated first
+	}, Outdated: map[string][]string{"12": {"15"}}}
+	rs := run(t, f, g, Options{K: 5})
+	if rs[0].Rank != 1 || rs[0].OutdatedRank != 2 {
+		t.Errorf("query 1: rank %d outdated rank %d, want 1 and 2", rs[0].Rank, rs[0].OutdatedRank)
+	}
+	if rs[1].Rank != 2 || rs[1].OutdatedRank != 1 {
+		t.Errorf("query 2: rank %d outdated rank %d, want 2 and 1", rs[1].Rank, rs[1].OutdatedRank)
+	}
+	s := Summarize(rs)
+	if s.WithOutdated != 2 || s.CurrentFirst != 0.5 || s.OutdatedFirst != 0.5 {
+		t.Errorf("with outdated %d current first %v outdated first %v, want 2, 0.5, 0.5", s.WithOutdated, s.CurrentFirst, s.OutdatedFirst)
+	}
+	// Without an outdated list the run behaves as before: 15 counts by title.
+	g.Outdated = nil
+	if rs := run(t, f, g, Options{K: 5}); rs[1].Rank != 1 || rs[1].OutdatedRank != 0 {
+		t.Errorf("no outdated list: rank %d outdated rank %d, want 1 and 0", rs[1].Rank, rs[1].OutdatedRank)
+	}
+}
+
+func TestProjectScopeRestrictsTheSearch(t *testing.T) {
+	f := newFixture(t, true)
+	addRecords(t, f, memory.ImportRecord{Key: "20", Project: "q", Title: "Cache and auth", Body: "cache auth together"})
+	g := Gold{Queries: []Query{{ID: "20", Text: "cache", Lang: "en"}}}
+	if r := run(t, f, g, Options{K: 1}); r[0].Rank != 0 {
+		t.Fatalf("all projects (the default): rank = %d, want a miss at K=1", r[0].Rank)
+	}
+	if r := run(t, f, g, Options{K: 1, Project: ProjectTarget}); r[0].Rank != 1 {
+		t.Errorf("project of the target: rank = %d, want 1", r[0].Rank)
+	}
+	if r := run(t, f, g, Options{K: 1, Project: "q"}); r[0].Rank != 1 {
+		t.Errorf("fixed project q: rank = %d, want 1", r[0].Rank)
+	}
+	if r := run(t, f, g, Options{K: 1, Project: "p"}); r[0].Rank != 0 {
+		t.Errorf("fixed project p: rank = %d, want a miss", r[0].Rank)
+	}
+}
+
+func TestInactiveTargetsAreCounted(t *testing.T) {
+	f := newFixture(t, true)
+	if _, err := f.svc.Import(context.Background(), nil, []memory.ImportLink{{Source: "engram", Replacement: "13", Replaced: "12"}}); err != nil {
+		t.Fatal(err)
+	}
+	g := Gold{Queries: []Query{{ID: "12", Text: "deploy", Lang: "en"}, {ID: "10", Text: "cache", Lang: "en"}}}
+	rs := run(t, f, g, Options{K: 5})
+	if !rs[0].Inactive || rs[1].Inactive {
+		t.Errorf("inactive flags = %v, %v, want true, false", rs[0].Inactive, rs[1].Inactive)
+	}
+	if s := Summarize(rs); s.Inactive != 1 {
+		t.Errorf("summary inactive = %d, want 1", s.Inactive)
+	}
+}
+
+func TestDigestNoiseClassifiesLines(t *testing.T) {
+	f := newFixture(t, false)
+	addRecords(t, f,
+		memory.ImportRecord{Key: "30", Project: "d", Type: "session_summary", Title: "Session summary: d", Body: "worked on d"},
+		memory.ImportRecord{Key: "31", Project: "d", Title: "Guide (part 1/2)", Body: "first half"},
+		memory.ImportRecord{Key: "32", Project: "d", Title: "Guide (part 2/2)", Body: "second half"},
+		memory.ImportRecord{Key: "33", Project: "d", Title: "A title that was cut...", Body: "cut title"},
+		memory.ImportRecord{Key: "34", Project: "d", Title: "Plain note", Body: "plain"},
+	)
+	got, err := DigestNoise(context.Background(), f.svc, []string{"d", "p"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("got %d projects, want 2", len(got))
+	}
+	// The digest lists a split document once and caps the stale tier at 3
+	// lines, so the guide's two parts are one clean line and the five old
+	// decisions of p show as three.
+	d := got[0]
+	if d.Project != "d" || d.Lines != 4 || d.Summaries != 1 || d.Parts != 0 || d.Truncated != 1 || d.Noisy != 2 {
+		t.Errorf("project d = %+v, want 4 lines, 1 summary, 0 parts, 1 truncated, 2 noisy", d)
+	}
+	if got[1].Project != "p" || got[1].Lines != 3 || got[1].Noisy != 0 {
+		t.Errorf("project p = %+v, want 3 clean lines", got[1])
+	}
+	tot := Total(got)
+	if tot.Lines != 7 || tot.Noisy != 2 || tot.Share() != 2.0/7 {
+		t.Errorf("total = %+v share %v, want 7 lines, 2 noisy, 2/7", tot, tot.Share())
+	}
+}
+
+func TestLoadGoldReadsOutdated(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "queries.tsv"), []byte("id\tquery\tlang\nmc:7\twhich\ten\n"), 0o644)
+	os.WriteFile(filepath.Join(dir, "outdated.tsv"), []byte("mc:7\tmc:5,9\n"), 0o644)
+	g, err := LoadGold(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := g.Outdated["mc:7"]; len(got) != 2 || got[0] != "mc:5" || got[1] != "9" {
+		t.Errorf("outdated = %v", g.Outdated)
 	}
 }

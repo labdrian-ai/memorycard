@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "db0c80a355b30e761839ff0852e5b0ece72719a6",
+    "head": "4513ac90a7fd231755eec8593683bbe1eaae75d8",
+    "diff_sha256": "9fbec23793d8550006dd2361c213031c5e0f62aa57c92b083f8494e0262ce927",
+    "paths": [
+      "internal/cli/cli.go",
+      "internal/cli/cli_test.go",
+      "internal/mcpserver/server.go",
+      "internal/mcpserver/server_test.go",
+      "internal/render/render.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go vet ./... && go test ./... -count=1 at the feature head df443bd",
+        "result": "pass",
+        "output": "every package ok; gofmt clean"
+      },
+      {
+        "command": "independent verifier of unit T2 (workflow wf_4c79a35e-a82), probes on snapshot copies",
+        "result": "pass",
+        "output": "feat(get): show only the current version unless history is asked for: verdict pass after at most one correction"
+      }
+    ]
+  }
+}

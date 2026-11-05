@@ -1,0 +1,29 @@
+{
+  "kind": "polisher",
+  "base": "6a4ecc1175f34f12b1f8662522e86f181f857910",
+  "head": "9d3d98ac964e9cb197991607c6b0dc77019e55bc",
+  "diff_sha256": "4c295a6b4c7e91514bc71951530f252ff94d8132c34cc9c1f094459ae0ed1216",
+  "findings": {
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "low",
+        "path": "internal/memory/chunks_test.go",
+        "line": 27,
+        "summary": "The new concurrent-edit test only edits the body. The `curTitle != title` half of the guard in putVectors (vectors.go:121) is not pinned: removing it would leave both new tests green, so a title-only edit during an embed call could still be overwritten. The Save and Update callers do pass the stored title and body (verbatim `p.Title`/`p.Body` and `cur.Title`/`cur.Body`), so no caller's stored text differs from the embedded text.",
+        "evidence": [
+          "chunks_test.go:TestChunkBackfillDoesNotOverwriteAConcurrentEdit edits only the body",
+          "vectors.go:putVectors compares curTitle and curBody"
+        ]
+      }
+    ],
+    "evidence": [
+      "vectors.go:110-123: the title/body check and every write share one transaction. The store opens with `_txlock=immediate` (store.go:30), so no edit can commit between the check and the write, and no deferred-read upgrade can fail with SQLITE_BUSY. The guard is sound.",
+      "The skip case is safe. Update.update deletes the `vectors` row (save.go:387) and the edit then re-embeds. If that re-embed fails, EmbedPending picks the memory up again because it has no vector. When the backfill skips a stale write, the edit's own vectors stay in place.",
+      "Callers: index (vectors.go:75) gets title/body from afterWrite. Save passes the normalized `p.Title`/`p.Body`, which `write` stores verbatim, and Update passes `cur`, which is the `next` it stored. EmbedMemories (neighbours.go:148) and EmbedPending (vectors.go:209) pass the exact text read from the row. Nothing found where the stored text differs from the embedded text.",
+      "EmbedPending NUL pick-up (vectors.go:165): `instr(cast(m.body as blob), x'00') > 0` is correct, because SQLite `length()` stops at the NUL. A short NUL body is picked once, gets a chunk-0 marker row from the `base == nil && len(extra) == 0` branch, and is not picked again. This costs one scan per call plus a one-time overcount in the returned n. It is minor.",
+      "TestChunkBackfillDoesNotOverwriteAConcurrentEdit makes the edit inside Embed, after the row query has closed, so it is deterministic. Its chunk-count assertions (wantChunks(6000)-1 versus wantChunks(3000)-1) tell the old body from the new one. It also checks that a second EmbedPending returns 0. TestChunkBackfillPicksALongBodyWithANul fails on the old query because `length()` stops at the NUL, so the memory is never picked.",
+      "One edge remains: putVectors returns `sql.ErrNoRows` if the memory row has disappeared, which would abort the batch. The only `delete from memories` statements found are in store tests, not in app code, so no real caller hits this."
+    ]
+  }
+}

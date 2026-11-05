@@ -1,0 +1,18 @@
+{
+  "kind": "polisher",
+  "base": "713badd8fdc591fdf3ab949eca6f82c293299dfa",
+  "head": "0d86ca0c72f07fca15264acaef6df236c49df4a0",
+  "diff_sha256": "4167ac2d9b836809badf9a7e0e970a6c874382f8e646db7f8a04dcdc4bdf08e5",
+  "findings": {
+    "findings": [],
+    "evidence": [
+      "Read the full diff at /home/labdrian/memorycard-worktrees/review-0d86ca0.diff.",
+      "kind() in internal/memory/ops.go (lines 374-385): a document folds into mirrors when its topic starts with a mirror prefix and either its title starts with the topic key, or its type is architecture and the prefix is not project/. An empty topic matches no prefix.",
+      "TestContextCapsSessionSummariesAndMirrorsAtOneLineEach (ops_test.go:217-250) saves its project/app/manifest/context mirror with Title equal to the topic key; it still folds and the test is unchanged.",
+      "TestContextKeepsTitledArchitectureNotesUnderProject (ops_test.go:253-269) pins the hand-titled side under project/.",
+      "Gap, not a defect: sdd/ and odd/ architecture notes whose title differs from the topic key are not pinned by a test; the old rule never had that coverage either.",
+      "No code in the repo writes project/ mirrors with a title different from the topic key.",
+      "Tests not run (read-only)."
+    ]
+  }
+}

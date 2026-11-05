@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "25bbe508ff8c5fd4d40afa0d66ff869d05034534",
+    "head": "ef0ec5450f74decdc9bee5e5763e34125c896761",
+    "diff_sha256": "08a9981429e5b1be96e5b9ae8680de3061aac7ca7693934fc9b3bee8ed3cc058",
+    "paths": [
+      "internal/cli/capture.go",
+      "internal/cli/capture_test.go",
+      "internal/memory/neighbours.go",
+      "internal/memory/neighbours_test.go",
+      "internal/memory/save.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go vet ./... && go test ./... -count=1 at the feature head 88bc5b9",
+        "result": "pass",
+        "output": "every package ok; gofmt clean"
+      },
+      {
+        "command": "independent verifier of unit T5 (workflow wf_4c79a35e-a82), probes on snapshot copies",
+        "result": "pass",
+        "output": "fix(capture): restore the duplicate hint after the batch embed: verdict pass after at most one correction"
+      }
+    ]
+  }
+}

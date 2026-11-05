@@ -193,3 +193,57 @@ func TestUpgradeToV3RekeysLiveTopicKeyCollisionsAndEnforcesThem(t *testing.T) {
 		t.Errorf("a memory without topic_key was rejected: %v", err)
 	}
 }
+
+// v4 adds vector_chunks next to vectors: a v3 database keeps its single-vector
+// rows untouched, and dropping a vector (or its memory) drops its chunks.
+func TestUpgradeToV4KeepsSingleVectorsAndAddsChunks(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "memory.db")
+	first, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`insert into memories(project,title,body,content_hash,created_at,updated_at) values('p','a','b','h1','x','x')`,
+		`insert into memories(project,title,body,content_hash,created_at,updated_at) values('p','c','d','h2','x','x')`,
+		`insert into vectors(memory_id, model, dim, vec) values (1, 'm', 1, x'0000803f')`,
+		`insert into vectors(memory_id, model, dim, vec) values (2, 'm', 1, x'0000803f')`,
+		`drop table if exists vector_chunks`,
+		`pragma user_version = 3`, // what a database created by the v3 build looks like
+	} {
+		if _, err := first.SQL().Exec(q); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	first.Close()
+
+	db, err := Open(path)
+	if err != nil {
+		t.Fatalf("upgrade: %v", err)
+	}
+	defer db.Close()
+	var n int
+	if err := db.SQL().QueryRow(`select count(*) from vectors where model = 'm'`).Scan(&n); err != nil || n != 2 {
+		t.Fatalf("single-vector rows after upgrade = %d (%v), want 2", n, err)
+	}
+	for _, q := range []string{
+		`insert into vector_chunks(memory_id, chunk, vec) values (1, 1, x'0000803f')`,
+		`insert into vector_chunks(memory_id, chunk, vec) values (1, 2, x'0000803f')`,
+		`insert into vector_chunks(memory_id, chunk, vec) values (2, 1, x'0000803f')`,
+	} {
+		if _, err := db.SQL().Exec(q); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	if _, err := db.SQL().Exec(`insert into vector_chunks(memory_id, chunk, vec) values (99, 1, x'00')`); err == nil {
+		t.Error("a chunk without a parent vector was accepted")
+	}
+	if _, err := db.SQL().Exec(`delete from vectors where memory_id = 1`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.SQL().Exec(`delete from memories where id = 2`); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.SQL().QueryRow(`select count(*) from vector_chunks`).Scan(&n); err != nil || n != 0 {
+		t.Errorf("chunks left after their vector and memory were deleted = %d (%v), want 0", n, err)
+	}
+}

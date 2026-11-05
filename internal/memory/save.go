@@ -72,15 +72,21 @@ type SaveInput struct {
 	Body       string
 	TopicKey   string
 	Supersedes int64 // id of a memory this one replaces
+	// DeferEmbed skips embedding on save: no vector, duplicate hint or
+	// neighbours yet. The caller finishes later with FinishDeferred, one
+	// embed batch for many saves that also sets their hints; until then the
+	// memory is pending like any other.
+	DeferEmbed bool
 }
 
 // SaveResult reports what Save did.
 type SaveResult struct {
-	ID       int64
-	Action   string
-	Warnings []string
-	Hint     *Hint   // set when a similar memory already exists; never blocks the write
-	Parts    []int64 // ids of every part, in order, when the body was split
+	ID         int64
+	Action     string
+	Warnings   []string
+	Hint       *Hint   // set when a similar memory already exists; never blocks the write
+	Neighbours []Hint  // closest active memories of the same project and type, closest first
+	Parts      []int64 // ids of every part, in order, when the body was split
 }
 
 // Save stores a memory following the write rules: redaction, size caps,
@@ -166,6 +172,9 @@ func (s *Service) Save(ctx context.Context, in SaveInput) (SaveResult, error) {
 	if len(pieces) > 1 {
 		res.Parts = ids
 	}
+	if in.DeferEmbed {
+		return res, nil
+	}
 	for i, p := range pieces {
 		if i == 0 {
 			s.afterWrite(ctx, ids[i], p.Project, p.Title, p.Body, actions[i], &res)
@@ -176,6 +185,7 @@ func (s *Service) Save(ctx context.Context, in SaveInput) (SaveResult, error) {
 		s.afterWrite(ctx, ids[i], p.Project, p.Title, p.Body, actions[i], &r)
 		res.Warnings = append(res.Warnings, r.Warnings...)
 	}
+	s.neighbours(ctx, in, ids, &res)
 	return res, nil
 }
 

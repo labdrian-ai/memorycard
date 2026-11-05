@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "1640cfe9b35bed762717472d4275effb7e89cd81",
+    "head": "409079b838e477c7be9241152fdcec4c0cd2a46d",
+    "diff_sha256": "23e82274948550e361d48cea2f6cae60d71bc0f513d74326c9fd940d7d82e205",
+    "paths": [
+      "internal/memory/search.go",
+      "internal/memory/translate.go",
+      "internal/memory/translate_test.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go vet ./... && go test ./... -count=1 at the feature head 88bc5b9",
+        "result": "pass",
+        "output": "every package ok; gofmt clean"
+      },
+      {
+        "command": "independent verifier of unit integration (workflow wf_4c79a35e-a82), probes on snapshot copies",
+        "result": "pass",
+        "output": "feat(search): look up English words for Spanish lexical queries: verdict pass after at most one correction"
+      }
+    ]
+  }
+}

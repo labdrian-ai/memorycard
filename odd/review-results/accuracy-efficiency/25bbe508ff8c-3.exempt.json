@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "97182d4fe45094e92afa8a7cdba7d81e3ed05233",
+    "head": "25bbe508ff8c5fd4d40afa0d66ff869d05034534",
+    "diff_sha256": "65e60cc2e157ffae510ceafbd908505bf2e62aa36c31a41a69449cf119c448a4",
+    "paths": [
+      "internal/cli/capture.go",
+      "internal/cli/capture_test.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go vet ./... && go test ./... -count=1 at the feature head 88bc5b9",
+        "result": "pass",
+        "output": "every package ok; gofmt clean"
+      },
+      {
+        "command": "independent verifier of unit T5 (workflow wf_4c79a35e-a82), probes on snapshot copies",
+        "result": "pass",
+        "output": "feat(capture): skip short and probe items, title by first sentence, one embed batch: verdict pass after at most one correction"
+      }
+    ]
+  }
+}

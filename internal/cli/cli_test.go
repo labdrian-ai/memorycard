@@ -46,6 +46,44 @@ func TestSaveThenSearchAndGet(t *testing.T) {
 	}
 }
 
+func TestGetHidesHistoryUnlessAsked(t *testing.T) {
+	db := newDB(t)
+	for _, body := range []string{"old body", "new body"} {
+		if code, out, errOut := run(t, db, "", "save", "--title", "Plan", "--body", body, "--topic", "plan/x"); code != 0 {
+			t.Fatalf("save: code=%d out=%q err=%q", code, out, errOut)
+		}
+	}
+	code, out, errOut := run(t, db, "", "get", "1")
+	if code != 0 || errOut != "" || !strings.Contains(out, "new body") || strings.Contains(out, "old body") {
+		t.Errorf("get: code=%d out=%q err=%q, want the current body only", code, out, errOut)
+	}
+	if !strings.HasSuffix(out, "\n(1 earlier version not shown; --history shows it)\n") {
+		t.Errorf("get = %q, want a closing line naming 1 earlier version and --history", out)
+	}
+	for _, args := range [][]string{{"get", "--history", "1"}, {"get", "1", "--history"}} {
+		code, out, errOut := run(t, db, "", args...)
+		if code != 0 || errOut != "" || !strings.Contains(out, "new body") ||
+			!strings.Contains(out, "--- history v1") || !strings.Contains(out, "old body") || strings.Contains(out, "not shown") {
+			t.Errorf("%v: code=%d out=%q err=%q, want current body and history", args, code, out, errOut)
+		}
+	}
+}
+
+func TestGetBadUsageExitsTwo(t *testing.T) {
+	db := newDB(t)
+	run(t, db, "", "save", "--title", "T", "--body", "B")
+	for _, args := range [][]string{{"get"}, {"get", "1", "2"}, {"get", "--nope", "1"}, {"get", "1", "--history", "2"}} {
+		code, out, errOut := run(t, db, "", args...)
+		if code != 2 || out != "" || !strings.Contains(errOut, "usage: memorycard get") {
+			t.Errorf("%v: code=%d out=%q err=%q, want exit 2 with the get usage", args, code, out, errOut)
+		}
+	}
+	// A negative id is still an id that does not exist, not a flag.
+	if code, out, errOut := run(t, db, "", "get", "-1"); code != 1 || out != "" || !strings.Contains(errOut, "memory #-1: not found") {
+		t.Errorf("get -1: code=%d out=%q err=%q, want exit 1 not found", code, out, errOut)
+	}
+}
+
 func TestSaveReadsBodyFromStdin(t *testing.T) {
 	db := newDB(t)
 	code, out, errOut := run(t, db, "body from a pipe\n", "save", "--title", "Piped", "--body", "-")
@@ -126,5 +164,47 @@ func TestContextCommand(t *testing.T) {
 	run(t, db, "", "save", "--title", "A note", "--body", "text")
 	if code, out, _ := run(t, db, "", "context"); code != 0 || !strings.Contains(out, "#1 [recent]") {
 		t.Errorf("context: code=%d out=%q", code, out)
+	}
+}
+
+func TestContextHonoursTheProjectFlag(t *testing.T) {
+	db := newDB(t)
+	run(t, db, "", "save", "--title", "Home note", "--body", "in p")
+	run(t, db, "", "save", "--title", "Other note", "--body", "in q", "--project", "q")
+	code, out, errOut := run(t, db, "", "context", "--project", "q")
+	if code != 0 || out != "#2 [recent] manual: Other note\n" || errOut != "" {
+		t.Errorf("context --project q: code=%d out=%q err=%q, want only the q memory", code, out, errOut)
+	}
+	// Without the flag the resolved project is still used.
+	code, out, _ = run(t, db, "", "context")
+	if code != 0 || out != "#1 [recent] manual: Home note\n" {
+		t.Errorf("context: code=%d out=%q, want only the p memory", code, out)
+	}
+	if code, _, errOut := run(t, db, "", "context", "--bogus"); code != 2 || !strings.Contains(errOut, "bogus") {
+		t.Errorf("context --bogus: code=%d err=%q, want a usage error", code, errOut)
+	}
+}
+
+func TestContextQueryAppendsTheTopFiveHits(t *testing.T) {
+	db := newDB(t)
+	for i := 0; i < 7; i++ {
+		run(t, db, "", "save", "--title", "Canary step "+string(rune('a'+i)), "--body", "canary rollout "+string(rune('a'+i)))
+	}
+	run(t, db, "", "save", "--title", "Unrelated", "--body", "nothing here")
+	code, out, errOut := run(t, db, "", "context", "--query", "canary rollout")
+	if code != 0 || errOut != "" {
+		t.Fatalf("code=%d err=%q", code, errOut)
+	}
+	digest, hits, ok := strings.Cut(out, "top hits for \"canary rollout\":\n")
+	if !ok || !strings.Contains(digest, "#8 [recent] manual: Unrelated\n") {
+		t.Fatalf("out = %q, want the digest then a hits section", out)
+	}
+	n := strings.Count(hits, ": Canary step ")
+	if n != 5 || strings.Contains(hits, "Unrelated") || strings.Contains(hits, "  canary") {
+		t.Errorf("hits = %q, want 5 title-only canary hits", hits)
+	}
+	// Positional words are the query too, as in search.
+	if _, out2, _ := run(t, db, "", "context", "canary", "rollout"); out2 != out {
+		t.Errorf("positional query = %q, want the same as --query (%q)", out2, out)
 	}
 }

@@ -1,0 +1,35 @@
+{
+  "kind": "sweeper",
+  "base": "cbd14effd67628676501c2c04f1a64d525b5d87d",
+  "head": "c7b6eee6a45da87c8832afd8e7dd7c96eb3dea38",
+  "diff_sha256": "13388ab7a495d081e0e45578a691abb4cff365b79c517e23c540a0f0dc6dcb70",
+  "sweep": "c7b6eee6a45d-1.sweep.json",
+  "commit": null,
+  "candidates": [
+    {
+      "candidate": "T2 errcheck .: cmd/mc-accept/main_test.go: unchecked error: defer db.Close()",
+      "disposition": "finding",
+      "evidence": "Unchecked error in test scaffolding (Close in a Cleanup or defer, the fake embedder's JSON encode/decode, a fixture WriteFile). A failure there surfaces as a failing assertion of the same test; the base's tests use the same idiom. Left as is."
+    },
+    {
+      "candidate": "T2 errcheck .: cmd/mc-accept/main_test.go: unchecked error: json.NewDecoder(r.Body).Decode(&req)",
+      "disposition": "finding",
+      "evidence": "Unchecked error in test scaffolding (Close in a Cleanup or defer, the fake embedder's JSON encode/decode, a fixture WriteFile). A failure there surfaces as a failing assertion of the same test; the base's tests use the same idiom. Left as is."
+    },
+    {
+      "candidate": "T2 errcheck .: cmd/mc-accept/main_test.go: unchecked error: json.NewEncoder(w).Encode(map[string]any{\"embeddings\": vecs})",
+      "disposition": "finding",
+      "evidence": "Unchecked error in test scaffolding (Close in a Cleanup or defer, the fake embedder's JSON encode/decode, a fixture WriteFile). A failure there surfaces as a failing assertion of the same test; the base's tests use the same idiom. Left as is."
+    },
+    {
+      "candidate": "T2 errcheck .: cmd/mc-accept/main_test.go: unchecked error: os.WriteFile(filepath.Join(dir, \"outdated.tsv\"), []byte(\"5\\t4\\n\"), 0o644)",
+      "disposition": "finding",
+      "evidence": "Unchecked error in test scaffolding (Close in a Cleanup or defer, the fake embedder's JSON encode/decode, a fixture WriteFile). A failure there surfaces as a failing assertion of the same test; the base's tests use the same idiom. Left as is."
+    },
+    {
+      "candidate": "T2 errcheck .: cmd/mc-accept/main_test.go: unchecked error: os.WriteFile(filepath.Join(dir, \"queries.tsv\"), []byte(\"id\\tquery\\tlang\\n5\\tplain note\\ten\\n\"), 0o644)",
+      "disposition": "finding",
+      "evidence": "Unchecked error in test scaffolding (Close in a Cleanup or defer, the fake embedder's JSON encode/decode, a fixture WriteFile). A failure there surfaces as a failing assertion of the same test; the base's tests use the same idiom. Left as is."
+    }
+  ]
+}

@@ -72,12 +72,14 @@ func TestSaveStoresNormalizedVector(t *testing.T) {
 	}
 }
 
+// The first embed input (chunk 0, the row in vectors) is still the title plus
+// the truncated body; the rest of a long body goes to further chunks.
 func TestEmbedInputIsTitlePlusTruncatedBody(t *testing.T) {
 	fe := &fakeEmbedder{fn: axis}
 	s := withEmbedder(t, fe)
 	save(t, s, SaveInput{Project: "p", Title: "T", Body: strings.Repeat("é", 3000)})
-	if len(fe.seen) != 1 {
-		t.Fatalf("embed calls = %d", len(fe.seen))
+	if len(fe.seen) != wantChunks(3000) {
+		t.Fatalf("embed inputs = %d, want %d chunks", len(fe.seen), wantChunks(3000))
 	}
 	want := "T\n"
 	if got := fe.seen[0]; !strings.HasPrefix(got, want) || utf8.RuneCountInString(got) != len(want)+EmbedBodyRunes {

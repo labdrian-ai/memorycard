@@ -34,6 +34,16 @@ func Search(r memory.SearchResult) string {
 		if h.Stale {
 			b.WriteString(" [stale]")
 		}
+		for i, id := range h.Siblings {
+			if i == 0 {
+				fmt.Fprintf(&b, " [other parts: #%d", id)
+			} else {
+				fmt.Fprintf(&b, ", #%d", id)
+			}
+			if i == len(h.Siblings)-1 {
+				b.WriteByte(']')
+			}
+		}
 		b.WriteByte('\n')
 		if h.Snippet != "" {
 			fmt.Fprintf(&b, "  %s\n", h.Snippet)
@@ -63,11 +73,20 @@ func Save(r memory.SaveResult) string {
 	if r.Hint != nil {
 		fmt.Fprintf(&b, "possible duplicate of #%d (%.2f): %s\n", r.Hint.ID, r.Hint.Score, r.Hint.Title)
 	}
+	if len(r.Neighbours) > 0 {
+		b.WriteString("similar active memories (if one is outdated, save again with supersedes=<id>):\n")
+		for _, h := range r.Neighbours {
+			fmt.Fprintf(&b, "  #%d (%.2f): %s\n", h.ID, h.Score, h.Title)
+		}
+	}
 	return b.String()
 }
 
-// Memory formats one full memory with its history.
-func Memory(m memory.Memory) string {
+// Memory formats one memory. With history it appends every earlier version;
+// without it, a memory that has earlier versions ends with one line counting
+// them and naming how to ask for them (show, as "--history" or
+// "history=true"), so the current text is not buried under old ones.
+func Memory(m memory.Memory, history bool, show string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "#%d %s project=%s scope=%s status=%s", m.ID, m.Type, m.Project, m.Scope, m.Status)
 	if m.Pinned {
@@ -80,6 +99,16 @@ func Memory(m memory.Memory) string {
 		fmt.Fprintf(&b, " superseded_by=#%d", m.SupersededBy)
 	}
 	fmt.Fprintf(&b, "\nupdated %s\n\n%s\n\n%s\n", m.UpdatedAt, m.Title, m.Body)
+	if !history {
+		switch n := len(m.History); n {
+		case 0:
+		case 1:
+			fmt.Fprintf(&b, "\n(1 earlier version not shown; %s shows it)\n", show)
+		default:
+			fmt.Fprintf(&b, "\n(%d earlier versions not shown; %s shows them)\n", n, show)
+		}
+		return b.String()
+	}
 	for _, v := range m.History {
 		fmt.Fprintf(&b, "\n--- history v%d (%s): %s\n%s\n", v.Version, v.SavedAt, v.Title, v.Body)
 	}

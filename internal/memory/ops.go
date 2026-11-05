@@ -5,6 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -208,25 +211,59 @@ const (
 	GroupRecent = "recent"
 )
 
+const (
+	// DigestStaleLines caps the stale tier; the rest is counted on one line.
+	DigestStaleLines = 3
+
+	// DigestHitsK is how many search hits a digest asked for a task appends.
+	DigestHitsK = 5
+)
+
+// Kinds of recent memory the digest shows as one line: the newest one, with
+// a count of the rest.
+const (
+	kindSessions = "session summaries"
+	kindMirrors  = "mirrors"
+)
+
+// mirrorPrefixes are the topic-key roots under which the SDD and ODD
+// workflows mirror their documents automatically.
+var mirrorPrefixes = []string{"sdd/", "odd/", "project/"}
+
+// titledOnlyPrefixes are the roots where architecture notes are also written
+// by hand (ADRs, the technical architecture): there only a document titled by
+// its topic key counts as a mirror.
+var titledOnlyPrefixes = []string{"project/"}
+
+// partTitle matches the title of one part of a document stored in parts.
+var partTitle = regexp.MustCompile(`^(.*) \(part (\d+)/(\d+)\)$`)
+
 // DigestEntry is one line of the session-start digest.
 type DigestEntry struct {
-	ID    int64
-	Type  string
-	Title string
-	Group string
+	ID       int64
+	Type     string
+	Title    string
+	Group    string
+	Parts    int    // more than 1 when the document is stored in parts; ID is its first active part
+	More     int    // further memories of MoreKind this line stands for
+	MoreKind string // "session summaries" or "mirrors"
 }
 
 // Digest is a small, budgeted summary of a project's memory.
 type Digest struct {
-	Entries []DigestEntry
-	Omitted int // active memories that did not fit the budget
+	Entries      []DigestEntry
+	StaleOmitted int // stale memories past the stale tier cap
+	Omitted      int // digest lines that did not fit the budget
 }
 
 // Text renders the digest, one line per entry.
 func (d Digest) Text() string {
 	var b strings.Builder
-	for _, e := range d.Entries {
+	for i, e := range d.Entries {
 		b.WriteString(e.line())
+		if d.StaleOmitted > 0 && lastStale(d.Entries, i) {
+			b.WriteString(staleFooter(d.StaleOmitted))
+		}
 	}
 	if d.Omitted > 0 {
 		fmt.Fprintf(&b, "... %d more (use mem_search)\n", d.Omitted)
@@ -234,63 +271,167 @@ func (d Digest) Text() string {
 	return b.String()
 }
 
-func (e DigestEntry) line() string {
-	return fmt.Sprintf("#%d [%s] %s: %s\n", e.ID, e.Group, e.Type, e.Title)
+// lastStale reports whether entry i closes the stale tier.
+func lastStale(es []DigestEntry, i int) bool {
+	return es[i].Group == GroupStale && (i+1 == len(es) || es[i+1].Group != GroupStale)
 }
 
-// Context builds the digest for a project: pinned first, then stale decisions
-// that need review, then the most recent, cut at budget bytes.
+func staleFooter(n int) string {
+	return fmt.Sprintf("... %d more stale (use mem_search)\n", n)
+}
+
+func (e DigestEntry) line() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "#%d [%s] %s: %s", e.ID, e.Group, e.Type, e.Title)
+	if e.Parts > 1 {
+		fmt.Fprintf(&b, " (%d parts)", e.Parts)
+	}
+	if e.More > 0 {
+		fmt.Fprintf(&b, " (+%d more %s)", e.More, e.MoreKind)
+	}
+	b.WriteByte('\n')
+	return b.String()
+}
+
+// Context builds the digest for a project: pinned first, then up to
+// DigestStaleLines stale decisions that need review, then the most recent,
+// cut at budget bytes. A document stored in parts is one line; session
+// summaries and workflow mirrors are one line each kind.
 func (s *Service) Context(ctx context.Context, project string, budget int) (Digest, error) {
 	if budget <= 0 {
 		budget = ContextBudgetBytes
 	}
-	rows, err := s.db.SQL().QueryContext(ctx,
-		`select id, type, title, pinned, updated_at from memories
-		 where status = 'active' and (project = ? or scope = 'global')
-		 order by updated_at desc, id desc`, project)
+	docs, err := s.digestDocs(ctx, project)
 	if err != nil {
 		return Digest{}, err
 	}
-	defer rows.Close()
 
 	now := s.now()
 	var pinned, stale, recent []DigestEntry
-	for rows.Next() {
-		var e DigestEntry
-		var pin int
-		var updated string
-		if err := rows.Scan(&e.ID, &e.Type, &e.Title, &pin, &updated); err != nil {
-			return Digest{}, err
-		}
+	firstOfKind := map[string]int{} // kind -> index of its line in recent
+	for _, doc := range docs {
+		e := doc.DigestEntry
 		switch {
-		case pin == 1:
+		case doc.pinned:
 			e.Group = GroupPinned
 			pinned = append(pinned, e)
-		case isStale(e.Type, updated, now):
+		case isStale(e.Type, doc.updated, now):
 			e.Group = GroupStale
 			stale = append(stale, e)
 		default:
 			e.Group = GroupRecent
+			if kind := doc.kind(); kind != "" {
+				if i, ok := firstOfKind[kind]; ok {
+					recent[i].More++
+					continue
+				}
+				firstOfKind[kind] = len(recent)
+				e.MoreKind = kind
+			}
 			recent = append(recent, e)
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return Digest{}, err
-	}
 
-	all := append(append(pinned, stale...), recent...)
 	var d Digest
+	if len(stale) > DigestStaleLines {
+		d.StaleOmitted = len(stale) - DigestStaleLines
+		stale = stale[:DigestStaleLines]
+	}
+	all := append(append(pinned, stale...), recent...)
 	used := 0
 	for i, e := range all {
 		n := len(e.line())
-		if used+n > budget-omittedFooterReserve && i < len(all) {
+		if d.StaleOmitted > 0 && lastStale(all, i) {
+			n += len(staleFooter(d.StaleOmitted))
+		}
+		if used+n > budget-omittedFooterReserve {
 			d.Omitted = len(all) - i
+			if i < len(pinned)+len(stale) {
+				// The stale footer was cut too: its count joins the rest.
+				d.Omitted += d.StaleOmitted
+				d.StaleOmitted = 0
+			}
 			break
 		}
 		d.Entries = append(d.Entries, e)
 		used += n
 	}
 	return d, nil
+}
+
+// digestDoc is one document of the digest: a memory, or all the active
+// parts of a document stored in parts.
+type digestDoc struct {
+	DigestEntry
+	topic   string
+	pinned  bool
+	updated string // of the most recently updated part
+	part    int    // lowest part number seen
+}
+
+// kind returns the kind of memory shown as one line, or "".
+func (d *digestDoc) kind() string {
+	if d.Type == "session_summary" {
+		return kindSessions
+	}
+	titled := strings.HasPrefix(d.Title, d.topic)
+	for _, p := range mirrorPrefixes {
+		if !strings.HasPrefix(d.topic, p) {
+			continue
+		}
+		if titled || (d.Type == "architecture" && !slices.Contains(titledOnlyPrefixes, p)) {
+			return kindMirrors
+		}
+	}
+	return ""
+}
+
+// digestDocs lists a project's active documents, most recently updated
+// first, with the parts of one document folded into one entry.
+func (s *Service) digestDocs(ctx context.Context, project string) ([]*digestDoc, error) {
+	rows, err := s.db.SQL().QueryContext(ctx,
+		`select id, type, title, coalesce(topic_key, ''), pinned, updated_at from memories
+		 where status = 'active' and (project = ? or scope = 'global')
+		 order by updated_at desc, id desc`, project)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var docs []*digestDoc
+	byKey := map[string]*digestDoc{}
+	for rows.Next() {
+		d := &digestDoc{}
+		var pin int
+		if err := rows.Scan(&d.ID, &d.Type, &d.Title, &d.topic, &pin, &d.updated); err != nil {
+			return nil, err
+		}
+		d.pinned = pin == 1
+		if m := partTitle.FindStringSubmatch(d.Title); m != nil {
+			i, _ := strconv.Atoi(m[2])
+			n, _ := strconv.Atoi(m[3])
+			if n > 1 {
+				base := strings.TrimSuffix(d.topic, fmt.Sprintf("/part-%d", i))
+				key := base + "\x00" + m[1] + "\x00" + m[3]
+				if doc, ok := byKey[key]; ok {
+					if i < doc.part {
+						doc.part, doc.ID = i, d.ID
+					}
+					doc.pinned = doc.pinned || d.pinned
+					continue
+				}
+				d.Title, d.topic, d.Parts, d.part = m[1], base, n, i
+				byKey[key] = d
+			}
+		}
+		docs = append(docs, d)
+	}
+	return docs, rows.Err()
+}
+
+// ContextSearch returns the top DigestHitsK search hits for a task, titles
+// only, the way Search ranks them, to append to a project's digest.
+func (s *Service) ContextSearch(ctx context.Context, project, query string) (SearchResult, error) {
+	return s.Search(ctx, SearchInput{Query: query, Project: project, K: DigestHitsK, Detail: DetailTitle})
 }
 
 // Stats counts stored memories for diagnostics.

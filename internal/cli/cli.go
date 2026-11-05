@@ -33,14 +33,23 @@ commands:
   search [--type X] [--k N] [--titles] [--all] [--project P] <query>
                            find memories by meaning; --all includes superseded
                            and archived ones, --project "" searches every project
-  get    <id>              print one memory with its history
-  context                  print the project digest
+  get    [--history] <id>  print one memory; --history adds its earlier versions
+  context [--project P] [--query Q | <query>]
+                           print the project digest: pinned, up to 3 stale
+                           decisions, then recent memories, one line per
+                           document; session summaries and sdd/ odd/ project/
+                           mirrors one line each; a query appends its top 5 hits
   capture                  read text on stdin and save each numbered item of its
                            "## Key Learnings" block as a memory (type learning);
-                           no block or no items saves nothing
-  project                  print the project the other commands resolve
+                           items under 60 characters or with a probe marker are
+                           skipped; no block or no items saves nothing
+  project                 print the project the other commands resolve
   stats                    counts and embedding backlog
-  embed  [--limit N]       embed every memory that has no vector yet, N per batch
+  embed  [--limit N]       embed every memory that has no vector yet, N per batch;
+                           long memories get one vector per chunk (windows of
+                           1500 characters with 200 of overlap, each with the
+                           title), and memories embedded before chunking get
+                           their missing chunks
   import engram <path>     copy an Engram database in (read-only, resumable)
   version                  print the build version
   help
@@ -109,7 +118,7 @@ func Run(args []string, in io.Reader, out, errOut io.Writer, getenv func(string)
 	case "get":
 		return a.get(ctx, svc, rest)
 	case "context":
-		return a.context(ctx, svc)
+		return a.context(ctx, svc, rest)
 	case "stats":
 		return a.stats(ctx, svc, emb)
 	case "import":
@@ -220,13 +229,24 @@ func (a *app) search(ctx context.Context, svc *memory.Service, args []string) in
 }
 
 func (a *app) get(ctx context.Context, svc *memory.Service, args []string) int {
-	if len(args) != 1 {
-		fmt.Fprintln(a.err, "usage: memorycard get <id>")
+	// Scanned by hand rather than with the flag package so --history may
+	// follow the id and anything else, "-1" included, still reads as the id.
+	history := false
+	var rest []string
+	for _, arg := range args {
+		if arg == "--history" || arg == "-history" {
+			history = true
+			continue
+		}
+		rest = append(rest, arg)
+	}
+	if len(rest) != 1 {
+		fmt.Fprintln(a.err, "usage: memorycard get [--history] <id>")
 		return 2
 	}
-	id, err := strconv.ParseInt(args[0], 10, 64)
+	id, err := strconv.ParseInt(rest[0], 10, 64)
 	if err != nil {
-		fmt.Fprintf(a.err, "id must be a number, got %q\n", args[0])
+		fmt.Fprintf(a.err, "id must be a number, got %q\n", rest[0])
 		return 2
 	}
 	m, err := svc.Get(ctx, id)
@@ -236,20 +256,25 @@ func (a *app) get(ctx context.Context, svc *memory.Service, args []string) int {
 	if err != nil {
 		return a.fail(err)
 	}
-	fmt.Fprint(a.out, render.Memory(m))
+	fmt.Fprint(a.out, render.Memory(m, history, "--history"))
 	return 0
 }
 
-func (a *app) context(ctx context.Context, svc *memory.Service) int {
-	d, err := svc.Context(ctx, a.project(), memory.ContextBudgetBytes)
+func (a *app) context(ctx context.Context, svc *memory.Service, args []string) int {
+	fs := a.flags("context")
+	proj := fs.String("project", a.project(), "project")
+	query := fs.String("query", "", "task or question: append its top search hits")
+	if fs.Parse(args) != nil {
+		return 2
+	}
+	if *query == "" {
+		*query = strings.Join(fs.Args(), " ")
+	}
+	text, err := mcpserver.DigestText(ctx, svc, *proj, *query)
 	if err != nil {
 		return a.fail(err)
 	}
-	if len(d.Entries) == 0 {
-		fmt.Fprintln(a.out, "no memories yet")
-		return 0
-	}
-	fmt.Fprint(a.out, d.Text())
+	fmt.Fprint(a.out, text)
 	return 0
 }
 

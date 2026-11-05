@@ -1,0 +1,17 @@
+{
+  "kind": "polisher",
+  "base": "ed56b57961fb9abdc29d00b2f18b7c1461f23308",
+  "head": "47cf5b3427256bd1f7dc01fbf1078e8172588746",
+  "diff_sha256": "bb70453612c89e5228a776c09171e00c281032b67803438869d4f0855c7e77a0",
+  "findings": {
+    "findings": [],
+    "evidence": [
+      "Read the full diff of fe93ba4 and dense() in internal/memory/search.go lines 292-373 at the head.",
+      "No-chunk memories: best[i] is copied from first[i] and only a matching chunk row updates it, so the score is first + 0.15*(first-first), bit-identical to the old dot(qv, v). Filtered-out chunk rows and rows with a mismatched dimension are skipped as before.",
+      "Score bound: best >= first, so the score is a convex combination of first and best; it never exceeds the old plain maximum (so never above cosine 1) and never falls below first.",
+      "Confidence: search.go:190 reads dense[0].Score, still a cosine-scale value; a late chunk lifts a score by at most 0.15*(best-first).",
+      "Hybrid fusion (search.go:488-491) and the widen path consume dense() output, so they inherit the identical no-chunk score.",
+      "Tests: TestLateChunkDoesNotOvertakeABetterFirstWindow pins cosine 1/sqrt2 for the short memory and 0 for a non-matching long one; TestDenseLiftsAMemoryByItsBestChunk pins the lifted formula and ConfidenceLow. Hybrid and widen share the same score code path."
+    ]
+  }
+}

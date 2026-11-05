@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "6a4ecc1175f34f12b1f8662522e86f181f857910",
+    "head": "9d3d98ac964e9cb197991607c6b0dc77019e55bc",
+    "diff_sha256": "4c295a6b4c7e91514bc71951530f252ff94d8132c34cc9c1f094459ae0ed1216",
+    "paths": [
+      "internal/memory/chunks_test.go",
+      "internal/memory/neighbours.go",
+      "internal/memory/vectors.go",
+      "odd/tasks/accuracy-efficiency.md"
+    ]
+  },
+  "rows": [
+    "default",
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "6a4ecc1175f34f12b1f8662522e86f181f857910",
+      "head": "9d3d98ac964e9cb197991607c6b0dc77019e55bc",
+      "diff_sha256": "4c295a6b4c7e91514bc71951530f252ff94d8132c34cc9c1f094459ae0ed1216"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "internal/memory/vectors.go",
+        "internal/memory/neighbours.go",
+        "internal/memory/chunks_test.go",
+        "odd/tasks/accuracy-efficiency.md"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "internal/memory/vectors.go:209",
+        "claim": "When putVectors skips a stale write it returns nil, so EmbedPending still counts that memory as embedded (return len(items)), and index() still returns vecs[0] to afterWrite. An edit lands during the embed call. EmbedPending reports n including the skipped memory, and the caller's progress or 'embedded N' output is overstated by one. In afterWrite on a create, the duplicate hint is computed from the vector of the old text. The memory itself is not left without vectors, because the edit stores its own or stays pending. The effect is cosmetic.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/vectors.go:EmbedPending",
+          "internal/memory/vectors.go:putVectors"
+        ]
+      }
+    ],
+    "evidence": [
+      "Callers of putVectors: index() via afterWrite (save.go:180,185 with p.Title/p.Body; ops.go:195 with next after normalize), EmbedMemories (neighbours.go) and EmbedPending. All pass the title and body that they embedded.",
+      "Stored text equals the text passed to afterWrite. normalizeFields (trim and redact) runs before splitInput and before the insert or update, and update() stores in.Title and in.Body unchanged. Update passes cur = next, the normalized text that was stored. So the Go string comparison cannot wrongly skip a legitimate write through normalization. The unchanged and duplicate paths do not call afterWrite.",
+      "An ABA edit that restores the same text makes the comparison pass, which is correct because the vectors match the text.",
+      "update() deletes the row in vectors on every edit. A skipped stale write therefore leaves the old text without a stale vector, and the edit either stores its own vectors or stays selected by EmbedPending (v.memory_id is null). No memory is stuck pending.",
+      "The store sets _txlock=immediate with busy_timeout(5000) and WAL (store.go:27-30). BeginTx takes the write lock first, so the select of title and body and the following writes are serialized against concurrent writers. There is no read-to-write upgrade race and no SQLITE_BUSY_SNAPSHOT.",
+      "No code path deletes from memories, so the new ErrNoRows return from putVectors cannot occur in practice.",
+      "NUL clause: instr(cast(body as blob), x'00')>0 AND not exists(vector_chunks). A NUL body that is long or short always ends with a vector_chunks row. Either chunks 1..n are inserted, or the base==nil && no extra branch copies chunk 0. For a short NUL body with no vector, whole=true, so base is non-nil and no marker is written on the first pass. The next pass picks it once more and writes the marker. That is one extra pass, not repeated re-selection.",
+      "Not run: no tests, per the instructions. The claims above come from reading the code."
+    ]
+  }
+}
