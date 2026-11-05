@@ -1,0 +1,30 @@
+{
+  "kind": "sweep",
+  "base": "b783a55ed3acb76141050ea16c2e4c121b6ca74b",
+  "head": "97182d4fe45094e92afa8a7cdba7d81e3ed05233",
+  "diff_sha256": "a5f280ab560b64ae9faaf5f26203ad89cc3e7599839daaaf466dab0d6f805a55",
+  "outcome": "fired",
+  "t1": {
+    "deleted_or_renamed": [],
+    "removed_names": []
+  },
+  "t2": [
+    {
+      "tool": "errcheck",
+      "module": ".",
+      "new": [
+        "internal/mcpserver/neighbours_test.go: unchecked error: t.Cleanup(func() { cs.Close() })",
+        "internal/mcpserver/neighbours_test.go: unchecked error: t.Cleanup(func() { db.Close() })",
+        "internal/mcpserver/neighbours_test.go: unchecked error: t.Cleanup(func() { ss.Close() })",
+        "internal/memory/neighbours.go: unchecked error: defer rows.Close()",
+        "internal/memory/neighbours.go: unchecked error: rows.Close()",
+        "internal/memory/neighbours_test.go: unchecked error: s.db.SQL().QueryRow(`select count(*) from vectors`).Scan(&n)"
+      ]
+    }
+  ],
+  "t3": [],
+  "t4": {
+    "leftovers": [],
+    "orphaned_fixtures": []
+  }
+}

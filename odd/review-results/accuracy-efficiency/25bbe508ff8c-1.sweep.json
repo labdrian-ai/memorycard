@@ -1,0 +1,26 @@
+{
+  "kind": "sweep",
+  "base": "97182d4fe45094e92afa8a7cdba7d81e3ed05233",
+  "head": "25bbe508ff8c5fd4d40afa0d66ff869d05034534",
+  "diff_sha256": "65e60cc2e157ffae510ceafbd908505bf2e62aa36c31a41a69449cf119c448a4",
+  "outcome": "fired",
+  "t1": {
+    "deleted_or_renamed": [],
+    "removed_names": []
+  },
+  "t2": [
+    {
+      "tool": "errcheck",
+      "module": ".",
+      "new": [
+        "internal/cli/capture_test.go: unchecked error: json.NewDecoder(r.Body).Decode(&req)",
+        "internal/cli/capture_test.go: unchecked error: json.NewEncoder(w).Encode(map[string]any{\"embeddings\": vecs})"
+      ]
+    }
+  ],
+  "t3": [],
+  "t4": {
+    "leftovers": [],
+    "orphaned_fixtures": []
+  }
+}

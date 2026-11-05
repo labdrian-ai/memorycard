@@ -1,0 +1,15 @@
+{
+  "kind": "sweeper",
+  "base": "25bbe508ff8c5fd4d40afa0d66ff869d05034534",
+  "head": "ef0ec5450f74decdc9bee5e5763e34125c896761",
+  "diff_sha256": "08a9981429e5b1be96e5b9ae8680de3061aac7ca7693934fc9b3bee8ed3cc058",
+  "sweep": "ef0ec5450f74-1.sweep.json",
+  "commit": null,
+  "candidates": [
+    {
+      "candidate": "T2 errcheck .: internal/memory/neighbours_test.go: unchecked error: s.db.SQL().QueryRow(`select count(*) from vectors`).Scan(&n)",
+      "disposition": "finding",
+      "evidence": "Unchecked error in test scaffolding (Close in a Cleanup or defer, the fake embedder's JSON encode/decode, a fixture WriteFile). A failure there surfaces as a failing assertion of the same test; the base's tests use the same idiom. Left as is."
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "kind": "polisher",
+  "base": "4513ac90a7fd231755eec8593683bbe1eaae75d8",
+  "head": "b783a55ed3acb76141050ea16c2e4c121b6ca74b",
+  "diff_sha256": "88b96f7da677afc8c4ae33daea0cce15614d6f6003bfc1d6510afd62d3e29318",
+  "findings": {
+    "findings": [],
+    "evidence": [
+      "Read the full diff of aeec0c0 covering cli.go, mcpserver/server.go, memory/ops.go and the added tests.",
+      "cli.go: the flags helper uses ContinueOnError with output to the error stream, so an unknown context flag returns 2 as declared; context is dispatched at line 115.",
+      "A no-argument context call still resolves the project through a.project(); the empty digest still prints 'no memories yet', now through DigestText. MCP mem_context keeps its shape without query; query is an additive optional field.",
+      "save.go splitInput/partKey against the digest's part folding: part 1 keeps the base topic key, later parts get <key>/part-i, titles are 'Title (part i/N)'; the fold key (base topic, title, N) matches. Only keyless split documents with the same title and part count could merge, not a realistic collision.",
+      "The budget loop in Context: the stale footer's bytes are added to n and its count joins Omitted when the cut lands inside the pinned or stale tiers, so no count is lost or doubled.",
+      "Other callers of memorycard context: only the mc-accept digest check, whose expectations were updated with the folding (folded into this commit).",
+      "Not a defect: flags after positional words become part of the query, as in search. The mirror heuristic collapsing architecture memories under sdd/, odd/, project/ matches S4."
+    ]
+  }
+}

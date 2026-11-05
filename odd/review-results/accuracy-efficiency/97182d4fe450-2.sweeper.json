@@ -1,0 +1,40 @@
+{
+  "kind": "sweeper",
+  "base": "b783a55ed3acb76141050ea16c2e4c121b6ca74b",
+  "head": "97182d4fe45094e92afa8a7cdba7d81e3ed05233",
+  "diff_sha256": "a5f280ab560b64ae9faaf5f26203ad89cc3e7599839daaaf466dab0d6f805a55",
+  "sweep": "97182d4fe450-1.sweep.json",
+  "commit": null,
+  "candidates": [
+    {
+      "candidate": "T2 errcheck .: internal/mcpserver/neighbours_test.go: unchecked error: t.Cleanup(func() { cs.Close() })",
+      "disposition": "finding",
+      "evidence": "Unchecked error in test scaffolding (Close in a Cleanup or defer, the fake embedder's JSON encode/decode, a fixture WriteFile). A failure there surfaces as a failing assertion of the same test; the base's tests use the same idiom. Left as is."
+    },
+    {
+      "candidate": "T2 errcheck .: internal/mcpserver/neighbours_test.go: unchecked error: t.Cleanup(func() { db.Close() })",
+      "disposition": "finding",
+      "evidence": "Unchecked error in test scaffolding (Close in a Cleanup or defer, the fake embedder's JSON encode/decode, a fixture WriteFile). A failure there surfaces as a failing assertion of the same test; the base's tests use the same idiom. Left as is."
+    },
+    {
+      "candidate": "T2 errcheck .: internal/mcpserver/neighbours_test.go: unchecked error: t.Cleanup(func() { ss.Close() })",
+      "disposition": "finding",
+      "evidence": "Unchecked error in test scaffolding (Close in a Cleanup or defer, the fake embedder's JSON encode/decode, a fixture WriteFile). A failure there surfaces as a failing assertion of the same test; the base's tests use the same idiom. Left as is."
+    },
+    {
+      "candidate": "T2 errcheck .: internal/memory/neighbours.go: unchecked error: defer rows.Close()",
+      "disposition": "finding",
+      "evidence": "Close of a fully read result set; rows.Err() (or the scan error) is checked right after, the same idiom as the base's existing queries such as EmbedPending in vectors.go. Left as is."
+    },
+    {
+      "candidate": "T2 errcheck .: internal/memory/neighbours.go: unchecked error: rows.Close()",
+      "disposition": "finding",
+      "evidence": "Close of a fully read result set; rows.Err() (or the scan error) is checked right after, the same idiom as the base's existing queries such as EmbedPending in vectors.go. Left as is."
+    },
+    {
+      "candidate": "T2 errcheck .: internal/memory/neighbours_test.go: unchecked error: s.db.SQL().QueryRow(`select count(*) from vectors`).Scan(&n)",
+      "disposition": "finding",
+      "evidence": "Unchecked error in test scaffolding (Close in a Cleanup or defer, the fake embedder's JSON encode/decode, a fixture WriteFile). A failure there surfaces as a failing assertion of the same test; the base's tests use the same idiom. Left as is."
+    }
+  ]
+}

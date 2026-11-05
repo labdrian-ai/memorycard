@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "b783a55ed3acb76141050ea16c2e4c121b6ca74b",
+    "head": "97182d4fe45094e92afa8a7cdba7d81e3ed05233",
+    "diff_sha256": "a5f280ab560b64ae9faaf5f26203ad89cc3e7599839daaaf466dab0d6f805a55",
+    "paths": [
+      "internal/mcpserver/neighbours_test.go",
+      "internal/mcpserver/server.go",
+      "internal/memory/neighbours.go",
+      "internal/memory/neighbours_test.go",
+      "internal/memory/save.go",
+      "internal/render/render.go",
+      "internal/render/render_test.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go vet ./... && go test ./... -count=1 at the feature head 88bc5b9",
+        "result": "pass",
+        "output": "every package ok; gofmt clean"
+      },
+      {
+        "command": "independent verifier of unit T5 (workflow wf_4c79a35e-a82), probes on snapshot copies",
+        "result": "pass",
+        "output": "feat(memory): name similar active memories on save: verdict pass after at most one correction"
+      }
+    ]
+  }
+}

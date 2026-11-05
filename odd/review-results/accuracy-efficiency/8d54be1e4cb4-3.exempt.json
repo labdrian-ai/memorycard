@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "ef0ec5450f74decdc9bee5e5763e34125c896761",
+    "head": "8d54be1e4cb47b1085965a5bcf4e13663af150cd",
+    "diff_sha256": "1e9f6e477c7dde95798c2b5e272ab769c9f2de19bdd8163e5bcc0b8a431aecd7",
+    "paths": [
+      "internal/memory/search.go",
+      "internal/memory/search_rank_test.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go vet ./... && go test ./... -count=1 at the feature head 88bc5b9",
+        "result": "pass",
+        "output": "every package ok; gofmt clean"
+      },
+      {
+        "command": "independent verifier of unit integration (workflow wf_4c79a35e-a82), probes on snapshot copies",
+        "result": "pass",
+        "output": "feat(search): drop session summaries from default ranking and collapse split documents: verdict pass after at most one correction"
+      }
+    ]
+  }
+}

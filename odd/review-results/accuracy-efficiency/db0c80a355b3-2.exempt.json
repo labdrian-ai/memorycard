@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "c7b6eee6a45da87c8832afd8e7dd7c96eb3dea38",
+    "head": "db0c80a355b30e761839ff0852e5b0ece72719a6",
+    "diff_sha256": "116a22dfb3a02f6628d14e9b7d9ad95d8b3f0ef1b365d98af8d827bde42de669",
+    "paths": [
+      "cmd/mc-accept/main.go",
+      "cmd/mc-accept/main_test.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go vet ./... && go test ./... -count=1 at the feature head df443bd",
+        "result": "pass",
+        "output": "every package ok; gofmt clean"
+      },
+      {
+        "command": "independent verifier of unit T1 (workflow wf_4c79a35e-a82), probes on snapshot copies",
+        "result": "pass",
+        "output": "fix(accept): exit 0 on -h and -help as before: verdict pass after at most one correction"
+      }
+    ]
+  }
+}

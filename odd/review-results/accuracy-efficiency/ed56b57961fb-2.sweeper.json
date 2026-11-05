@@ -1,0 +1,50 @@
+{
+  "kind": "sweeper",
+  "base": "409079b838e477c7be9241152fdcec4c0cd2a46d",
+  "head": "ed56b57961fb9abdc29d00b2f18b7c1461f23308",
+  "diff_sha256": "689e19fcd6243bcf3273f2d8209250ec3c9bc4428e58bb8e135bbf74d3ee736e",
+  "sweep": "ed56b57961fb-1.sweep.json",
+  "commit": null,
+  "candidates": [
+    {
+      "candidate": "T2 errcheck .: internal/cli/chunks_test.go: unchecked error: defer d.Close()",
+      "disposition": "finding",
+      "evidence": "Unchecked error in test scaffolding (Close in a Cleanup or defer, the fake embedder's JSON encode/decode, a fixture WriteFile). A failure there surfaces as a failing assertion of the same test; the base's tests use the same idiom. Left as is."
+    },
+    {
+      "candidate": "T2 errcheck .: internal/cli/chunks_test.go: unchecked error: json.NewDecoder(r.Body).Decode(&req)",
+      "disposition": "finding",
+      "evidence": "Unchecked error in test scaffolding (Close in a Cleanup or defer, the fake embedder's JSON encode/decode, a fixture WriteFile). A failure there surfaces as a failing assertion of the same test; the base's tests use the same idiom. Left as is."
+    },
+    {
+      "candidate": "T2 errcheck .: internal/cli/chunks_test.go: unchecked error: json.NewEncoder(w).Encode(map[string]any{\"embeddings\": vecs})",
+      "disposition": "finding",
+      "evidence": "Unchecked error in test scaffolding (Close in a Cleanup or defer, the fake embedder's JSON encode/decode, a fixture WriteFile). A failure there surfaces as a failing assertion of the same test; the base's tests use the same idiom. Left as is."
+    },
+    {
+      "candidate": "T2 errcheck .: internal/memory/search.go: unchecked error: defer chunks.Close()",
+      "disposition": "finding",
+      "evidence": "Close of a fully read result set; rows.Err() (or the scan error) is checked right after, the same idiom as the base's existing queries such as EmbedPending in vectors.go. Left as is."
+    },
+    {
+      "candidate": "T2 errcheck .: internal/memory/search.go: unchecked error: rows.Close()",
+      "disposition": "finding",
+      "evidence": "Close of a fully read result set; rows.Err() (or the scan error) is checked right after, the same idiom as the base's existing queries such as EmbedPending in vectors.go. Left as is."
+    },
+    {
+      "candidate": "T2 errcheck .: internal/memory/vectors.go: unchecked error: defer tx.Rollback()",
+      "disposition": "finding",
+      "evidence": "Reviewed by the parent; no defect with a failure scenario. Left as is."
+    },
+    {
+      "candidate": "T2 errcheck .: internal/store/store_test.go: unchecked error: defer db.Close()",
+      "disposition": "finding",
+      "evidence": "Unchecked error in test scaffolding (Close in a Cleanup or defer, the fake embedder's JSON encode/decode, a fixture WriteFile). A failure there surfaces as a failing assertion of the same test; the base's tests use the same idiom. Left as is."
+    },
+    {
+      "candidate": "T2 errcheck .: internal/store/store_test.go: unchecked error: first.Close()",
+      "disposition": "finding",
+      "evidence": "Unchecked error in test scaffolding (Close in a Cleanup or defer, the fake embedder's JSON encode/decode, a fixture WriteFile). A failure there surfaces as a failing assertion of the same test; the base's tests use the same idiom. Left as is."
+    }
+  ]
+}

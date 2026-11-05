@@ -1,0 +1,21 @@
+{
+  "kind": "polisher",
+  "base": "409079b838e477c7be9241152fdcec4c0cd2a46d",
+  "head": "ed56b57961fb9abdc29d00b2f18b7c1461f23308",
+  "diff_sha256": "689e19fcd6243bcf3273f2d8209250ec3c9bc4428e58bb8e135bbf74d3ee736e",
+  "findings": {
+    "findings": [],
+    "evidence": [
+      "Read the full diff of 17d5d6c (751 lines).",
+      "search.go:270-330: the chunk join reuses f.where and the v.model filter and keeps a score only when the vector length matches the query vector; archived and filtered memories are excluded exactly as chunk 0 is.",
+      "save.go:364-389: update() deletes the vectors row inside the edit transaction; vector_chunks has on delete cascade and store.go:29 sets foreign_keys(1) on every pooled connection, so a failed re-embed after an edit leaves neither a stale chunk 0 nor stale chunks.",
+      "putVectors: chunk 0 upsert, chunk delete and chunk inserts share one transaction, so a memory never mixes vectors of two texts; a failure part-way rolls back.",
+      "EmbedPending: all vectors are computed before any write, so a failed embedder batch writes nothing; the backfill case passes base=nil and writes chunks 1..n; a concurrent delete of the vectors row makes the FK insert fail and roll back.",
+      "EmbedPending SQL parameter order (model, model, EmbedBodyRunes, limit) matches the placeholders.",
+      "Migration v4: create table if not exists, no change to existing rows, reversible by dropping the table and setting user_version to 3; the store test covers the upgrade from v3 with data and the cascade on vector and memory deletion.",
+      "Invalid UTF-8 case: the chunk-0 copy marks the memory done and does not loop; the reverse mismatch cannot miss a chunk.",
+      "Other vectors consumers (neighbours.go:33 and :39, vectors.go:203, accept.go:304) read chunk 0 only, with unchanged semantics.",
+      "Not a defect: EmbedMemories sends every chunk of a capture batch in one request; a failed request leaves the memories pending, recoverable through EmbedPending."
+    ]
+  }
+}
