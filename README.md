@@ -71,10 +71,12 @@ and exits 0.
 
 ### Search (`memorycard search`, `mem_search`)
 
-- Session summaries don't compete in a default search, because they recap whole
-  sessions and match almost anything. Use `--type session_summary` (MCP
-  `type: "session_summary"`) to search them. An exact topic-key query (one with
-  a `/`) still finds any type.
+- Session summaries recap whole sessions and match almost anything, so in a
+  default search their dense score counts at 0.9: a summary ranks below a note
+  that is about as close to the query, but still comes back when it alone
+  holds the answer. Lexical-only search (no embedder) leaves them out. Use
+  `--type session_summary` (MCP `type: "session_summary"`) to search only
+  them. An exact topic-key query (one with a `/`) still finds any type.
 - A document saved in parts (`<title> (part i/N)`) comes back once, as its
   best-matching part, with the other parts' ids: `[other parts: #11, #12]`. So
   `k` results are `k` distinct documents.

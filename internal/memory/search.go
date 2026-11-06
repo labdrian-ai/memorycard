@@ -47,6 +47,13 @@ const (
 	// length, while words beyond what was embedded still count.
 	OverlapBoost  = 0.3
 	OverlapWindow = 1500
+	// SummaryWeight scales a session summary's dense score in a search that
+	// does not filter by type. Summaries recap whole sessions and match almost
+	// anything, yet some facts live only in one. Swept on the gold sets: 0.90
+	// was the only weight that lowered no set (gold2 hit@5 75 -> 83, others
+	// equal or better); 0.95 and 1.0 lost points on gold and gold3, 0.85 and
+	// below gained little on gold2.
+	SummaryWeight = 0.90
 	// StaleAfter is the age after which decision and policy memories are flagged.
 	StaleAfter = 183 * 24 * time.Hour
 )
@@ -187,7 +194,10 @@ func (s *Service) find(ctx context.Context, in SearchInput) (SearchResult, error
 	var found []candidate
 	var cosine float64 // best dense similarity; confidence is judged on it in every mode
 	if s.embedder != nil {
-		dense, err := s.dense(ctx, q, f, pool)
+		dense, err := s.dense(ctx, q, topicFilter(in), pool)
+		if err == nil && in.Type == "" {
+			dense = weighSummaries(dense)
+		}
 		if err == nil && len(dense) > 0 {
 			cosine = dense[0].Score
 		}
@@ -240,9 +250,22 @@ type filter struct {
 	args  []any
 }
 
-// buildFilter restricts a ranked search. Session summaries recap whole
-// sessions and match almost anything, so they only compete when the caller
-// asks for that type.
+// weighSummaries scales the dense score of each session summary by
+// SummaryWeight and re-sorts, so a summary ranks below a note that is about as
+// close to the query but still answers when no note does.
+func weighSummaries(cs []candidate) []candidate {
+	for i := range cs {
+		if cs[i].Type == "session_summary" {
+			cs[i].Score *= SummaryWeight
+		}
+	}
+	sort.SliceStable(cs, func(i, j int) bool { return cs[i].Score > cs[j].Score })
+	return cs
+}
+
+// buildFilter restricts the lexical search. Session summaries recap whole
+// sessions and match almost anything; BM25 has no score to weigh them by, so
+// they only compete lexically when the caller asks for that type.
 func buildFilter(in SearchInput) filter {
 	f := topicFilter(in)
 	if in.Type == "" {

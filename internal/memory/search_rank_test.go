@@ -7,17 +7,44 @@ import (
 	"github.com/labdrian-ai/memorycard/internal/embed"
 )
 
-func TestSearchLeavesSessionSummariesOutByDefault(t *testing.T) {
+func TestSearchRanksASessionSummaryBelowAnEquallyCloseNote(t *testing.T) {
 	s := withEmbedder(t, &fakeEmbedder{fn: topicVec})
 	note := save(t, s, SaveInput{Project: "p", Type: "decision", Title: "Cache policy", Body: "cache with LRU"}).ID
-	save(t, s, SaveInput{Project: "p", Type: "session_summary", Title: "Session summary", Body: "worked on the cache"})
+	sum := save(t, s, SaveInput{Project: "p", Type: "session_summary", Title: "Session summary", Body: "worked on the cache"}).ID
 
 	r := search(t, s, SearchInput{Query: "cache", Project: "p"})
-	if got := ids(r); !slices.Equal(got, []int64{note}) {
-		t.Errorf("hits = %v, want only the decision #%d", got, note)
+	if got := ids(r); !slices.Equal(got, []int64{note, sum}) {
+		t.Errorf("hits = %v, want the decision #%d, then the summary #%d", got, note, sum)
+	}
+	if len(r.Hits) == 2 && r.Hits[1].Score >= r.Hits[0].Score {
+		t.Errorf("summary score %v, want below the decision's %v", r.Hits[1].Score, r.Hits[0].Score)
 	}
 	if r.Widened || r.Confidence != ConfidenceOK {
 		t.Errorf("widened=%v confidence=%q, want not widened, ok", r.Widened, r.Confidence)
+	}
+}
+
+func TestSearchFindsASessionSummaryThatAloneAnswers(t *testing.T) {
+	s := withEmbedder(t, &fakeEmbedder{fn: topicVec})
+	note := save(t, s, SaveInput{Project: "p", Type: "decision", Title: "Auth policy", Body: "auth with tokens"}).ID
+	sum := save(t, s, SaveInput{Project: "p", Type: "session_summary", Title: "Session summary", Body: "worked on the cache"}).ID
+
+	r := search(t, s, SearchInput{Query: "cache", Project: "p"})
+	if got := ids(r); !slices.Equal(got, []int64{sum, note}) {
+		t.Errorf("hits = %v, want the summary #%d first", got, sum)
+	}
+	if r.Widened || r.Confidence != ConfidenceOK {
+		t.Errorf("widened=%v confidence=%q, want not widened, ok", r.Widened, r.Confidence)
+	}
+}
+
+func TestLexicalSearchStillLeavesSessionSummariesOut(t *testing.T) {
+	s := newSvc(t)
+	note := save(t, s, SaveInput{Project: "p", Type: "decision", Title: "Cache policy", Body: "cache with LRU"}).ID
+	save(t, s, SaveInput{Project: "p", Type: "session_summary", Title: "Session summary", Body: "worked on the cache"})
+
+	if got := ids(search(t, s, SearchInput{Query: "cache", Project: "p"})); !slices.Equal(got, []int64{note}) {
+		t.Errorf("hits = %v, want only the decision #%d", got, note)
 	}
 }
 
