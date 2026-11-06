@@ -1,0 +1,29 @@
+{
+  "kind": "polisher",
+  "base": "d25aae22e4e9f051ab35770a69dfa983658401e8",
+  "head": "86612b4a9bd3baa7a281d4b2e17ae6539e55246b",
+  "diff_sha256": "813e5ab8e998e8df614195a706d4d8e7b6ad8cb368070340d1ff489b72763a82",
+  "findings": {
+    "findings": [
+      {
+        "location": "internal/memory/save.go:156-158",
+        "severity": "SUGGESTION",
+        "claim": "The new comment and test describe the moved form as <key>/part-i~<id>; freeTopicKey suffixes a counter starting at 2. The SQL accepts any all-digit suffix, so behavior is correct; the wording is misleading and the test only exercises the ~<id> spelling.",
+        "evidence_class": "deterministic",
+        "causal_disposition": "introduced",
+        "evidence": [
+          "internal/memory/import.go:225-233: freeTopicKey builds key~n with n starting at 2.",
+          "internal/memory/save.go:164-165: the SQL accepts any all-digit suffix after ~.",
+          "internal/memory/save_split_test.go: the test renames the part to design/part-2~<id>."
+        ]
+      }
+    ],
+    "evidence": [
+      "Read fix.diff in full.",
+      "Read save.go:100-280 and import.go:185-245.",
+      "Checked SQL semantics by reading: substr/length count characters; key bound as parameter; LIKE pattern built from integers; glob pair requires a non-empty all-digit suffix.",
+      "Outside this diff, not flagged: write() looks up by topic_key only, so a re-save growing the document lands on whichever memory holds <key>/part-i.",
+      "The OR with substr cannot use the topic_key index; bounded by the old part count."
+    ]
+  }
+}

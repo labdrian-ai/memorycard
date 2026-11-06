@@ -1,0 +1,17 @@
+{
+  "kind": "polisher",
+  "base": "c733caaa7685248076ddf5c5320372a91a128359",
+  "head": "d25aae22e4e9f051ab35770a69dfa983658401e8",
+  "diff_sha256": "19312fe01a48aae2230badf50828561d027c5588c72c239649ae53daca22f7c5",
+  "findings": {
+    "findings": [],
+    "evidence": [
+      "Read the full diff cap.diff (README.md, internal/mcpserver/server.go, internal/memory/save.go, import.go, search.go and the three test files).",
+      "Read Save, splitInput, partKey, savedPartCount, overallAction, write and the HardCapBytes check in normalizeFields: re-saving a split document reads the old part count from the (part 1/N) title and archives only active later parts.",
+      "Read contentParts, splitBody and cutRunes: chunkTargetBytes is HardCapBytes*3/4 = 48 KB; bodies up to 64 KB stay whole.",
+      "Searched the repo outside odd/ for old size literals: no stale non-test reference remains.",
+      "Checked tests and call sites using HardCapBytes: cap-relative or scaled by sizeScale.",
+      "Did not run the test suite."
+    ]
+  }
+}

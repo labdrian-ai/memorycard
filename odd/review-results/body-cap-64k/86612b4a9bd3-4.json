@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "d25aae22e4e9f051ab35770a69dfa983658401e8",
+    "head": "86612b4a9bd3baa7a281d4b2e17ae6539e55246b",
+    "diff_sha256": "813e5ab8e998e8df614195a706d4d8e7b6ad8cb368070340d1ff489b72763a82",
+    "paths": [
+      "internal/memory/save.go",
+      "internal/memory/save_split_test.go"
+    ]
+  },
+  "rows": [
+    "recall",
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "d25aae22e4e9f051ab35770a69dfa983658401e8",
+      "head": "86612b4a9bd3baa7a281d4b2e17ae6539e55246b",
+      "diff_sha256": "813e5ab8e998e8df614195a706d4d8e7b6ad8cb368070340d1ff489b72763a82"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "internal/memory/save.go",
+        "internal/memory/save_split_test.go"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "location": "internal/memory/save.go:159-170",
+        "severity": "WARNING",
+        "claim": "The leftover-part archive now requires the old part title to end in \" (part i/oldParts)\". A part whose title was edited later (for example through mem_update) no longer matches, so re-saving the document shorter leaves that part active, orphaned and searchable. Ownership is decided only by the title, which a user can change.",
+        "evidence_class": "inferential",
+        "causal_disposition": "worsened",
+        "proof_refs": [
+          "internal/memory/save.go:159-170 (new title like predicate)",
+          "base d25aae2 loop matched topic_key only"
+        ]
+      },
+      {
+        "id": "F2",
+        "location": "internal/memory/save.go:164-166",
+        "severity": "SUGGESTION",
+        "claim": "The moved-key branch never checks that the memory is this document part: a different memory with a moved key <key>/part-i~<digits> and a title ending in \" (part i/oldParts)\" with the same i and N would be archived. Needs a coincidence of key and title suffix; the title prefix is not compared with the old part 1 title and import_map is not consulted.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/save.go:164-167",
+          "internal/memory/import.go:197-233 (claimTopicKey/freeTopicKey)"
+        ]
+      },
+      {
+        "id": "F3",
+        "location": "internal/memory/save.go:159-170",
+        "severity": "SUGGESTION",
+        "claim": "The OR with substr/glob on topic_key likely prevents use of the topic_key index, so each leftover index may scan the project rows inside the write transaction; bounded by project size times oldParts. Schema not inspected; cost unverified.",
+        "evidence_class": "inferential",
+        "causal_disposition": "worsened",
+        "proof_refs": [
+          "internal/memory/save.go:161-169"
+        ]
+      },
+      {
+        "id": "F4",
+        "location": "internal/memory/save.go:141-154",
+        "severity": "SUGGESTION",
+        "claim": "When the document is re-saved at a size that still needs the moved part index, write() looks up topic_key = <key>/part-i, finds the unrelated key holder and overwrites it while the moved part stays orphaned. Untested; already in the base.",
+        "evidence_class": "inferential",
+        "causal_disposition": "pre-existing",
+        "proof_refs": [
+          "internal/memory/save.go:268-290 (write by topic_key)",
+          "internal/memory/save_split_test.go:169-193"
+        ]
+      }
+    ],
+    "evidence": [
+      "Read internal/memory/save.go in full in the worktree.",
+      "Read the new test at internal/memory/save_split_test.go:169-193.",
+      "Read partKey, savedPartCount and write in save.go.",
+      "Read claimTopicKey, liveTopicHolder and freeTopicKey in import.go.",
+      "Checked the SQL by reading it: the substr/glob predicate accepts only key~<digits>; scope, project and status filters present; LIKE pattern has no wildcard other than the leading %.",
+      "Tests and commands were not run."
+    ]
+  }
+}

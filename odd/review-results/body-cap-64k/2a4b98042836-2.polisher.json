@@ -1,0 +1,40 @@
+{
+  "kind": "polisher",
+  "base": "5251ba4a4125af7779d6e56192659e39c496776b",
+  "head": "2a4b98042836ba1a9ba2e94550ea917271cba9bf",
+  "diff_sha256": "ae828245b8a0bf4cbab557376222cebcf007f4765297aed6fb7ce6fd99bfa77c",
+  "findings": {
+    "findings": [
+      {
+        "id": "F1",
+        "location": "internal/memory/save.go:167-168",
+        "severity": "WARNING",
+        "claim": "The title-history check only sees the last MaxVersions (5) snapshots. A part whose title was edited more than 5 times loses every '(part i/N)' title from memory_versions. After that, a shorter re-save leaves it active, even though it really was a part. The old code archived the derived key whatever its title said.",
+        "evidence": [
+          "save.go:30-31 sets MaxVersions = 5, and save.go:389 deletes memory_versions rows with version <= next-MaxVersions on each snapshot.",
+          "The SQL at save.go:167-168 matches only the current title or a title still in memory_versions.",
+          "I did not run it. By reading, a part edited at least 6 times to titles that don't end '(part i/...)' matches neither clause, so it stays active as an orphan.",
+          "No test covers this case."
+        ]
+      },
+      {
+        "id": "F2",
+        "location": "internal/memory/save.go:167-168",
+        "severity": "SUGGESTION",
+        "claim": "The title test is loose. Any memory on the derived or moved key whose current or past title ends ' (part i/<anything>)' is archived, case-insensitively, and the second pattern '% (part i/%)' matches non-numeric denominators such as '(part 2/x)'. Acceptable but wider than the first clause; a GLOB such as '* (part 2/[0-9]*)' would restrict it to digits.",
+        "evidence": [
+          "save.go:170 builds the patterns '%% (part %d/%d)' and '%% (part %d/%%)'.",
+          "The pattern parameters carry no '_' or '%' from user data, so no LIKE escaping problem arises."
+        ]
+      }
+    ],
+    "evidence": [
+      "Read fix3.diff.",
+      "Read save.go:90-200 and 222-252 in the target worktree, plus the grep hits for memory_versions and MaxVersions.",
+      "Read Update in ops.go:104-175.",
+      "Checked the glob clauses for the '~<digits>' suffix, length and substr, and that the key is passed 5 times for 5 placeholders in order.",
+      "Checked that the 'exists' subquery correlates on memories.id inside an UPDATE, which is valid in SQLite.",
+      "Both new tests are logically consistent with the SQL. Tests were not run."
+    ]
+  }
+}

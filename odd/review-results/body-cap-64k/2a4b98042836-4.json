@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "5251ba4a4125af7779d6e56192659e39c496776b",
+    "head": "2a4b98042836ba1a9ba2e94550ea917271cba9bf",
+    "diff_sha256": "ae828245b8a0bf4cbab557376222cebcf007f4765297aed6fb7ce6fd99bfa77c",
+    "paths": [
+      "internal/memory/save.go",
+      "internal/memory/save_split_test.go"
+    ]
+  },
+  "rows": [
+    "recall",
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "5251ba4a4125af7779d6e56192659e39c496776b",
+      "head": "2a4b98042836ba1a9ba2e94550ea917271cba9bf",
+      "diff_sha256": "ae828245b8a0bf4cbab557376222cebcf007f4765297aed6fb7ce6fd99bfa77c"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "internal/memory/save.go",
+        "internal/memory/save_split_test.go"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "location": "internal/memory/save.go:160-173",
+        "severity": "WARNING",
+        "claim": "A leftover part is identified only by its current title or a title in memory_versions, which keeps only the newest MaxVersions=5 snapshots. A part renamed and then edited more than 5 times loses its '(part i/N)' title, and a shorter re-save leaves it active. Before this commit the derived-key fallback archived it whatever its title said.",
+        "evidence_class": "inferential",
+        "causal_disposition": "worsened",
+        "proof_refs": [
+          "internal/memory/save.go:31",
+          "internal/memory/save.go:377-391",
+          "internal/memory/save.go:165-170"
+        ]
+      },
+      {
+        "id": "F2",
+        "location": "internal/memory/save.go:167-170",
+        "severity": "SUGGESTION",
+        "claim": "The history match '% (part i/%)' has any total and no document title prefix. An unrelated memory that took a part's key and whose current or past title ends in '(part i/...)' (for example edited to 'Notes (part 2/3)') would be archived. The key is already scoped to this document, so exposure is low.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/save.go:167-170"
+        ]
+      }
+    ],
+    "evidence": [
+      "Read the diff and internal/memory/save.go (Save, write, update, restore) and ops.go Update. No tests run.",
+      "Unrelated holder of the derived key with no matching title or versions stays active; matches TestResavingASplitDocumentSparesAMemoryThatTookAnArchivedPartsKey.",
+      "Moved part renamed via mem_update: Update snapshots the old title, so the '~n' branch plus the version-title match archives it; the holder stays active.",
+      "Renamed non-moved part: archived through the version-title match.",
+      "Unrelated holder of the derived key while the part sits at '~n': stays active; the part is archived.",
+      "The '~n' suffix is checked as digits only; the key is not interpolated into LIKE.",
+      "Risk: 1 is correct: it changes which existing rows get status='archived'."
+    ]
+  }
+}

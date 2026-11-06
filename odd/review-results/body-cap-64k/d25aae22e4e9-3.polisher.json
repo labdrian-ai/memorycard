@@ -1,0 +1,16 @@
+{
+  "kind": "polisher",
+  "base": "c733caaa7685248076ddf5c5320372a91a128359",
+  "head": "d25aae22e4e9f051ab35770a69dfa983658401e8",
+  "diff_sha256": "19312fe01a48aae2230badf50828561d027c5588c72c239649ae53daca22f7c5",
+  "findings": {
+    "findings": [],
+    "evidence": [
+      "Read the full diff cap.diff: save.go constants, chunkTargetBytes = HardCapBytes*3/4, server.go description, README and search.go comments, new and scaled tests.",
+      "Read Save, splitInput, savedPartCount, the cap check at save.go:400, contentParts, splitBody, cutRunes and Update: split threshold is HardCapBytes, parts at most 48 KB, Update rejects over-cap bodies with cap is 65536, re-saving a split topic_key as a smaller body archives leftover parts.",
+      "Searched non-test code for stale 16/12/4 KB values: only cmd/mc-accept/main.go:265 reads HardCapBytes and needs no change.",
+      "Checked store/schema.go: vector_chunks exist, so long bodies are covered by chunk embeddings.",
+      "Checked fixture scaling (sizeScale 4) against the new tests. Did not run the tests."
+    ]
+  }
+}

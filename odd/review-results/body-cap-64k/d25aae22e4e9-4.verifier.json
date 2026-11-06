@@ -1,0 +1,25 @@
+{
+  "verdicts": [
+    {
+      "id": "F1",
+      "result": "reproduced",
+      "command": "scratchpad/tmp.wjXTvAnu79/f1.sh: store copy, MEMORYCARD_EMBED=off, save --topic sdd/procedural-memory-lifecycle/design --body short with head and base binaries",
+      "output": "head: #2367 (design/part-2~2367) stays active, unrelated #2370 (design/part-2) archived; base identical",
+      "base_result": "reproduced"
+    },
+    {
+      "id": "F2",
+      "result": "reproduced",
+      "command": "go test ./internal/memory -run 'Moved|KeyHolder' -v",
+      "output": "no tests to run on head and base: no test covers the moved-key case",
+      "base_result": "reproduced"
+    },
+    {
+      "id": "F3",
+      "result": "reproduced",
+      "command": "scratchpad/tmp.wjXTvAnu79/f3.sh: time save of 16000 and 64000 byte bodies on a fresh MEMORYCARD_DB",
+      "output": "head 11.78 s vs 48.57 s (about 4x); base 12.09 s vs 55.02 s",
+      "base_result": "reproduced"
+    }
+  ]
+}

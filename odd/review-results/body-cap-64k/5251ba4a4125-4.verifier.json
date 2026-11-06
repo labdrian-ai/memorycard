@@ -1,0 +1,18 @@
+{
+  "verdicts": [
+    {
+      "id": "F1",
+      "result": "reproduced",
+      "command": "go test ./internal/memory/ -run TestProbeF -v -count=1 (scratchpad/probe/probe_test.go copied into head and base copies)",
+      "output": "head: F1 unrelated #2 status=archived; base: status=active",
+      "base_result": "not-reproduced"
+    },
+    {
+      "id": "F2",
+      "result": "reproduced",
+      "command": "go test ./internal/memory/ -run TestProbeF -v -count=1 (scratchpad/probe/probe_test.go copied into head and base copies)",
+      "output": "head: holder archived, renamed moved part active; base: holder active, renamed moved part active",
+      "base_result": "not-reproduced"
+    }
+  ]
+}

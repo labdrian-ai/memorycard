@@ -1,0 +1,18 @@
+{
+  "verdicts": [
+    {
+      "id": "F1",
+      "result": "reproduced",
+      "command": "go test ./internal/memory/ -run TestProbeF -v -count=1 (scratchpad/probe4/probe_test.go copied into head and base copies)",
+      "output": "head: part 3 renamed 6 times status=active; base: archived",
+      "base_result": "not-reproduced"
+    },
+    {
+      "id": "F2",
+      "result": "reproduced",
+      "command": "go test ./internal/memory/ -run TestProbeF -v -count=1 (scratchpad/probe4/probe_test.go copied into head and base copies)",
+      "output": "head: unrelated holder titled Notes (part 2/3) archived; base: active",
+      "base_result": "not-reproduced"
+    }
+  ]
+}
