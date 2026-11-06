@@ -26,8 +26,8 @@ Status: v0.3.0, episodic memory (decisions, fixes, discoveries, session summarie
   190 held-out natural questions over a real 3,400-memory store: hit@5 88 %,
   hit@1 71 %, median latency about 230 ms.
 - **Never silently degraded.** If the embedder is down, search falls back to
-  BM25 and says `mode: lexical`. Notes over 16 KB are saved as numbered parts
-  of about 12 KB, never truncated; saving the same `topic_key` again updates
+  BM25 and says `mode: lexical`. Notes over 64 KB are saved as numbered parts
+  of at most 48 KB, never truncated; saving the same `topic_key` again updates
   the parts in place. A save that lands on an archived memory (same
   `topic_key`, or the same title and body) restores it and says so.
 - **Honest about confidence.** `confidence: low` flags results for questions

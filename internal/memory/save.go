@@ -20,10 +20,13 @@ import (
 
 const (
 	// SoftTargetBytes is the body size above which Save warns.
-	SoftTargetBytes = 4 * 1024
+	SoftTargetBytes = 16 * 1024
 	// HardCapBytes is the largest body stored in one memory. Save splits bigger
-	// ones into parts; Update rejects them. Nothing is ever truncated.
-	HardCapBytes = 16 * 1024
+	// ones into parts; Update rejects them. Nothing is ever truncated. Raised
+	// from 16 KB once Engram's dual write, the reason for the old cap, ended:
+	// chunked embeddings cover the whole body, so a feature document of a few
+	// tens of KB stays one memory and one mem_get.
+	HardCapBytes = 64 * 1024
 	// MaxVersions is how many prior versions of a topic_key memory are kept.
 	MaxVersions = 5
 
@@ -149,12 +152,22 @@ func (s *Service) Save(ctx context.Context, in SaveInput) (SaveResult, error) {
 			return SaveResult{}, ErrSupersedeTarget
 		}
 	}
-	// Parts the previous version had beyond the new count are left over.
+	// Parts the previous version had beyond the new count are left over. The
+	// importer may have moved a part to "<key>/part-i~<n>" and given
+	// "<key>/part-i" to another memory, which must stay untouched. So a memory
+	// on either key is the document's part only when its title, now or in its
+	// version history (a title edited with mem_update), says "(part i/...)".
 	for i := len(pieces) + 1; i <= oldParts; i++ {
+		key := partKey(in.TopicKey, i)
 		if _, err := tx.ExecContext(ctx,
 			`update memories set status='archived', updated_at=?
-			 where project=? and scope=? and topic_key=? and status='active'`,
-			stamp, in.Project, in.Scope, partKey(in.TopicKey, i)); err != nil {
+			 where project=? and scope=? and status='active'
+			   and (topic_key=? or (substr(topic_key, 1, length(?)+1) = ? || '~'
+			        and substr(topic_key, length(?)+2) glob '[0-9]*' and substr(topic_key, length(?)+2) not glob '*[^0-9]*'))
+			   and (title like ? or exists (select 1 from memory_versions v
+			        where v.memory_id = memories.id and v.title like ?))`,
+			stamp, in.Project, in.Scope, key, key, key, key, key,
+			fmt.Sprintf("%% (part %d/%d)", i, oldParts), fmt.Sprintf("%% (part %d/%%)", i)); err != nil {
 			return SaveResult{}, err
 		}
 	}

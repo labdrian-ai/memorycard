@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "86612b4a9bd3baa7a281d4b2e17ae6539e55246b",
+    "head": "5251ba4a4125af7779d6e56192659e39c496776b",
+    "diff_sha256": "e2ea72ce38b73b5a3de584e53ec0e27ce529cbd758e1d2d8394c619847a56636",
+    "paths": [
+      "internal/memory/save.go",
+      "internal/memory/save_split_test.go"
+    ]
+  },
+  "rows": [
+    "recall",
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "86612b4a9bd3baa7a281d4b2e17ae6539e55246b",
+      "head": "5251ba4a4125af7779d6e56192659e39c496776b",
+      "diff_sha256": "e2ea72ce38b73b5a3de584e53ec0e27ce529cbd758e1d2d8394c619847a56636"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "internal/memory/save.go",
+        "internal/memory/save_split_test.go"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "location": "internal/memory/save.go:172-183",
+        "severity": "WARNING",
+        "claim": "The fallback archives whatever active memory holds the derived key '<key>/part-i', and it no longer checks the title. If the document's part i is no longer active (user-archived or superseded) and an unrelated memory has since taken '<key>/part-i', a shorter re-save archives that unrelated memory. The previous commit's title guard prevented this. The archive is reversible (status='archived', not deleted). No test covers a non-moved holder with an unrelated title.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/save.go:160-183",
+          "internal/memory/save.go:243-263 (oldParts comes only from part 1's title, so part i can be absent while oldParts >= i)"
+        ]
+      },
+      {
+        "id": "F2",
+        "location": "internal/memory/save.go:162-177",
+        "severity": "SUGGESTION",
+        "claim": "(a) A part moved to '<key>/part-i~n' and then renamed with mem_update matches neither query and stays active after a shorter re-save. (b) When such a renamed moved part coexists with an unrelated memory holding '<key>/part-i', the moved query finds nothing and the fallback archives the unrelated holder. Both need an importer-moved key plus a rename.",
+        "evidence_class": "inferential",
+        "causal_disposition": "pre-existing",
+        "proof_refs": [
+          "internal/memory/save.go:162-177",
+          "internal/memory/import.go:197-208 (the importer moves a part to '<key>~N')"
+        ]
+      }
+    ],
+    "evidence": [
+      "Read the full diff at fix2.diff.",
+      "Read internal/memory/save.go:100-270 in the worktree: the leftover loop, savedPartCount and splitInput.",
+      "Read internal/memory/import.go:190-250: claimTopicKey and freeTopicKey.",
+      "The added test renames part 3 (key 'doc/part-3') and re-saves a shorter body; the derived-key fallback archives it, so that case is fixed. Test not run.",
+      "A '~digits' key with a matching '(part i/N)' title is archived by the moved query and the loop continues, so the unrelated holder of '<key>/part-i' is untouched while the moved part's title is intact.",
+      "Risk: 1 is correct: the change archives existing stored rows.",
+      "Nothing was run; static read of the worktree."
+    ]
+  }
+}

@@ -13,7 +13,7 @@ import (
 const (
 	// chunkTargetBytes is the size importer parts aim for; it sits well below
 	// HardCapBytes so a part never lands on the limit.
-	chunkTargetBytes = 12 * 1024
+	chunkTargetBytes = HardCapBytes * 3 / 4
 
 	unassignedProject = "unassigned"
 

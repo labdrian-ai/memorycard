@@ -1,0 +1,32 @@
+{
+  "verdicts": [
+    {
+      "id": "F1",
+      "result": "reproduced",
+      "command": "go test ./internal/memory/ -run TestProbeF1 -v (scratch copy: save a 3-part doc, Update part 3 title, re-save as short)",
+      "output": "head: part 3 stays active; base: archived",
+      "base_result": "not-reproduced"
+    },
+    {
+      "id": "F2",
+      "result": "reproduced",
+      "command": "go test ./internal/memory/ -run TestProbeF2 -v (scratch copy: unrelated memory titled Other (part 3/3) keyed doc/part-3~99, re-save doc as short)",
+      "output": "head: unrelated memory archived; base: stays active",
+      "base_result": "not-reproduced"
+    },
+    {
+      "id": "F3",
+      "result": "reproduced",
+      "command": "go test ./internal/memory/ -run TestProbeF3 -v (explain query plan)",
+      "output": "head predicate uses idx_memories_topic on project and scope only; topic_key equality uses project, scope and topic_key",
+      "base_result": "not-run"
+    },
+    {
+      "id": "F4",
+      "result": "reproduced",
+      "command": "go test ./internal/memory/ -run TestProbeF4 -v (scratch copy: moved part 2 plus holder of design/part-2, re-save at 2 parts)",
+      "output": "head and base: holder overwritten with Design (part 2/2)",
+      "base_result": "reproduced"
+    }
+  ]
+}

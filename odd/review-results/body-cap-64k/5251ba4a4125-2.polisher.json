@@ -1,0 +1,51 @@
+{
+  "kind": "polisher",
+  "base": "86612b4a9bd3baa7a281d4b2e17ae6539e55246b",
+  "head": "5251ba4a4125af7779d6e56192659e39c496776b",
+  "diff_sha256": "e2ea72ce38b73b5a3de584e53ec0e27ce529cbd758e1d2d8394c619847a56636",
+  "findings": {
+    "findings": [
+      {
+        "id": "F1",
+        "location": "internal/memory/save.go:170-191",
+        "severity": "WARNING",
+        "claim": "The derived-key fallback archives whatever active memory holds \"<key>/part-i\" whenever no moved key with the matching title is found. A part that was moved and then had its title edited matches nothing in the moved query. The unrelated memory that took the derived key is then archived by mistake, which contradicts the intent that an unrelated holder stays active while the part was moved.",
+        "evidence": [
+          "The moved query requires `title like '% (part i/oldParts)'`. The fallback update filters only on `topic_key=?` and status. Moved key plus edited title gives n==0, so the fallback runs against the unrelated key holder. The commit trades this case against the edited-title case it fixes. The new test covers only the non-moved case, and no test pins the moved, edited-title, unrelated-holder combination."
+        ]
+      },
+      {
+        "id": "F2",
+        "location": "internal/memory/save.go:171-178",
+        "severity": "SUGGESTION",
+        "claim": "The RowsAffected handling is convoluted. Checking `err != nil || n > 0` and then re-checking err inside the block is hard to read.",
+        "evidence": [
+          "Lines 171-178 can be flattened to `n, err := moved.RowsAffected(); if err != nil { return ... }; if n > 0 { continue }`. The behavior is identical."
+        ]
+      },
+      {
+        "id": "F3",
+        "location": "internal/memory/save.go:133-137",
+        "severity": "SUGGESTION",
+        "claim": "Leftover detection depends on oldParts, which is read from part 1's title. If part 1's title is edited so it no longer matches `partOneTitle`, savedPartCount returns 1 and the leftover loop never runs. The new edited-title handling therefore covers only parts 2 and above. This was already the case before this commit.",
+        "evidence": [
+          "savedPartCount parses the title of the row keyed `in.TopicKey` and returns 1 when `partOneTitle` does not match. The new test edits part 3 only."
+        ]
+      },
+      {
+        "id": "F4",
+        "location": "internal/memory/save.go:163-168",
+        "severity": "SUGGESTION",
+        "claim": "The match on `title like '% (part i/n)'` is case-insensitive in SQLite. The moved-key query can therefore also match a title that only resembles the pattern. In practice this is harmless, since the key must also be a `<key>~digits` form.",
+        "evidence": [
+          "SQLite LIKE is case-insensitive for ASCII by default. The moved-key prefix and digits checks narrow the match to keys the importer produced."
+        ]
+      }
+    ],
+    "evidence": [
+      "Read fix2.diff in full.",
+      "Read save.go in the worktree: the oldParts usage at lines 133-137 and 160, savedPartCount at 243-263, partKey at 235, and the part title format at save.go:225 and import.go:179 and :227.",
+      "Reasoned about the moved, not-moved, and title-edited combinations. Tests were not run, since this was a read-only review."
+    ]
+  }
+}

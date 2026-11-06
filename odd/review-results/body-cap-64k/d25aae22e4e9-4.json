@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "c733caaa7685248076ddf5c5320372a91a128359",
+    "head": "d25aae22e4e9f051ab35770a69dfa983658401e8",
+    "diff_sha256": "19312fe01a48aae2230badf50828561d027c5588c72c239649ae53daca22f7c5",
+    "paths": [
+      "README.md",
+      "internal/mcpserver/server.go",
+      "internal/memory/import.go",
+      "internal/memory/import_test.go",
+      "internal/memory/save.go",
+      "internal/memory/save_cap_test.go",
+      "internal/memory/save_split_test.go",
+      "internal/memory/search.go"
+    ]
+  },
+  "rows": [
+    "recall",
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "c733caaa7685248076ddf5c5320372a91a128359",
+      "head": "d25aae22e4e9f051ab35770a69dfa983658401e8",
+      "diff_sha256": "19312fe01a48aae2230badf50828561d027c5588c72c239649ae53daca22f7c5"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "README.md",
+        "internal/mcpserver/server.go",
+        "internal/memory/import.go",
+        "internal/memory/import_test.go",
+        "internal/memory/save.go",
+        "internal/memory/save_cap_test.go",
+        "internal/memory/save_split_test.go",
+        "internal/memory/search.go"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "location": "internal/memory/save.go:133-163",
+        "severity": "WARNING",
+        "claim": "The join-on-re-save step archives only keys of the form <key>/part-N. Importer claimTopicKey can move a part key to <key>/part-N~M when the original key is taken; re-saving such a document with its topic_key leaves the moved-key parts active beside the joined memory, duplicating content in search. The raised cap makes shrinking to one memory the normal path. Not traced end to end; needs an imported document with moved part keys.",
+        "evidence_class": "inferential",
+        "causal_disposition": "behavior-activated",
+        "proof_refs": [
+          "internal/memory/save.go:156-163",
+          "internal/memory/import.go:197-208"
+        ]
+      },
+      {
+        "id": "F2",
+        "location": "internal/memory/save_cap_test.go:55-74",
+        "severity": "SUGGESTION",
+        "claim": "The join test uses parts Save created; no test covers an imported split document with ~N part keys or an edited part 1 title, the cases where savedPartCount and the archive loop leave later parts.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/save.go:218-242"
+        ]
+      },
+      {
+        "id": "F3",
+        "location": "internal/memory/save.go:22-29",
+        "severity": "SUGGESTION",
+        "claim": "Bodies up to 64 KB embed more chunks per save; with Ollama a large save can run longer or time out, leaving the memory pending for EmbedPending (no data loss). Not measured.",
+        "evidence_class": "inferential",
+        "causal_disposition": "worsened",
+        "proof_refs": [
+          "internal/embed/ollama.go:42",
+          "internal/memory/save.go:181-190"
+        ]
+      }
+    ],
+    "evidence": [
+      "Read save.go and import.go in full in the worktree.",
+      "Grepped non-test sources for HardCapBytes, SoftTargetBytes, chunkTargetBytes, maxSiblingParts and old size literals: only mc-accept reporting and comments remain, consistent with the new values.",
+      "Checked splitBody and contentParts against the new cap.",
+      "Checked that normalize still rejects bodies over HardCapBytes for Update and the importer.",
+      "Did not read the test files in full. Did not run any test or command."
+    ]
+  }
+}

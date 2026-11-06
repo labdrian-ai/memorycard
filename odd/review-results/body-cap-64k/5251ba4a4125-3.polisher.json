@@ -1,0 +1,44 @@
+{
+  "kind": "polisher",
+  "base": "86612b4a9bd3baa7a281d4b2e17ae6539e55246b",
+  "head": "5251ba4a4125af7779d6e56192659e39c496776b",
+  "diff_sha256": "e2ea72ce38b73b5a3de584e53ec0e27ce529cbd758e1d2d8394c619847a56636",
+  "findings": {
+    "findings": [
+      {
+        "id": "F1",
+        "location": "internal/memory/save.go:178-183",
+        "severity": "WARNING",
+        "claim": "The fallback archives whatever active memory holds the derived key `<key>/part-i`, so an unrelated memory can be archived when the moved part's title was edited. The moved part is then not recognised because its title no longer ends ` (part i/oldParts)`. The fallback runs and archives the unrelated holder of `<key>/part-i`, while the moved part stays active. The intent says the derived key holds the part 'regardless of title', so this is the accepted tradeoff, but nothing tests or documents it.",
+        "evidence": [
+          "The first UPDATE (lines 162-168) needs a title match. When the title was edited it affects 0 rows, and the second UPDATE (lines 178-183) filters only on `topic_key=?` and status. The importer (import.go:195-227) moves a part to `~N` and gives the freed key to another memory. The new test covers only the non-moved edited-title case. I did not run the tests."
+        ]
+      },
+      {
+        "id": "F2",
+        "location": "internal/memory/save.go:172-177",
+        "severity": "SUGGESTION",
+        "claim": "The RowsAffected handling is awkward. `err != nil || n > 0` followed by a nested `if err != nil` hides the error return inside the success branch, and `err` is shadowed.",
+        "evidence": [
+          "Lines 172-177. Clearer form: `n, err := moved.RowsAffected(); if err != nil { return ... }; if n > 0 { continue }`."
+        ]
+      },
+      {
+        "id": "F3",
+        "location": "internal/memory/save_split_test.go:196-215",
+        "severity": "SUGGESTION",
+        "claim": "The new test covers only the edited-title, un-moved case. No test covers the F1 edge, an edited moved part together with an unrelated holder at the derived key, which would pin the chosen behaviour.",
+        "evidence": [
+          "The diff adds one test. It renames the part at `doc/part-3` and re-saves the document short. It asserts the part is archived and nothing else."
+        ]
+      }
+    ],
+    "evidence": [
+      "Read fix2.diff in full.",
+      "Read internal/memory/save.go lines 100-270 in the worktree: the Save loop, partKey, savedPartCount, and splitInput.",
+      "Grepped the memory package for the `~` key handling in import.go:195-227.",
+      "SQL logic checked by reading only: the moved-key predicate matches `<key>~<digits>`, and the title LIKE is scoped to that part's index and old part count. `continue` after a match correctly skips the fallback.",
+      "Tests and build not run."
+    ]
+  }
+}

@@ -1,18 +1,23 @@
 package memory
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
 )
 
-// paragraphs returns n paragraphs of 1000 bytes joined by blank lines; twelve
-// of them fit one part, so 20 make two parts and 30 make three.
+// sizeScale is how many times the cap is larger than the 16 KB the size
+// fixtures were written for; they scale with it so their shape holds.
+const sizeScale = HardCapBytes / (16 * 1024)
+
+// paragraphs returns n paragraphs of 1000*sizeScale bytes joined by blank
+// lines; twelve of them fit one part, so 20 make two parts and 30 make three.
 func paragraphs(n int, tag string) string {
 	ps := make([]string, n)
 	for i := range ps {
 		head := fmt.Sprintf("%s paragraph %03d ", tag, i)
-		ps[i] = head + strings.Repeat("x", 1000-len(head))
+		ps[i] = head + strings.Repeat("x", 1000*sizeScale-len(head))
 	}
 	return strings.Join(ps, "\n\n")
 }
@@ -155,6 +160,100 @@ func TestSaveSplitNeverRevivesAnotherKeysArchivedPart(t *testing.T) {
 	save(t, s, SaveInput{Project: "p", Title: "Doc", Body: body, TopicKey: "copy", Scope: "personal"})
 	if got := parts(t, s, `id = ?`, old[0].id); got[0].status != "archived" {
 		t.Errorf("saving under key copy revived doc's archived part #%d", old[0].id)
+	}
+}
+
+// The importer can move a part to "<key>/part-N~<id>" when another memory
+// already holds "<key>/part-N" (claimTopicKey). Re-saving the document must
+// archive its own moved part and leave the other memory alone; the live store
+// has two such documents (sdd/procedural-memory-lifecycle spec and design).
+func TestResavingASplitDocumentArchivesItsMovedPartAndSparesTheKeyHolder(t *testing.T) {
+	s := newSvc(t)
+	save(t, s, SaveInput{Project: "p", Title: "Design", Body: paragraphs(30, "d"), TopicKey: "design"})
+	moved := parts(t, s, `topic_key = 'design/part-2'`)
+	if len(moved) != 1 {
+		t.Fatalf("setup: %d rows keyed design/part-2, want 1", len(moved))
+	}
+	movedKey := fmt.Sprintf("design/part-2~%d", moved[0].id)
+	if _, err := s.db.SQL().Exec(`update memories set topic_key = ? where id = ?`, movedKey, moved[0].id); err != nil {
+		t.Fatal(err)
+	}
+	holder := save(t, s, SaveInput{Project: "p", Title: "design/part-2", Body: "a separate document keyed design/part-2", TopicKey: "design/part-2"})
+
+	save(t, s, SaveInput{Project: "p", Title: "Design", Body: "short now", TopicKey: "design"})
+
+	if got := parts(t, s, `id = ?`, holder.ID); got[0].status != "active" || got[0].body != "a separate document keyed design/part-2" {
+		t.Errorf("the memory holding design/part-2 was touched: status %q, body %q", got[0].status, got[0].body)
+	}
+	if got := parts(t, s, `id = ?`, moved[0].id); got[0].status != "archived" {
+		t.Errorf("the document's moved part #%d (%s) is %q, want archived", moved[0].id, movedKey, got[0].status)
+	}
+	if n := len(parts(t, s, `title like 'Design (part %' and status = 'active'`)); n != 0 {
+		t.Errorf("%d later parts of Design still active, want 0", n)
+	}
+}
+
+// A part keeps its derived key when its title is edited, so re-saving the
+// document shorter still archives it.
+func TestResavingASplitDocumentArchivesALeftoverPartWithAnEditedTitle(t *testing.T) {
+	s := newSvc(t)
+	save(t, s, SaveInput{Project: "p", Title: "Doc", Body: paragraphs(30, "r"), TopicKey: "doc"})
+	third := parts(t, s, `topic_key = 'doc/part-3'`)
+	if len(third) != 1 {
+		t.Fatalf("setup: %d rows keyed doc/part-3, want 1", len(third))
+	}
+	renamed := "Renamed three"
+	if _, err := s.Update(context.Background(), third[0].id, UpdateInput{Title: &renamed}); err != nil {
+		t.Fatal(err)
+	}
+
+	save(t, s, SaveInput{Project: "p", Title: "Doc", Body: "short now", TopicKey: "doc"})
+
+	if got := parts(t, s, `id = ?`, third[0].id); got[0].status != "archived" {
+		t.Errorf("part 3 #%d with an edited title is %q after the re-save, want archived", third[0].id, got[0].status)
+	}
+}
+
+// A memory that took a part's derived key after the part was archived and
+// moved aside (Save would revive the archived row itself instead) was never a
+// part; a shorter re-save leaves it alone.
+func TestResavingASplitDocumentSparesAMemoryThatTookAnArchivedPartsKey(t *testing.T) {
+	s := newSvc(t)
+	save(t, s, SaveInput{Project: "p", Title: "Doc", Body: paragraphs(30, "r"), TopicKey: "doc"})
+	if _, err := s.db.SQL().Exec(`update memories set status='archived', topic_key='doc/part-2~' || id where topic_key='doc/part-2'`); err != nil {
+		t.Fatal(err)
+	}
+	other := save(t, s, SaveInput{Project: "p", Title: "Unrelated", Body: "unrelated body", TopicKey: "doc/part-2"})
+
+	save(t, s, SaveInput{Project: "p", Title: "Doc", Body: "short", TopicKey: "doc"})
+
+	if got := parts(t, s, `id = ?`, other.ID); got[0].status != "active" {
+		t.Errorf("unrelated memory #%d keyed doc/part-2 is %q after the re-save, want active", other.ID, got[0].status)
+	}
+}
+
+// A moved part whose title was edited is still the document's part, and the
+// memory holding the derived key is still not.
+func TestResavingASplitDocumentArchivesARenamedMovedPartAndSparesTheKeyHolder(t *testing.T) {
+	s := newSvc(t)
+	save(t, s, SaveInput{Project: "p", Title: "Design", Body: paragraphs(30, "d"), TopicKey: "design"})
+	moved := parts(t, s, `topic_key = 'design/part-2'`)
+	if _, err := s.db.SQL().Exec(`update memories set topic_key=? where id=?`, fmt.Sprintf("design/part-2~%d", moved[0].id), moved[0].id); err != nil {
+		t.Fatal(err)
+	}
+	renamed := "Renamed"
+	if _, err := s.Update(context.Background(), moved[0].id, UpdateInput{Title: &renamed}); err != nil {
+		t.Fatal(err)
+	}
+	holder := save(t, s, SaveInput{Project: "p", Title: "Holder", Body: "holder body", TopicKey: "design/part-2"})
+
+	save(t, s, SaveInput{Project: "p", Title: "Design", Body: "short", TopicKey: "design"})
+
+	if got := parts(t, s, `id = ?`, holder.ID); got[0].status != "active" {
+		t.Errorf("holder #%d of design/part-2 is %q, want active", holder.ID, got[0].status)
+	}
+	if got := parts(t, s, `id = ?`, moved[0].id); got[0].status != "archived" {
+		t.Errorf("renamed moved part #%d is %q, want archived", moved[0].id, got[0].status)
 	}
 }
 

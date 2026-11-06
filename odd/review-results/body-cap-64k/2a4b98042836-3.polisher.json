@@ -1,0 +1,43 @@
+{
+  "kind": "polisher",
+  "base": "5251ba4a4125af7779d6e56192659e39c496776b",
+  "head": "2a4b98042836ba1a9ba2e94550ea917271cba9bf",
+  "diff_sha256": "ae828245b8a0bf4cbab557376222cebcf007f4765297aed6fb7ce6fd99bfa77c",
+  "findings": {
+    "findings": [
+      {
+        "id": "F1",
+        "location": "internal/memory/save.go:160-173",
+        "severity": "SUGGESTION",
+        "claim": "A leftover part whose title was edited can be missed if the edit has aged out of memory_versions. In that case the part stays active after a shorter re-save.",
+        "evidence": [
+          "The only evidence for a renamed part is a memory_versions row whose title ends in '(part i/...)'. update() keeps only the last MaxVersions=5 rows (save.go:31, 389).",
+          "Each mem_update or body edit adds a row. About five later edits after the rename push the original '(part i/N)' row out.",
+          "Before this commit, a derived-key part was archived regardless of its title when no moved key matched, so this orphan case is new for the derived-key path.",
+          "Impact is low: it needs a rename plus more than 4 later edits, and it leaves one stale part active, not data loss."
+        ]
+      },
+      {
+        "id": "F2",
+        "location": "internal/memory/save_split_test.go:215-259",
+        "severity": "SUGGESTION",
+        "claim": "The new tests do not cover a version-history match on a moved key with an unedited current title, or two leftover parts at once mixing derived and moved keys.",
+        "evidence": [
+          "TestResavingASplitDocumentSparesAMemoryThatTookAnArchivedPartsKey checks only an unrelated active holder at the derived key.",
+          "The renamed-moved-part test checks archival through version history with only one leftover part (design/part-2).",
+          "No test uses oldParts >= 3 with a shorter re-save that mixes derived and moved keys."
+        ]
+      }
+    ],
+    "evidence": [
+      "Read fix3.diff in full.",
+      "Read internal/memory/save.go lines 100-230 and 365-400 (Save, splitInput, partKey, update).",
+      "SQL placeholders: 10 '?' and 10 bound arguments, matching.",
+      "The first LIKE is '% (part i/oldParts)', the second '% (part i/%)'; both match the intent.",
+      "The moved-key filter accepts only an all-digit suffix.",
+      "memories.id inside the correlated EXISTS subquery of an UPDATE is valid SQLite.",
+      "The status='active' filter keeps archived or superseded rows untouched.",
+      "Tests not run: read-only task."
+    ]
+  }
+}

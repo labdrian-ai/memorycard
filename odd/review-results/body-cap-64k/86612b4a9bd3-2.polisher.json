@@ -1,0 +1,18 @@
+{
+  "kind": "polisher",
+  "base": "d25aae22e4e9f051ab35770a69dfa983658401e8",
+  "head": "86612b4a9bd3baa7a281d4b2e17ae6539e55246b",
+  "diff_sha256": "813e5ab8e998e8df614195a706d4d8e7b6ad8cb368070340d1ff489b72763a82",
+  "findings": {
+    "findings": [],
+    "evidence": [
+      "Read fix.diff in full: the leftover-archive loop in save.go and the new test in save_split_test.go.",
+      "Read save.go 60-290 (Save, splitInput, partKey, partOneTitle, savedPartCount, write) and import.go 185-245 (claimTopicKey, liveTopicHolder, freeTopicKey, importRow).",
+      "The importer moved key is always <key>~N with N an integer; the predicate matches key||~ plus an all-digit non-empty suffix.",
+      "length() and substr() both count characters on TEXT, so non-ASCII keys compare consistently.",
+      "The LIKE pattern is built only from integers; keys are bound as plain parameters, so LIKE/GLOB metacharacters in keys or titles cannot inject.",
+      "The substr/glob predicate cannot use the topic_key index; bounded by oldParts, not user-visible.",
+      "Not evaluated: parts i <= len(pieces) whose key another memory holds go through write, which this commit does not touch."
+    ]
+  }
+}
