@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "333cbc898767974e0fa8b629a9e370f240feade5",
+    "head": "ac737c05e12536d205a6638178bfd7fc24074b2d",
+    "diff_sha256": "44f29dbeb77453ab72b6f4f59f2515440ea67273a6b51b12bc4b431a610beba2",
+    "paths": [
+      "README.md",
+      "internal/cli/cli.go",
+      "internal/cli/daterange_test.go",
+      "internal/mcpserver/daterange_test.go",
+      "internal/mcpserver/server.go",
+      "internal/memory/daterange_test.go",
+      "internal/memory/search.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go vet ./... && go test -count=1 ./...",
+        "result": "pass",
+        "output": "all 11 test packages ok at the feature head"
+      },
+      {
+        "command": "mc-accept gold,gold2,gold3,gold5 base c733caa vs head",
+        "result": "pass",
+        "output": "identical metrics; only p50 latency differs"
+      }
+    ]
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "ab2f0cb3b49df3b22e3e340a1e83a186b016df8d",
+    "head": "eae25c52684ba4ed3a4fb70f81156beffe8b8147",
+    "diff_sha256": "09910dc19e6481cb4f7f23a18de536289ea7488b713474591dd854bf91ea6f67",
+    "paths": [
+      "README.md",
+      "internal/cli/cli.go",
+      "internal/cli/session.go",
+      "internal/cli/session_test.go",
+      "internal/cli/testdata/summaries/bold.md",
+      "internal/cli/testdata/summaries/freeform.md",
+      "internal/cli/testdata/summaries/hashes.md",
+      "internal/cli/testdata/summaries/lowercase.md",
+      "internal/cli/testdata/summaries/plain.md",
+      "internal/memory/secrets.go",
+      "internal/project/project.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go vet ./... && go test -count=1 ./...",
+        "result": "pass",
+        "output": "all 11 test packages ok at the feature head"
+      },
+      {
+        "command": "mc-accept gold,gold2,gold3,gold5 base c733caa vs head",
+        "result": "pass",
+        "output": "identical metrics; only p50 latency differs"
+      }
+    ]
+  }
+}

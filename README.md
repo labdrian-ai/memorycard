@@ -90,6 +90,12 @@ directory's, the memories go to that repository's project. A pinned
   holds the answer. Lexical-only search (no embedder) leaves them out. Use
   `--type session_summary` (MCP `type: "session_summary"`) to search only
   them. An exact topic-key query (one with a `/`) still finds any type.
+- Date range: `--since YYYY-MM-DD` and `--until YYYY-MM-DD` (MCP `since`,
+  `until`, both optional) keep memories created in that range, UTC days, both
+  ends inclusive: `memorycard search --since 2026-11-05 --until 2026-11-05
+  --type session_summary "x"`. Giving either also lets lexical search return
+  session summaries, which a default search leaves out. An invalid date exits 2
+  with `invalid --since date` (MCP: a tool error) and returns nothing.
 - A document saved in parts (`<title> (part i/N)`) comes back once, as its
   best-matching part, with the other parts' ids: `[other parts: #11, #12]`. So
   `k` results are `k` distinct documents.
@@ -135,6 +141,40 @@ All saved items, every chunk included, are embedded together, in requests of
 at most 16 texts; if one fails they stay pending for `memorycard embed`. Each item then gets the same hints a
 single save gives, compared only with memories saved before it. A last line
 reports the counts: `captured: 3 saved, 2 skipped (1 too short, 1 duplicate)`.
+
+`save --defer-embed` stores the memory without calling the embedder (no vector,
+no similar-memory hints); `memorycard stats` counts it under `without
+embedding` until `memorycard embed` indexes it.
+
+### Session ingest (`memorycard session ingest`)
+
+`memorycard session ingest --from claude-postcompact` reads a Claude Code
+PostCompact hook event on stdin (`session_id`, `cwd`, `transcript_path`,
+`compact_summary`, optional `agent_id`) and keeps one `session_summary` memory
+per session, with topic_key `session/<session_id>`: each compaction updates it.
+It prints nothing and always exits 0, so a hook never fails the session; when it
+saves nothing (malformed JSON, empty summary, no session id, an unopenable
+store) the reason goes to stderr. An event with `agent_id` (a subagent) is
+ignored. Only a bad `--from` or a missing verb exits 2.
+
+- Body: the sections Primary Request, Errors and fixes, Problem Solving, Pending
+  Tasks and Current Work, plus the user messages as a list (each item cut to 160
+  characters, the list to 1500 bytes). Key Technical Concepts, Files and Code and
+  Optional Next Step are dropped. Headings may read `1. X`, `1. **X**`, `## 1. X`
+  or lowercase. A summary without those sections is kept as its first 4096 bytes.
+  The body is capped at 16 KB so it stays one memory.
+- Title: `Session YYYY-MM-DD · <project> · <first line of the primary request>`
+  (80 characters). The first body line is `Date: <ISO start> · cwd: <cwd> ·
+  transcript: <path>`; the date is the timestamp of the transcript's first line,
+  or the ingest time (UTC) when it cannot be read.
+- Project: resolved from `cwd`; inside a git worktree it is the main checkout's
+  project. `MEMORYCARD_PROJECT` still wins.
+- Secrets are replaced by `[REDACTED]` on this command only: values of
+  KEY/PASSWORD/SECRET/TOKEN assignments, `Bearer` tokens, `ghp_`/`gho_`/
+  `github_pat_`, `sk-` and AWS `AKIA` keys, JWTs, PEM blocks and `user:pass@`
+  in URLs.
+- The memory is saved without embedding, so the hook returns fast; run
+  `memorycard embed` to index it.
 
 ### Session digest (`memorycard context`, `mem_context`)
 

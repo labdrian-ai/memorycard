@@ -83,6 +83,17 @@ type SearchInput struct {
 	K          int    // defaults to DefaultK, capped at MaxK
 	Detail     string // DetailSnippet (default) or DetailTitle
 	IncludeOld bool   // include superseded and archived memories
+	// Since and Until (YYYY-MM-DD, UTC days, both inclusive) keep memories
+	// created in that range. Giving either also lets the lexical leg return
+	// session summaries.
+	Since, Until string
+}
+
+// DateError reports a Since or Until that is not a YYYY-MM-DD date.
+type DateError struct{ Field, Value string }
+
+func (e *DateError) Error() string {
+	return fmt.Sprintf("invalid %s date %q (want YYYY-MM-DD)", e.Field, e.Value)
 }
 
 // Hit is one search result.
@@ -119,6 +130,9 @@ type candidate struct {
 // project does, the answer comes from all projects and is marked Widened, so
 // work filed under a different project name is still found.
 func (s *Service) Search(ctx context.Context, in SearchInput) (SearchResult, error) {
+	if _, _, err := dayRange(in); err != nil {
+		return SearchResult{}, err
+	}
 	if s.embedder != nil && in.Project != "" {
 		// A widened search asks the same question again: embed it once.
 		memo := *s
@@ -268,10 +282,32 @@ func weighSummaries(cs []candidate) []candidate {
 // they only compete lexically when the caller asks for that type.
 func buildFilter(in SearchInput) filter {
 	f := topicFilter(in)
-	if in.Type == "" {
+	if in.Type == "" && in.Since == "" && in.Until == "" {
 		f.where += " and m.type != 'session_summary'"
 	}
 	return f
+}
+
+// dayRange turns Since and Until into the created_at bounds [lo, hi): the
+// start of the Since day and the start of the day after Until. A bound that
+// is not set comes back empty.
+func dayRange(in SearchInput) (lo, hi string, err error) {
+	const layout = "2006-01-02"
+	if in.Since != "" {
+		d, e := time.Parse(layout, in.Since)
+		if e != nil {
+			return "", "", &DateError{Field: "since", Value: in.Since}
+		}
+		lo = d.Format(layout)
+	}
+	if in.Until != "" {
+		d, e := time.Parse(layout, in.Until)
+		if e != nil {
+			return "", "", &DateError{Field: "until", Value: in.Until}
+		}
+		hi = d.AddDate(0, 0, 1).Format(layout)
+	}
+	return lo, hi, nil
 }
 
 // topicFilter restricts the exact topic-key lookup.
@@ -288,6 +324,17 @@ func topicFilter(in SearchInput) filter {
 	if in.Type != "" {
 		parts = append(parts, "m.type = ?")
 		args = append(args, in.Type)
+	}
+	// Search has validated the dates; created_at is an RFC 3339 UTC stamp, so
+	// it compares as text against a bare date.
+	lo, hi, _ := dayRange(in)
+	if lo != "" {
+		parts = append(parts, "m.created_at >= ?")
+		args = append(args, lo)
+	}
+	if hi != "" {
+		parts = append(parts, "m.created_at < ?")
+		args = append(args, hi)
 	}
 	return filter{where: strings.Join(parts, " and "), args: args}
 }

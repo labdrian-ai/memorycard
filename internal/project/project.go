@@ -34,6 +34,25 @@ func Resolve(dir, explicit string) string {
 	return filepath.Base(dir)
 }
 
+// ResolveMain is Resolve for a directory that may sit in a linked git
+// worktree: when the explicit name and a ConfigFile in dir give nothing, the
+// project is the one of the main checkout, found through the shared git
+// directory, so a worktree never becomes a project of its own. A dir that does
+// not exist, or is not in a worktree, resolves as Resolve does.
+func ResolveMain(dir, explicit string) string {
+	if p := strings.TrimSpace(explicit); p != "" {
+		return p
+	}
+	if p := fromConfigFile(dir); p != "" {
+		return p
+	}
+	common := gitOutput(dir, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	if filepath.Base(common) == ".git" {
+		return Resolve(filepath.Dir(common), "")
+	}
+	return Resolve(dir, "")
+}
+
 func fromConfigFile(dir string) string {
 	for d := dir; ; d = filepath.Dir(d) {
 		if f, err := os.Open(filepath.Join(d, ConfigFile)); err == nil {
