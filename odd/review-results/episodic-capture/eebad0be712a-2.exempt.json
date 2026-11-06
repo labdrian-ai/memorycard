@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "af8cfc6c5afb8b1c062e87960a8e8298727e91a3",
+    "head": "eebad0be712a75fc716b515259ac212ca0a8cf4c",
+    "diff_sha256": "690f9e54a7a841c7bd75b78c7df2609980d8966d3cdeb78b7394a75742cd5014",
+    "paths": [
+      "internal/cli/session.go",
+      "internal/cli/session_test.go",
+      "odd/tasks/episodic-capture.md"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go vet ./... && go test -count=1 ./...",
+        "result": "pass",
+        "output": "all 11 test packages ok at the feature head"
+      },
+      {
+        "command": "mc-accept gold,gold2,gold3,gold5 base c733caa vs head",
+        "result": "pass",
+        "output": "identical metrics; only p50 latency differs"
+      }
+    ]
+  }
+}
