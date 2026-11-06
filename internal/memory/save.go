@@ -152,19 +152,33 @@ func (s *Service) Save(ctx context.Context, in SaveInput) (SaveResult, error) {
 			return SaveResult{}, ErrSupersedeTarget
 		}
 	}
-	// Parts the previous version had beyond the new count are left over. A
-	// part is this document's only when its title says "(part i/oldParts)":
-	// the importer may have moved it to "<key>/part-i~<id>" and given
-	// "<key>/part-i" to another memory, which must stay untouched.
+	// Parts the previous version had beyond the new count are left over. The
+	// importer may have moved a part to "<key>/part-i~<n>" and given
+	// "<key>/part-i" to another memory, which must stay untouched: a moved key
+	// whose title says "(part i/oldParts)" is the document's part. Only when
+	// there is none does the derived key hold it, whatever its title now says.
 	for i := len(pieces) + 1; i <= oldParts; i++ {
 		key := partKey(in.TopicKey, i)
-		if _, err := tx.ExecContext(ctx,
+		moved, err := tx.ExecContext(ctx,
 			`update memories set status='archived', updated_at=?
 			 where project=? and scope=? and status='active'
-			   and (topic_key=? or (substr(topic_key, 1, length(?)+1) = ? || '~'
-			        and substr(topic_key, length(?)+2) glob '[0-9]*' and substr(topic_key, length(?)+2) not glob '*[^0-9]*'))
+			   and substr(topic_key, 1, length(?)+1) = ? || '~'
+			   and substr(topic_key, length(?)+2) glob '[0-9]*' and substr(topic_key, length(?)+2) not glob '*[^0-9]*'
 			   and title like ?`,
-			stamp, in.Project, in.Scope, key, key, key, key, key, fmt.Sprintf("%% (part %d/%d)", i, oldParts)); err != nil {
+			stamp, in.Project, in.Scope, key, key, key, key, fmt.Sprintf("%% (part %d/%d)", i, oldParts))
+		if err != nil {
+			return SaveResult{}, err
+		}
+		if n, err := moved.RowsAffected(); err != nil || n > 0 {
+			if err != nil {
+				return SaveResult{}, err
+			}
+			continue
+		}
+		if _, err := tx.ExecContext(ctx,
+			`update memories set status='archived', updated_at=?
+			 where project=? and scope=? and status='active' and topic_key=?`,
+			stamp, in.Project, in.Scope, key); err != nil {
 			return SaveResult{}, err
 		}
 	}

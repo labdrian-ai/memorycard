@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -189,6 +190,27 @@ func TestResavingASplitDocumentArchivesItsMovedPartAndSparesTheKeyHolder(t *test
 	}
 	if n := len(parts(t, s, `title like 'Design (part %' and status = 'active'`)); n != 0 {
 		t.Errorf("%d later parts of Design still active, want 0", n)
+	}
+}
+
+// A part keeps its derived key when its title is edited, so re-saving the
+// document shorter still archives it.
+func TestResavingASplitDocumentArchivesALeftoverPartWithAnEditedTitle(t *testing.T) {
+	s := newSvc(t)
+	save(t, s, SaveInput{Project: "p", Title: "Doc", Body: paragraphs(30, "r"), TopicKey: "doc"})
+	third := parts(t, s, `topic_key = 'doc/part-3'`)
+	if len(third) != 1 {
+		t.Fatalf("setup: %d rows keyed doc/part-3, want 1", len(third))
+	}
+	renamed := "Renamed three"
+	if _, err := s.Update(context.Background(), third[0].id, UpdateInput{Title: &renamed}); err != nil {
+		t.Fatal(err)
+	}
+
+	save(t, s, SaveInput{Project: "p", Title: "Doc", Body: "short now", TopicKey: "doc"})
+
+	if got := parts(t, s, `id = ?`, third[0].id); got[0].status != "archived" {
+		t.Errorf("part 3 #%d with an edited title is %q after the re-save, want archived", third[0].id, got[0].status)
 	}
 }
 
