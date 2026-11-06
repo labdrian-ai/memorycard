@@ -22,7 +22,7 @@ Every check runs against a copy of the store (`MEMORYCARD_DB` under the scratchp
 
 | ID | Specs | Route | Status | Evidence |
 |----|-------|-------|--------|----------|
-| T1 | S1-S3 | delegated (ultracode workflow, owner request) | pending | |
+| T1 | S1-S3 | delegated (ultracode workflow, owner request) | done | ac737c0. RED: unknown flag -since, schema lacks since/until, no DateError, summary not found by date; GREEN: go test ./... ok. Differential vs c733caa: 5 queries x (embedder off, ollama) byte-identical. |
 | T2 | S4-S10 | delegated (ultracode workflow, owner request) | pending | |
 | T3 | S11 | delegated verifier | pending | |
 
