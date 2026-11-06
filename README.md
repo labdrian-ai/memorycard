@@ -47,6 +47,16 @@ Download the archive for your platform from
 go install github.com/labdrian-ai/memorycard/cmd/memorycard@latest
 ```
 
+A running `memorycard mcp` keeps its code until the client reconnects. When a
+newer binary is installed over it, the next tool result says so once, with the
+two versions and `/mcp` to reconnect. A build from a checkout also lists the
+commits the new binary brings:
+
+```sh
+go build -ldflags "-X github.com/labdrian-ai/memorycard/internal/mcpserver.Version=0.4.0-dev+$(git rev-parse --short HEAD) \
+  -X github.com/labdrian-ai/memorycard/internal/mcpserver.SourceDir=$PWD" -o ~/.local/bin/memorycard ./cmd/memorycard
+```
+
 Then pull the embedding model into a local [ollama](https://ollama.com).
 Without it memorycard still works, with keyword search only.
 

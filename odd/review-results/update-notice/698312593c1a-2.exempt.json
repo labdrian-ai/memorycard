@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "1c0411e272e73356b7960430a21a13b4697d542a",
+    "head": "698312593c1a4afd6c0c3087a89e96b99876ff51",
+    "diff_sha256": "32584d26b4b7a555ad0339507caf3194cfc4b3c9e16b359a4a751e4410da40ec",
+    "paths": [
+      "README.md",
+      "internal/mcpserver/server.go",
+      "internal/mcpserver/update.go",
+      "internal/mcpserver/update_test.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go test ./internal/mcpserver -run 'Binary|Notice|SameVersion|NewestChanges' -count=1",
+        "result": "pass",
+        "output": "ok github.com/labdrian-ai/memorycard/internal/mcpserver (RED before the change: undefined newUpdateNotice)"
+      },
+      {
+        "command": "go vet ./... && go test ./... -count=1",
+        "result": "pass",
+        "output": "11 packages ok, no FAIL"
+      },
+      {
+        "command": "e2e: real memorycard mcp over stdio, binary rebuilt from d8692a3 to 1c0411e mid-session",
+        "result": "pass",
+        "output": "before: no notice; after: notice with both versions, commit subjects and /mcp; next call: no notice"
+      }
+    ]
+  }
+}
