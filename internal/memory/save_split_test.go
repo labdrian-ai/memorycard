@@ -6,13 +6,17 @@ import (
 	"testing"
 )
 
-// paragraphs returns n paragraphs of 1000 bytes joined by blank lines; twelve
-// of them fit one part, so 20 make two parts and 30 make three.
+// sizeScale is how many times the cap is larger than the 16 KB the size
+// fixtures were written for; they scale with it so their shape holds.
+const sizeScale = HardCapBytes / (16 * 1024)
+
+// paragraphs returns n paragraphs of 1000*sizeScale bytes joined by blank
+// lines; twelve of them fit one part, so 20 make two parts and 30 make three.
 func paragraphs(n int, tag string) string {
 	ps := make([]string, n)
 	for i := range ps {
 		head := fmt.Sprintf("%s paragraph %03d ", tag, i)
-		ps[i] = head + strings.Repeat("x", 1000-len(head))
+		ps[i] = head + strings.Repeat("x", 1000*sizeScale-len(head))
 	}
 	return strings.Join(ps, "\n\n")
 }

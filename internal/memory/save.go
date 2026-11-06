@@ -20,10 +20,13 @@ import (
 
 const (
 	// SoftTargetBytes is the body size above which Save warns.
-	SoftTargetBytes = 4 * 1024
+	SoftTargetBytes = 16 * 1024
 	// HardCapBytes is the largest body stored in one memory. Save splits bigger
-	// ones into parts; Update rejects them. Nothing is ever truncated.
-	HardCapBytes = 16 * 1024
+	// ones into parts; Update rejects them. Nothing is ever truncated. Raised
+	// from 16 KB once Engram's dual write, the reason for the old cap, ended:
+	// chunked embeddings cover the whole body, so a feature document of a few
+	// tens of KB stays one memory and one mem_get.
+	HardCapBytes = 64 * 1024
 	// MaxVersions is how many prior versions of a topic_key memory are kept.
 	MaxVersions = 5
 

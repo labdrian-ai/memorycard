@@ -681,7 +681,7 @@ func (s *Service) siblings(ctx context.Context, cs []candidate) error {
 }
 
 // maxSiblingParts bounds the sibling lookup of one hit; a document is split
-// into 16 KB parts, so this is far above any real one.
+// into parts of at most HardCapBytes, so this is far above any real one.
 const maxSiblingParts = 200
 
 func (s *Service) finish(cs []candidate, detail string) []Hit {

@@ -76,7 +76,7 @@ func TestImportMergesExactDuplicatesAndLinksStillResolve(t *testing.T) {
 func TestImportChunksLargeBodiesWithoutLoss(t *testing.T) {
 	s := newSvc(t)
 	var paras []string
-	for i := 0; i < 40; i++ {
+	for i := 0; i < 40*sizeScale; i++ {
 		paras = append(paras, fmt.Sprintf("paragraph %02d %s", i, strings.TrimSpace(strings.Repeat("word ", 200))))
 	}
 	body := strings.Join(paras, "\n\n")
@@ -120,9 +120,9 @@ func TestImportChunksLargeBodiesWithoutLoss(t *testing.T) {
 // it must never take the rest of the record with it.
 func TestImportKeepsLaterPartsWhenAMiddlePartIsEmpty(t *testing.T) {
 	cases := map[string]string{
-		"blank paragraph":   strings.Repeat("A", 12287) + "\n\n \n\n" + strings.Repeat("B", 13000) + "\n\nTAILMARK end",
-		"private paragraph": strings.Repeat("C", 12286) + "\n\n<private>token</private>\n\n" + strings.Repeat("D", 13000) + "\n\nTAILMARK end",
-		"whitespace block":  strings.Repeat("e", 12000) + "\n\n" + strings.Repeat(" ", 5000) + "\n\n" + strings.Repeat("f", 12000) + "\n\nTAILMARK end",
+		"blank paragraph":   strings.Repeat("A", chunkTargetBytes-1) + "\n\n \n\n" + strings.Repeat("B", 13000*sizeScale) + "\n\nTAILMARK end",
+		"private paragraph": strings.Repeat("C", chunkTargetBytes-2) + "\n\n<private>token</private>\n\n" + strings.Repeat("D", 13000*sizeScale) + "\n\nTAILMARK end",
+		"whitespace block":  strings.Repeat("e", 12000*sizeScale) + "\n\n" + strings.Repeat(" ", 5000*sizeScale) + "\n\n" + strings.Repeat("f", 12000*sizeScale) + "\n\nTAILMARK end",
 	}
 	for name, body := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -164,7 +164,7 @@ func TestImportMergedDuplicateKeepsThePin(t *testing.T) {
 
 func TestImportSplitsAHugeSingleParagraphOnRuneBoundaries(t *testing.T) {
 	s := newSvc(t)
-	body := strings.Repeat("é", 30000) // 60,000 bytes, no paragraph break
+	body := strings.Repeat("é", 30000*sizeScale) // 60,000 bytes per 16 KB of cap, no paragraph break
 	imp(t, s, []ImportRecord{rec("1", "Wall of text", body)}, nil)
 	rows, _ := s.db.SQL().Query(`select body from memories order by id`)
 	defer rows.Close()
@@ -250,7 +250,7 @@ func TestImportPrivateTitleTakesItsTitleFromTheBody(t *testing.T) {
 
 func TestImportChunkPartNeverTakesASourceTopicKey(t *testing.T) {
 	para := strings.Repeat("word ", 1000) + "\n\n"
-	big := rec("1", "Design", strings.Repeat(para, 4)) // chunked: its part 2 would be keyed design/part-2
+	big := rec("1", "Design", strings.Repeat(para, 4*sizeScale)) // chunked: its part 2 would be keyed design/part-2
 	big.TopicKey = "design"
 	own := rec("2", "Design part two", "written by hand as its own note")
 	own.TopicKey = "design/part-2"
