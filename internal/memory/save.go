@@ -152,12 +152,19 @@ func (s *Service) Save(ctx context.Context, in SaveInput) (SaveResult, error) {
 			return SaveResult{}, ErrSupersedeTarget
 		}
 	}
-	// Parts the previous version had beyond the new count are left over.
+	// Parts the previous version had beyond the new count are left over. A
+	// part is this document's only when its title says "(part i/oldParts)":
+	// the importer may have moved it to "<key>/part-i~<id>" and given
+	// "<key>/part-i" to another memory, which must stay untouched.
 	for i := len(pieces) + 1; i <= oldParts; i++ {
+		key := partKey(in.TopicKey, i)
 		if _, err := tx.ExecContext(ctx,
 			`update memories set status='archived', updated_at=?
-			 where project=? and scope=? and topic_key=? and status='active'`,
-			stamp, in.Project, in.Scope, partKey(in.TopicKey, i)); err != nil {
+			 where project=? and scope=? and status='active'
+			   and (topic_key=? or (substr(topic_key, 1, length(?)+1) = ? || '~'
+			        and substr(topic_key, length(?)+2) glob '[0-9]*' and substr(topic_key, length(?)+2) not glob '*[^0-9]*'))
+			   and title like ?`,
+			stamp, in.Project, in.Scope, key, key, key, key, key, fmt.Sprintf("%% (part %d/%d)", i, oldParts)); err != nil {
 			return SaveResult{}, err
 		}
 	}

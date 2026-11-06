@@ -162,6 +162,36 @@ func TestSaveSplitNeverRevivesAnotherKeysArchivedPart(t *testing.T) {
 	}
 }
 
+// The importer can move a part to "<key>/part-N~<id>" when another memory
+// already holds "<key>/part-N" (claimTopicKey). Re-saving the document must
+// archive its own moved part and leave the other memory alone; the live store
+// has two such documents (sdd/procedural-memory-lifecycle spec and design).
+func TestResavingASplitDocumentArchivesItsMovedPartAndSparesTheKeyHolder(t *testing.T) {
+	s := newSvc(t)
+	save(t, s, SaveInput{Project: "p", Title: "Design", Body: paragraphs(30, "d"), TopicKey: "design"})
+	moved := parts(t, s, `topic_key = 'design/part-2'`)
+	if len(moved) != 1 {
+		t.Fatalf("setup: %d rows keyed design/part-2, want 1", len(moved))
+	}
+	movedKey := fmt.Sprintf("design/part-2~%d", moved[0].id)
+	if _, err := s.db.SQL().Exec(`update memories set topic_key = ? where id = ?`, movedKey, moved[0].id); err != nil {
+		t.Fatal(err)
+	}
+	holder := save(t, s, SaveInput{Project: "p", Title: "design/part-2", Body: "a separate document keyed design/part-2", TopicKey: "design/part-2"})
+
+	save(t, s, SaveInput{Project: "p", Title: "Design", Body: "short now", TopicKey: "design"})
+
+	if got := parts(t, s, `id = ?`, holder.ID); got[0].status != "active" || got[0].body != "a separate document keyed design/part-2" {
+		t.Errorf("the memory holding design/part-2 was touched: status %q, body %q", got[0].status, got[0].body)
+	}
+	if got := parts(t, s, `id = ?`, moved[0].id); got[0].status != "archived" {
+		t.Errorf("the document's moved part #%d (%s) is %q, want archived", moved[0].id, movedKey, got[0].status)
+	}
+	if n := len(parts(t, s, `title like 'Design (part %' and status = 'active'`)); n != 0 {
+		t.Errorf("%d later parts of Design still active, want 0", n)
+	}
+}
+
 func TestSaveSplitWithoutTopicKeyStoresPartsOnceAndSupersedesWithPartOne(t *testing.T) {
 	s := newSvc(t)
 	old := save(t, s, SaveInput{Project: "p", Title: "Old notes", Body: "superseded soon"})
