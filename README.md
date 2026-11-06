@@ -90,6 +90,12 @@ directory's, the memories go to that repository's project. A pinned
   holds the answer. Lexical-only search (no embedder) leaves them out. Use
   `--type session_summary` (MCP `type: "session_summary"`) to search only
   them. An exact topic-key query (one with a `/`) still finds any type.
+- Date range: `--since YYYY-MM-DD` and `--until YYYY-MM-DD` (MCP `since`,
+  `until`, both optional) keep memories created in that range, UTC days, both
+  ends inclusive: `memorycard search --since 2026-11-05 --until 2026-11-05
+  --type session_summary "x"`. Giving either also lets lexical search return
+  session summaries, which a default search leaves out. An invalid date exits 2
+  with `invalid --since date` (MCP: a tool error) and returns nothing.
 - A document saved in parts (`<title> (part i/N)`) comes back once, as its
   best-matching part, with the other parts' ids: `[other parts: #11, #12]`. So
   `k` results are `k` distinct documents.

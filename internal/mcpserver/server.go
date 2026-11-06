@@ -127,11 +127,14 @@ type searchArgs struct {
 	Detail     string `json:"detail,omitempty" jsonschema:"snippet (default) or title"`
 	IncludeOld bool   `json:"include_old,omitempty" jsonschema:"include superseded and archived"`
 	Project    string `json:"project,omitempty"`
+	Since      string `json:"since,omitempty" jsonschema:"first UTC day, YYYY-MM-DD"`
+	Until      string `json:"until,omitempty" jsonschema:"last UTC day, YYYY-MM-DD"`
 }
 
 func (h *handlers) search(ctx context.Context, _ *mcp.CallToolRequest, a searchArgs) (*mcp.CallToolResult, any, error) {
 	r, err := h.svc.Search(ctx, memory.SearchInput{
 		Query: a.Query, Project: h.proj(a.Project), Type: a.Type, K: a.K, Detail: a.Detail, IncludeOld: a.IncludeOld,
+		Since: a.Since, Until: a.Until,
 	})
 	if err != nil {
 		return nil, nil, err

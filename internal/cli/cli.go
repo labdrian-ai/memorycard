@@ -30,9 +30,13 @@ commands:
   mcp                      serve the MCP tools over stdio
   save   --title T --body B [--type X] [--topic K] [--scope S] [--supersedes ID]
                            save a memory (--body - reads stdin)
-  search [--type X] [--k N] [--titles] [--all] [--project P] <query>
+  search [--type X] [--k N] [--titles] [--all] [--project P]
+         [--since YYYY-MM-DD] [--until YYYY-MM-DD] <query>
                            find memories by meaning; --all includes superseded
-                           and archived ones, --project "" searches every project
+                           and archived ones, --project "" searches every project;
+                           --since/--until keep memories created in that UTC day
+                           range (both inclusive) and let keyword search return
+                           session summaries, as --type session_summary does
   get    [--history] <id>  print one memory; --history adds its earlier versions
   context [--project P] [--query Q | <query>]
                            print the project digest: pinned, up to 3 stale
@@ -215,6 +219,8 @@ func (a *app) search(ctx context.Context, svc *memory.Service, args []string) in
 	fs.BoolVar(&titles, "titles", false, "titles only, no excerpt")
 	fs.BoolVar(&in.IncludeOld, "all", false, "include superseded and archived")
 	fs.StringVar(&in.Project, "project", in.Project, "project")
+	fs.StringVar(&in.Since, "since", "", "first UTC day, YYYY-MM-DD")
+	fs.StringVar(&in.Until, "until", "", "last UTC day, YYYY-MM-DD")
 	if fs.Parse(args) != nil {
 		return 2
 	}
@@ -223,6 +229,11 @@ func (a *app) search(ctx context.Context, svc *memory.Service, args []string) in
 		in.Detail = memory.DetailTitle
 	}
 	r, err := svc.Search(ctx, in)
+	var de *memory.DateError
+	if errors.As(err, &de) {
+		fmt.Fprintf(a.err, "invalid --%s date %q (want YYYY-MM-DD)\n", de.Field, de.Value)
+		return 2
+	}
 	if err != nil {
 		return a.fail(err)
 	}
