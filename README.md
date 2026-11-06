@@ -75,7 +75,10 @@ For hooks: `memorycard project` prints the project the other commands resolve, a
 `memorycard capture` reads text on stdin and saves each numbered item of its
 `## Key Learnings` block as one memory (type `learning`, scope `project`). The
 same input twice adds nothing, and input with no block or no items saves nothing
-and exits 0.
+and exits 0. `capture --transcript <file>` takes the subagent's transcript: when
+it names paths in another git repository more often than in the working
+directory's, the memories go to that repository's project. A pinned
+`MEMORYCARD_PROJECT` still wins, and a missing transcript is ignored.
 
 ## What the commands return
 

@@ -106,7 +106,16 @@ func skipReason(item string) string {
 // content are the save's own. Short items and probe markers are skipped. The
 // saved items are embedded together in one embedder call at the end, and a
 // last line counts what was saved and skipped, and why.
-func (a *app) capture(ctx context.Context, svc *memory.Service) int {
+//
+// With --transcript, the memories go to the project of the repository the
+// subagent's transcript names most, when that is not the working directory's
+// repository: a subagent started here may have worked in another repo.
+func (a *app) capture(ctx context.Context, svc *memory.Service, args []string) int {
+	fs := a.flags("capture")
+	transcript := fs.String("transcript", "", "subagent transcript: file under the project of the repository it worked in")
+	if fs.Parse(args) != nil {
+		return 2
+	}
 	b, err := io.ReadAll(a.in)
 	if err != nil {
 		return a.fail(err)
@@ -115,7 +124,7 @@ func (a *app) capture(ctx context.Context, svc *memory.Service) int {
 	if len(items) == 0 {
 		return 0
 	}
-	proj := a.project()
+	proj := a.captureProject(*transcript)
 	skipped := map[string]int{}
 	// Output keeps item order. A save result is rendered only after the batch
 	// embed has set its duplicate hint and neighbours.
