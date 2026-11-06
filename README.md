@@ -142,6 +142,40 @@ at most 16 texts; if one fails they stay pending for `memorycard embed`. Each it
 single save gives, compared only with memories saved before it. A last line
 reports the counts: `captured: 3 saved, 2 skipped (1 too short, 1 duplicate)`.
 
+`save --defer-embed` stores the memory without calling the embedder (no vector,
+no similar-memory hints); `memorycard stats` counts it under `without
+embedding` until `memorycard embed` indexes it.
+
+### Session ingest (`memorycard session ingest`)
+
+`memorycard session ingest --from claude-postcompact` reads a Claude Code
+PostCompact hook event on stdin (`session_id`, `cwd`, `transcript_path`,
+`compact_summary`, optional `agent_id`) and keeps one `session_summary` memory
+per session, with topic_key `session/<session_id>`: each compaction updates it.
+It prints nothing and always exits 0, so a hook never fails the session; when it
+saves nothing (malformed JSON, empty summary, no session id, an unopenable
+store) the reason goes to stderr. An event with `agent_id` (a subagent) is
+ignored. Only a bad `--from` or a missing verb exits 2.
+
+- Body: the sections Primary Request, Errors and fixes, Problem Solving, Pending
+  Tasks and Current Work, plus the user messages as a list (each item cut to 160
+  characters, the list to 1500 bytes). Key Technical Concepts, Files and Code and
+  Optional Next Step are dropped. Headings may read `1. X`, `1. **X**`, `## 1. X`
+  or lowercase. A summary without those sections is kept as its first 4096 bytes.
+  The body is capped at 16 KB so it stays one memory.
+- Title: `Session YYYY-MM-DD · <project> · <first line of the primary request>`
+  (80 characters). The first body line is `Date: <ISO start> · cwd: <cwd> ·
+  transcript: <path>`; the date is the timestamp of the transcript's first line,
+  or the ingest time (UTC) when it cannot be read.
+- Project: resolved from `cwd`; inside a git worktree it is the main checkout's
+  project. `MEMORYCARD_PROJECT` still wins.
+- Secrets are replaced by `[REDACTED]` on this command only: values of
+  KEY/PASSWORD/SECRET/TOKEN assignments, `Bearer` tokens, `ghp_`/`gho_`/
+  `github_pat_`, `sk-` and AWS `AKIA` keys, JWTs, PEM blocks and `user:pass@`
+  in URLs.
+- The memory is saved without embedding, so the hook returns fast; run
+  `memorycard embed` to index it.
+
 ### Session digest (`memorycard context`, `mem_context`)
 
 `memorycard context [--project P] [--query Q | <query>]` prints a project's

@@ -29,7 +29,9 @@ const usage = `usage: memorycard <command> [flags]
 commands:
   mcp                      serve the MCP tools over stdio
   save   --title T --body B [--type X] [--topic K] [--scope S] [--supersedes ID]
-                           save a memory (--body - reads stdin)
+         [--defer-embed]
+                           save a memory (--body - reads stdin); --defer-embed
+                           skips embedding; run embed to index it later
   search [--type X] [--k N] [--titles] [--all] [--project P]
          [--since YYYY-MM-DD] [--until YYYY-MM-DD] <query>
                            find memories by meaning; --all includes superseded
@@ -49,6 +51,15 @@ commands:
                            skipped; no block or no items saves nothing;
                            --transcript FILE files them under the repository
                            the subagent's transcript names most
+  session ingest --from claude-postcompact
+                           read a PostCompact hook event on stdin and keep one
+                           session_summary memory per session (topic_key
+                           session/<id>, updated on each compaction): the
+                           request, errors, problem solving, pending and current
+                           work sections plus a trimmed list of user messages,
+                           secrets redacted, saved without embedding; a subagent
+                           event (agent_id) is ignored; prints nothing and
+                           exits 0 even on bad input (reason on stderr)
   project                print the project the other commands resolve
   stats                    counts and embedding backlog
   embed  [--limit N]       embed every memory that has no vector yet, N per batch;
@@ -98,6 +109,8 @@ func Run(args []string, in io.Reader, out, errOut io.Writer, getenv func(string)
 	case "project":
 		fmt.Fprintln(out, a.project())
 		return 0
+	case "session":
+		return a.session(rest)
 	case "mcp", "save", "search", "get", "context", "stats", "embed", "import", "capture":
 	default:
 		fmt.Fprintf(errOut, "unknown command %q\n%s", cmd, usage)
@@ -192,6 +205,7 @@ func (a *app) save(ctx context.Context, svc *memory.Service, args []string) int 
 	fs.StringVar(&in.Scope, "scope", "", "scope")
 	fs.StringVar(&in.Project, "project", in.Project, "project")
 	fs.Int64Var(&in.Supersedes, "supersedes", 0, "id this replaces")
+	fs.BoolVar(&in.DeferEmbed, "defer-embed", false, "skip embedding now; run embed to index it later")
 	if fs.Parse(args) != nil {
 		return 2
 	}
