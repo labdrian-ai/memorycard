@@ -55,16 +55,21 @@ type section struct {
 func splitSections(summary string) map[int]*section {
 	secs := map[int]*section{}
 	var cur *section
-	last := 0
+	last, headIndent := 0, 0
 	for _, line := range strings.Split(summary, "\n") {
 		line = strings.TrimRight(line, " \t\r")
 		if m := sectionLine.FindStringSubmatch(line); m != nil {
 			n := int(m[1][0] - '0')
 			title := strings.Trim(strings.ReplaceAll(m[2], "*", ""), " \t:")
-			if kw := sectionKeywords[n]; kw != "" && n > last && strings.Contains(strings.ToLower(title), kw) {
+			indent := len(line) - len(strings.TrimLeft(line, " "))
+			// Headings share the indentation of the first one; numbered items
+			// inside a section are indented deeper.
+			if kw := sectionKeywords[n]; kw != "" && n > last && strings.Contains(strings.ToLower(title), kw) &&
+				(last == 0 || indent == headIndent) {
 				cur = &section{title: title}
 				secs[n] = cur
 				last = n
+				headIndent = indent
 				continue
 			}
 		}

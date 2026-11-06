@@ -410,3 +410,28 @@ func TestSessionIngestMissingCwdFallsBackToItsName(t *testing.T) {
 		t.Errorf("project = %q, want gone-dir", r.Project)
 	}
 }
+
+func TestSessionIngestNumberedListsInsideSectionsAreNotHeadings(t *testing.T) {
+	tail := "3. Files and Code Sections:\n   - DROP3 a.go\n\n4. Errors and fixes:\n   - KEEP4 none\n\n" +
+		"7. Pending Tasks:\n   - KEEP7 docs\n\n8. Current Work:\n   KEEP8 tests\n\n9. Optional Next Step:\n   DROP9 run"
+	cases := map[string]string{
+		"list in primary request": "1. Primary Request and Intent:\n   The user asked for four things:\n   1. add a flag\n   2. update docs\n   3. add tests\n   4. improve the error messages\n\n" +
+			"2. Key Technical Concepts:\n   - DROP2 cobra flags\n\n" + tail,
+		"numbered key concepts": "1. Primary Request and Intent:\n   Goal.\n\n2. Key Technical Concepts:\n   1. SQLite FTS5 DROP2a\n   4. Error wrapping with %w DROP2d\n   5. Table-driven tests DROP2e\n\n" + tail,
+	}
+	for name, sum := range cases {
+		db := newDB(t)
+		ingest(t, db, nil, hook(t, map[string]any{"compact_summary": sum}))
+		body := oneSession(t, db).Body
+		for _, keep := range []string{"KEEP4", "KEEP7", "KEEP8"} {
+			if !strings.Contains(body, keep) {
+				t.Errorf("%s: body lost %s:\n%s", name, keep, body)
+			}
+		}
+		for _, drop := range []string{"DROP2", "DROP3", "DROP9", "## 4. improve"} {
+			if strings.Contains(body, drop) {
+				t.Errorf("%s: body kept %s:\n%s", name, drop, body)
+			}
+		}
+	}
+}
