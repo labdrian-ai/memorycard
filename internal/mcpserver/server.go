@@ -25,9 +25,18 @@ type handlers struct {
 
 // New builds an MCP server over svc. defaultProject is used when a tool call
 // omits project.
+// A tool result also says, once per version, that a newer binary has been
+// installed since the server started.
 func New(svc *memory.Service, defaultProject string) *mcp.Server {
+	return newServer(svc, defaultProject, defaultUpdateNotice())
+}
+
+func newServer(svc *memory.Service, defaultProject string, notice *updateNotice) *mcp.Server {
 	h := &handlers{svc: svc, project: defaultProject}
 	srv := mcp.NewServer(&mcp.Implementation{Name: "memorycard", Version: Version}, nil)
+	if notice != nil {
+		srv.AddReceivingMiddleware(notice.middleware)
+	}
 	// Clients decide whether to ask for approval from these hints: reads are
 	// declared read-only, writes are declared non-destructive (nothing is
 	// ever hard-deleted; old versions are kept and archiving is reversible).
