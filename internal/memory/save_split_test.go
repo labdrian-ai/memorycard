@@ -214,6 +214,49 @@ func TestResavingASplitDocumentArchivesALeftoverPartWithAnEditedTitle(t *testing
 	}
 }
 
+// A memory that took a part's derived key after the part was archived and
+// moved aside (Save would revive the archived row itself instead) was never a
+// part; a shorter re-save leaves it alone.
+func TestResavingASplitDocumentSparesAMemoryThatTookAnArchivedPartsKey(t *testing.T) {
+	s := newSvc(t)
+	save(t, s, SaveInput{Project: "p", Title: "Doc", Body: paragraphs(30, "r"), TopicKey: "doc"})
+	if _, err := s.db.SQL().Exec(`update memories set status='archived', topic_key='doc/part-2~' || id where topic_key='doc/part-2'`); err != nil {
+		t.Fatal(err)
+	}
+	other := save(t, s, SaveInput{Project: "p", Title: "Unrelated", Body: "unrelated body", TopicKey: "doc/part-2"})
+
+	save(t, s, SaveInput{Project: "p", Title: "Doc", Body: "short", TopicKey: "doc"})
+
+	if got := parts(t, s, `id = ?`, other.ID); got[0].status != "active" {
+		t.Errorf("unrelated memory #%d keyed doc/part-2 is %q after the re-save, want active", other.ID, got[0].status)
+	}
+}
+
+// A moved part whose title was edited is still the document's part, and the
+// memory holding the derived key is still not.
+func TestResavingASplitDocumentArchivesARenamedMovedPartAndSparesTheKeyHolder(t *testing.T) {
+	s := newSvc(t)
+	save(t, s, SaveInput{Project: "p", Title: "Design", Body: paragraphs(30, "d"), TopicKey: "design"})
+	moved := parts(t, s, `topic_key = 'design/part-2'`)
+	if _, err := s.db.SQL().Exec(`update memories set topic_key=? where id=?`, fmt.Sprintf("design/part-2~%d", moved[0].id), moved[0].id); err != nil {
+		t.Fatal(err)
+	}
+	renamed := "Renamed"
+	if _, err := s.Update(context.Background(), moved[0].id, UpdateInput{Title: &renamed}); err != nil {
+		t.Fatal(err)
+	}
+	holder := save(t, s, SaveInput{Project: "p", Title: "Holder", Body: "holder body", TopicKey: "design/part-2"})
+
+	save(t, s, SaveInput{Project: "p", Title: "Design", Body: "short", TopicKey: "design"})
+
+	if got := parts(t, s, `id = ?`, holder.ID); got[0].status != "active" {
+		t.Errorf("holder #%d of design/part-2 is %q, want active", holder.ID, got[0].status)
+	}
+	if got := parts(t, s, `id = ?`, moved[0].id); got[0].status != "archived" {
+		t.Errorf("renamed moved part #%d is %q, want archived", moved[0].id, got[0].status)
+	}
+}
+
 func TestSaveSplitWithoutTopicKeyStoresPartsOnceAndSupersedesWithPartOne(t *testing.T) {
 	s := newSvc(t)
 	old := save(t, s, SaveInput{Project: "p", Title: "Old notes", Body: "superseded soon"})
