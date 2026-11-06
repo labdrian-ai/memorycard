@@ -204,7 +204,9 @@ type hookEvent struct {
 	CompactSummary string `json:"compact_summary"`
 }
 
-// transcriptStart is the timestamp of the first line of the transcript.
+// transcriptStart is the timestamp of the first line of the transcript that
+// has one, looking at its first MiB: Claude transcripts open with lines such
+// as "session-owner" that carry no timestamp.
 func transcriptStart(path string) (time.Time, bool) {
 	if path == "" {
 		return time.Time{}, false
@@ -215,17 +217,18 @@ func transcriptStart(path string) (time.Time, bool) {
 	}
 	defer func() { _ = f.Close() }()
 	b, _ := io.ReadAll(io.LimitReader(f, 1<<20))
-	if i := bytes.IndexByte(b, '\n'); i >= 0 {
-		b = b[:i]
+	for _, line := range bytes.Split(b, []byte("\n")) {
+		var l struct {
+			Timestamp string `json:"timestamp"`
+		}
+		if json.Unmarshal(line, &l) != nil || l.Timestamp == "" {
+			continue
+		}
+		if t, err := time.Parse(time.RFC3339Nano, l.Timestamp); err == nil {
+			return t.UTC().Truncate(time.Second), true
+		}
 	}
-	var l struct {
-		Timestamp string `json:"timestamp"`
-	}
-	if json.Unmarshal(b, &l) != nil {
-		return time.Time{}, false
-	}
-	t, err := time.Parse(time.RFC3339Nano, l.Timestamp)
-	return t.UTC().Truncate(time.Second), err == nil
+	return time.Time{}, false
 }
 
 // session runs "session <verb>". Only "ingest" exists.

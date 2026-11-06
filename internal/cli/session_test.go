@@ -264,6 +264,23 @@ func TestSessionIngestTitleAndDateLine(t *testing.T) {
 	}
 }
 
+// Real Claude transcripts open with lines that carry no timestamp (such as
+// "session-owner"); the start is the first line that has one.
+func TestSessionIngestDatesTheSessionByTheFirstTimestampedLine(t *testing.T) {
+	transcript := filepath.Join(t.TempDir(), "t.jsonl")
+	lines := `{"type":"session-owner","owner":"x"}` + "\n" + `not json` + "\n" +
+		`{"type":"queue-operation","timestamp":"2026-11-04T19:00:21.861Z"}` + "\n" + `{"timestamp":"2027-01-01T00:00:00Z"}` + "\n"
+	if err := os.WriteFile(transcript, []byte(lines), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	db := newDB(t)
+	ingest(t, db, nil, hook(t, map[string]any{"transcript_path": transcript}))
+	r := oneSession(t, db)
+	if !strings.HasPrefix(r.Title, "Session 2026-11-04 · ") || !strings.HasPrefix(r.Body, "Date: 2026-11-04T19:00:21Z · ") {
+		t.Errorf("title=%q body=%q, want the 2026-11-04T19:00:21Z start", r.Title, r.Body)
+	}
+}
+
 func TestSessionIngestUnreadableTranscriptUsesIngestTime(t *testing.T) {
 	db := newDB(t)
 	ingest(t, db, nil, hook(t, map[string]any{"transcript_path": "/nonexistent/t.jsonl"}))
