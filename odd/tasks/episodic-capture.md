@@ -1,0 +1,32 @@
+# Episodic capture: search by date and a session ingest command
+
+Objective: make session summaries findable by date and add a store-side command that turns a Claude PostCompact hook event into one session memory, without LLM tokens. Branch `feat/episodic-capture`. Delivery: `single-pr` (owner pushes and merges on request). Test runner: `go test ./...`; strict TDD (RED observed before each GREEN). Research behind it: memorycard #4201, #4202, #4214 (workflow wf_6cc9c55d-147).
+
+## Specs
+
+Every check runs against a copy of the store (`MEMORYCARD_DB` under the scratchpad) or a test database; nothing writes `~/.memorycard/memory.db`. Hook wiring in `~/.claude` and `~/.codex`, a SessionEnd tail card, Codex, the backfill of the 161 historical summaries, a recency prior and SummaryWeight changes are out of scope.
+
+- **S1** search date range: `memorycard search --since 2026-11-05 --until 2026-11-05 -type session_summary "x"` returns only memories whose created_at falls on that UTC day. An invalid date such as `--since 2026-13-40` exits non-zero with stderr 'invalid --since date' and no results. Without the flags, output is byte-identical to the base build (regression test plus a differential check against a mktemp copy of the base commit).
+- **S2** MCP parity: the mem_search tool accepts optional `since` and `until` ISO dates with the same semantics as S1. A schema test asserts the fields are optional, so existing callers are unchanged.
+- **S3** lexical inclusion: when `--since` or `--until`, or `-type session_summary`, is given, the lexical leg stops adding `m.type != 'session_summary'` (search.go:272). Test: a session_summary memory with DeferEmbed (no vector) and a unique term is found by `search --since <its day> <term>`. Default search without these flags keeps excluding it, pinned by the existing behaviour test.
+- **S4** ingest command: `memorycard session ingest --from claude-postcompact` reads hook JSON on stdin, e.g. {"session_id":"S","cwd":"/repo","transcript_path":"...","hook_event_name":"PostCompact","trigger":"auto","compact_summary":"..."}. It exits 0 with empty stdout, and the store holds exactly one active memory with type=session_summary and topic_key=session/S. Running it again with a different summary updates the same id; the active count stays 1. (Owner default, L2: one memory per session, updated on each compaction.) Malformed JSON or an empty compact_summary exits 0 and writes nothing, since a hook must never fail the session.
+- **S5** subagent guard: the same stdin with an "agent_id" field exits 0, writes nothing (active row count and the DB content hash are unchanged), and prints empty stdout.
+- **S6** section extraction: the body keeps sections 1 (Primary Request), 4 (Errors and fixes), 5 (Problem Solving), 7 (Pending Tasks) and 8 (Current Work). It accepts heading styles '1. X', '1. **X**', '## 1. X' and lowercase variants, and drops sections 2, 3 and 9. Section 6 (All user messages) is kept as a trimmed list, per the owner default in L2 ("Sumar a las cinco secciones una lista recortada de los pedidos del usuario"): each item cut to 160 characters, the list capped at 1500 bytes. When the leading '<artifact-content-authored-by-others/>' prefix is present, it is stripped. When sections 1, 7 and 8 are all missing (the free-form format of 2026-10-14..16), the body is the first 4096 bytes of the summary, never empty. Use fixture files cut from real summaries with secrets removed: one per heading style plus the free-form one.
+- **S7** dated title: the title is 'Session YYYY-MM-DD · <project> · <first line of Primary Request, <=80 chars>', and the body's first line is 'Date: <ISO start> · cwd: <cwd> · transcript: <transcript_path>'. The UUID is not in the title. The transcript pointer follows LongMemEval's keep-the-original-value finding. Assumption: `<ISO start>` and the title date are the timestamp of the first line of transcript_path when it is readable, else the ingest time, in UTC.
+- **S8** secret redaction on the ingest path: values in KEY/PASSWORD/SECRET/TOKEN assignments, 'Bearer <x>', ghp_/gho_/github_pat_, sk-, AKIA, JWT (eyJ...\.eyJ...), PEM blocks and user:pass@ in URLs are replaced by the existing redactionMarker. One RED test per pattern, plus one test that a <private> body still yields the same marker as today. (Owner default, L2: redaction only on this new command; other save paths unchanged.)
+- **S9** deferred embedding: `session ingest` and a new `memorycard save --defer-embed` save without embedding, and `memorycard stats` reports the memory as 'without embedding: 1'. A following `memorycard embed` sets it to 0. Pin the wall time of a deferred ingest of a 5 KB summary in an integration check against a MEMORYCARD_DB copy (target under 1.5 s; the threshold is an assumption to confirm).
+- **S10** worktree project resolution: given a cwd inside a git worktree whose main checkout resolves to project P, the ingest stores project=P (resolved through `git rev-parse --git-common-dir`), not the worktree's basename. A cwd that no longer exists falls back to the current behaviour, pinned by a test.
+- **S11** no regression: on a copy of the store, mc-accept on gold, gold2, gold3 and gold5 (`-include-old=false -project @target -hybrid`) gives the same metrics as the base build; the episodic gold set from the research (`gold-episodic-kept`) is reported with and without `--since`/type filter. Help text and README document every new flag and command.
+
+## Tasks
+
+| ID | Specs | Route | Status | Evidence |
+|----|-------|-------|--------|----------|
+| T1 | S1-S3 | delegated (ultracode workflow, owner request) | pending | |
+| T2 | S4-S10 | delegated (ultracode workflow, owner request) | pending | |
+| T3 | S11 | delegated verifier | pending | |
+
+## Log
+
+- **L1** (2026-11-06, owner, verbatim): "quiero que antes de implentar hagas mas investigacion y auditoria y si encuentras que lo mejor es lo que propones ahora TDD estricto en ultracode para la implementacion"
+- **L2** (2026-11-06): research verdict GO WITH CHANGES (#4214): retrieval by date first, then a store-side ingest; hooks, tail card, Codex and backfill later. Parent proposed defaults: one memory per session updated on each compaction; keep a trimmed list of user requests besides sections 1/4/5/7/8; redaction only on the new command. Owner, verbatim, to "¿Arranco la implementación de este primer bloque con TDD estricto, con esos defaults?": "si porfa".
