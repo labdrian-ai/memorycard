@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "08843a165b018985bd7fc683546b12b491d3a0db",
+    "head": "edba21d112778408484343ab14cf2ab54acf242b",
+    "diff_sha256": "635a32fb5af4dcba9493600cd1e09b0fea3fc32ca01dd3a41a652a0f8f212be7",
+    "paths": [
+      "README.md",
+      "internal/cli/capture.go",
+      "internal/cli/capture_project.go",
+      "internal/cli/capture_project_test.go",
+      "internal/cli/cli.go"
+    ]
+  },
+  "risk": "none",
+  "report": {
+    "checks": [
+      {
+        "command": "go test ./internal/cli -run 'CaptureFiles|CaptureKeeps|MissingTranscript' -count=1",
+        "result": "pass",
+        "output": "ok (RED before the change: #1-#3 project = memorycard, want other-repo)"
+      },
+      {
+        "command": "go vet ./... && go test ./... -count=1",
+        "result": "pass",
+        "output": "11 packages ok, no FAIL"
+      },
+      {
+        "command": "memorycard capture --transcript <real subagent transcript>, cwd memorycard, temp MEMORYCARD_DB",
+        "result": "pass",
+        "output": "13 transcripts that worked in labdrian-sdd-overlay file there (memorycard without the flag); 4 that worked in memorycard stay in memorycard; 40 transcripts of this session all memorycard"
+      }
+    ]
+  }
+}
