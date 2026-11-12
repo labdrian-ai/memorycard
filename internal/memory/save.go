@@ -450,6 +450,10 @@ func topicKey(k string) string {
 	return k
 }
 
+// ContentHash is the hash the store deduplicates by: title and body, lowercased, white space collapsed.
+// Callers that derive a key from content use it, so the key and the duplicate check agree.
+func ContentHash(title, body string) string { return contentHash(title, body) }
+
 func contentHash(title, body string) string {
 	norm := strings.ToLower(strings.Join(strings.Fields(title+"\n"+body), " "))
 	sum := sha256.Sum256([]byte(norm))

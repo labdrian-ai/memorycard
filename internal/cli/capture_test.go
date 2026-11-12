@@ -84,6 +84,79 @@ func TestCaptureSavesOneMemoryPerItem(t *testing.T) {
 	}
 }
 
+// topicOf returns the topic= field of `get id`'s header line, or "" when it has none.
+func topicOf(t *testing.T, db, id string) string {
+	t.Helper()
+	_, out, _ := run(t, db, "", "get", id)
+	header, _, _ := strings.Cut(out, "\n")
+	for _, f := range strings.Fields(header) {
+		if strings.HasPrefix(f, "topic=") {
+			return strings.TrimPrefix(f, "topic=")
+		}
+	}
+	return ""
+}
+
+// Every captured learning gets its own curated topic under learning/, derived from its content, so that
+// promotion to the vault (which takes only pinned or curated-topic memories) can reach it, and no two
+// learnings share a key (a shared key would overwrite one learning with the next).
+func TestCaptureGivesEachLearningItsOwnLearningTopic(t *testing.T) {
+	db := newDB(t)
+	run(t, db, learnings, "capture")
+	shared := "## Key Learnings\n\n" +
+		"1. A learning that shares this long opening with the next one ends with the word alpha.\n" +
+		"2. A learning that shares this long opening with the next one ends with the word beta.\n"
+	run(t, db, shared, "capture")
+	if n := memoriesCount(t, db); n != "5" {
+		t.Fatalf("memories = %s, want 5", n)
+	}
+	seen := map[string]bool{}
+	for _, id := range []string{"1", "2", "3", "4", "5"} {
+		k := topicOf(t, db, id)
+		if !strings.HasPrefix(k, "learning/") || len(k) <= len("learning/") {
+			t.Fatalf("memory %s topic = %q, want learning/<key>", id, k)
+		}
+		if seen[k] {
+			t.Fatalf("memory %s reuses topic %q", id, k)
+		}
+		seen[k] = true
+	}
+}
+
+// The same learning captured again, reworded only in spacing or case, adds no memory and leaves the first
+// one's topic as it was.
+func TestCaptureLearningTopicIgnoresCaseAndSpacing(t *testing.T) {
+	db := newDB(t)
+	run(t, db, learnings, "capture")
+	k := topicOf(t, db, "1")
+	again := "## Key Learnings\n\n1. The FIRST learning   is a standalone factual sentence about the store.\n"
+	code, out, errOut := run(t, db, again, "capture")
+	if code != 0 {
+		t.Fatalf("code=%d err=%q", code, errOut)
+	}
+	if n := memoriesCount(t, db); n != "3" {
+		t.Errorf("memories = %s, want 3 (out %q)", n, out)
+	}
+	if got := topicOf(t, db, "1"); got != k {
+		t.Errorf("topic after re-capture = %q, want %q", got, k)
+	}
+}
+
+// A learning whose text an untopiced memory already holds (one captured before learnings had topics) stays a
+// duplicate: capture adds no second copy.
+func TestCaptureLearningAlreadySavedWithoutTopicIsADuplicate(t *testing.T) {
+	db := newDB(t)
+	item := "The first learning is a standalone factual sentence about the store."
+	run(t, db, item, "save", "--type", "learning", "--title", "The first learning is a standalone factual sentence about the store", "--body", "-")
+	code, out, errOut := run(t, db, "## Key Learnings\n\n1. "+item+"\n", "capture")
+	if code != 0 {
+		t.Fatalf("code=%d err=%q", code, errOut)
+	}
+	if n := memoriesCount(t, db); n != "1" {
+		t.Errorf("memories = %s, want 1 (out %q)", n, out)
+	}
+}
+
 func TestCaptureSameInputTwiceAddsNothing(t *testing.T) {
 	db := newDB(t)
 	run(t, db, learnings, "capture")

@@ -73,8 +73,10 @@ memorycard search "how do sessions expire"
 
 For hooks: `memorycard project` prints the project the other commands resolve, and
 `memorycard capture` reads text on stdin and saves each numbered item of its
-`## Key Learnings` block as one memory (type `learning`, scope `project`). The
-same input twice adds nothing, and input with no block or no items saves nothing
+`## Key Learnings` block as one memory (type `learning`, scope `project`, topic
+`learning/<16 hex digits of its content hash>`, so each learning has its own
+curated key and promotion to a vault can take it). The
+same input twice adds nothing, nor does a learning already saved without a topic, and input with no block or no items saves nothing
 and exits 0. `capture --transcript <file>` takes the subagent's transcript: when
 it names paths in another git repository more often than in the working
 directory's, the memories go to that repository's project. A pinned
