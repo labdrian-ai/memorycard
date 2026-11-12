@@ -157,6 +157,31 @@ func TestCaptureLearningAlreadySavedWithoutTopicIsADuplicate(t *testing.T) {
 	}
 }
 
+// A learning edited after it was captured keeps the edit when its original text is captured again: capture
+// never overwrites the memory under a learning's topic.
+func TestCaptureNeverOverwritesAnEditedLearning(t *testing.T) {
+	db := newDB(t)
+	run(t, db, learnings, "capture")
+	k := topicOf(t, db, "1")
+	edited := "The first learning, corrected by hand: it names the store and the reason it holds."
+	if code, _, errOut := run(t, db, edited, "save", "--type", "learning", "--title", "First learning, corrected", "--topic", k, "--body", "-"); code != 0 {
+		t.Fatalf("edit: code=%d err=%q", code, errOut)
+	}
+	code, out, errOut := run(t, db, learnings, "capture")
+	if code != 0 {
+		t.Fatalf("code=%d err=%q", code, errOut)
+	}
+	if n := memoriesCount(t, db); n != "3" {
+		t.Errorf("memories = %s, want 3 (out %q)", n, out)
+	}
+	if !strings.HasSuffix(out, "captured: 0 saved, 3 skipped (3 duplicate)\n") {
+		t.Errorf("out = %q", out)
+	}
+	if _, got, _ := run(t, db, "", "get", "1"); !strings.Contains(got, "corrected by hand") {
+		t.Errorf("get 1 lost the edit: %q", got)
+	}
+}
+
 func TestCaptureSameInputTwiceAddsNothing(t *testing.T) {
 	db := newDB(t)
 	run(t, db, learnings, "capture")

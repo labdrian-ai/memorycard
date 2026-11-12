@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "bb4d0dc47a880742aceb2659da65a0b7aa73911c",
+    "head": "8f8707a80a785f95fa6b8b32d3d3ece4535463ce",
+    "diff_sha256": "921781518cb61409249907ef3b7c5b943b189d08f790b69206fc7947e223bee1",
+    "paths": [
+      "README.md",
+      "internal/cli/capture.go",
+      "internal/cli/capture_test.go",
+      "internal/cli/cli.go",
+      "internal/memory/save.go"
+    ]
+  },
+  "rows": [
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "bb4d0dc47a880742aceb2659da65a0b7aa73911c",
+      "head": "8f8707a80a785f95fa6b8b32d3d3ece4535463ce",
+      "diff_sha256": "921781518cb61409249907ef3b7c5b943b189d08f790b69206fc7947e223bee1"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "README.md",
+        "internal/cli/capture.go",
+        "internal/cli/capture_test.go",
+        "internal/cli/cli.go",
+        "internal/memory/save.go"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "internal/cli/capture.go:69-80",
+        "claim": "learningTopic was inserted between captureTitle's doc comment and its func. The captureTitle comment now merges into the learningTopic comment block, so captureTitle has no doc comment and learningTopic's comment starts with misleading text about the first sentence and '...'.",
+        "evidence_class": "deterministic",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/cli/capture.go:69-80"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "WARNING",
+        "location": "internal/cli/capture.go:164",
+        "claim": "Every capture now saves with a TopicKey, which in this store most likely upserts on a matching project/scope/topic. If a user later edits a captured learning (the topic stays) and the original text is captured again, the topic match could overwrite the edit with the original body instead of being skipped as a duplicate. The tests only cover unedited re-capture, so this path is unverified. The store's topic-upsert behavior is not visible in the diff.",
+        "evidence_class": "inferential",
+        "causal_disposition": "unknown",
+        "proof_refs": [
+          "internal/cli/capture.go:164"
+        ]
+      }
+    ],
+    "evidence": [
+      "Reviewed the whole diff of 5 files. Store save logic beyond ContentHash is not visible, so F2 is inferential.",
+      "The learningTopic comment placement in capture.go displaces captureTitle's doc comment (F1)."
+    ]
+  }
+}

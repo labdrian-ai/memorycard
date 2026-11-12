@@ -66,9 +66,6 @@ func keyLearnings(text string) []string {
 	return items
 }
 
-// captureTitle is the item's first sentence without its final stop. A first
-// sentence over captureTitleRunes is cut at the last space within the limit
-// and marked with "...".
 // learningTopic is the curated topic of a captured learning: learning/ and the first 16 hex digits of the
 // content hash the store deduplicates by. Each learning gets its own key (a shared one would overwrite one
 // learning with the next), the same learning gets the same key whatever its case or spacing, and the
@@ -77,6 +74,9 @@ func learningTopic(title, item string) string {
 	return "learning/" + memory.ContentHash(title, item)[:16]
 }
 
+// captureTitle is the item's first sentence without its final stop. A first
+// sentence over captureTitleRunes is cut at the last space within the limit
+// and marked with "...".
 func captureTitle(item string) string {
 	first := item
 	if loc := sentenceEnd.FindStringIndex(item); loc != nil {
@@ -161,7 +161,7 @@ func (a *app) capture(ctx context.Context, svc *memory.Service, args []string) i
 		}
 		r, err := svc.Save(ctx, memory.SaveInput{
 			Project: proj, Scope: "project", Type: "learning",
-			Title: title, Body: item, TopicKey: learningTopic(title, item), DeferEmbed: true,
+			Title: title, Body: item, TopicKey: learningTopic(title, item), KeepExisting: true, DeferEmbed: true,
 		})
 		if err != nil {
 			flush()
