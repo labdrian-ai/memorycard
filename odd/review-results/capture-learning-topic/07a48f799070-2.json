@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "8f8707a80a785f95fa6b8b32d3d3ece4535463ce",
+    "head": "07a48f79907006ae2e1ae990ae3b595179535346",
+    "diff_sha256": "a4bcea62c9b37708b9788af418686e90c699ff488257877cd413adc594c0a6a0",
+    "paths": [
+      "README.md",
+      "internal/cli/capture.go",
+      "internal/cli/capture_test.go",
+      "internal/memory/save.go",
+      "odd/review-results/capture-learning-topic/8f8707a80a78-1.sweep.json",
+      "odd/review-results/capture-learning-topic/8f8707a80a78-2.json",
+      "odd/review-results/capture-learning-topic/8f8707a80a78-3.json"
+    ]
+  },
+  "rows": [
+    "recall",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "8f8707a80a785f95fa6b8b32d3d3ece4535463ce",
+      "head": "07a48f79907006ae2e1ae990ae3b595179535346",
+      "diff_sha256": "a4bcea62c9b37708b9788af418686e90c699ff488257877cd413adc594c0a6a0"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "README.md",
+        "internal/cli/capture.go",
+        "internal/cli/capture_test.go",
+        "internal/memory/save.go",
+        "odd/review-results/capture-learning-topic/8f8707a80a78-1.sweep.json",
+        "odd/review-results/capture-learning-topic/8f8707a80a78-2.json",
+        "odd/review-results/capture-learning-topic/8f8707a80a78-3.json"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "README.md:80",
+        "claim": "The README rewrap is incomplete. Line 80 still carries 'no items saves nothing and exits 0. `capture --transcript <file>` takes the subagent's transcript: when', which is far longer than the surrounding lines. The commit says it rewrapped the paragraph, but the wrapping is still uneven.",
+        "evidence_class": "deterministic",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "README.md:76-81"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "SUGGESTION",
+        "location": "internal/memory/save.go:287-289",
+        "claim": "With KeepExisting set, a topic hit with different content returns ActionUnchanged before the archived-restore branch. A learning that was archived, then recaptured with different text, stays archived, and the caller reports it as a duplicate. The doc comment says only that the memory 'keeps its text'. It does not say that an archived memory is not restored and that Unchanged is reported to the caller as a duplicate. Whether the CLI counts Unchanged as 'duplicate' is not visible in the diff; the test asserts it does.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/save.go:284-292",
+          "internal/memory/save.go:83-88"
+        ]
+      }
+    ],
+    "evidence": [
+      "Reviewed the whole diff. The KeepExisting early return compares oldHash with hash, so an identical re-save still follows the normal path, including restoring an archived memory.",
+      "The captureTitle doc comment is now back directly above captureTitle, so the earlier misplacement is fixed.",
+      "The odd/review-results files are review artifacts for the earlier base; I found no defect in them."
+    ]
+  }
+}
