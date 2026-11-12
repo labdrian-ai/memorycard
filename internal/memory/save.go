@@ -80,6 +80,12 @@ type SaveInput struct {
 	// embed batch for many saves that also sets their hints; until then the
 	// memory is pending like any other.
 	DeferEmbed bool
+
+	// KeepExisting makes a save under a topic key that already names a memory
+	// with other content a no-op (ActionUnchanged) instead of an update: the
+	// memory there, edited since or not, keeps its text. capture sets it, so
+	// capturing a learning again never overwrites an edit made to it.
+	KeepExisting bool
 }
 
 // SaveResult reports what Save did.
@@ -278,6 +284,9 @@ func (s *Service) write(ctx context.Context, tx *sql.Tx, in SaveInput, hash, sta
 			in.Project, in.Scope, in.TopicKey).Scan(&id, &oldHash, &oldTitle, &oldBody, &status, &updated)
 		switch {
 		case err == nil:
+			if in.KeepExisting && oldHash != hash {
+				return id, ActionUnchanged, false, nil
+			}
 			if status == "archived" {
 				if err := restore(ctx, tx, id, updated, stamp); err != nil {
 					return 0, "", false, err
@@ -449,6 +458,10 @@ func topicKey(k string) string {
 	}
 	return k
 }
+
+// ContentHash is the hash the store deduplicates by: title and body, lowercased, white space collapsed.
+// Callers that derive a key from content use it, so the key and the duplicate check agree.
+func ContentHash(title, body string) string { return contentHash(title, body) }
 
 func contentHash(title, body string) string {
 	norm := strings.ToLower(strings.Join(strings.Fields(title+"\n"+body), " "))

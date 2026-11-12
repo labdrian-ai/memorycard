@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "8f8707a80a785f95fa6b8b32d3d3ece4535463ce",
+    "head": "07a48f79907006ae2e1ae990ae3b595179535346",
+    "diff_sha256": "a4bcea62c9b37708b9788af418686e90c699ff488257877cd413adc594c0a6a0",
+    "paths": [
+      "README.md",
+      "internal/cli/capture.go",
+      "internal/cli/capture_test.go",
+      "internal/memory/save.go",
+      "odd/review-results/capture-learning-topic/8f8707a80a78-1.sweep.json",
+      "odd/review-results/capture-learning-topic/8f8707a80a78-2.json",
+      "odd/review-results/capture-learning-topic/8f8707a80a78-3.json"
+    ]
+  },
+  "rows": [
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "8f8707a80a785f95fa6b8b32d3d3ece4535463ce",
+      "head": "07a48f79907006ae2e1ae990ae3b595179535346",
+      "diff_sha256": "a4bcea62c9b37708b9788af418686e90c699ff488257877cd413adc594c0a6a0"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "README.md",
+        "internal/cli/capture.go",
+        "internal/cli/capture_test.go",
+        "internal/memory/save.go",
+        "odd/review-results/capture-learning-topic/8f8707a80a78-1.sweep.json",
+        "odd/review-results/capture-learning-topic/8f8707a80a78-2.json",
+        "odd/review-results/capture-learning-topic/8f8707a80a78-3.json"
+      ],
+      "reason": ""
+    },
+    "findings": [],
+    "evidence": [
+      "save.go: the new KeepExisting branch sits inside the existing-topic case (err == nil) and only fires when the flag is set and oldHash != hash. The flag defaults to false, so every other Save caller keeps its previous behaviour.",
+      "capture.go: only capture sets KeepExisting. The topic is derived from the content hash, so a differing hash under that topic means the memory was edited, and skipping it is the requested behavior. The new test covers this.",
+      "capture.go: captureTitle's doc comment is moved back onto captureTitle, which fixes the earlier misplacement. The README rewrap changes no content.",
+      "The odd/review-results files are review artifacts with no runtime effect.",
+      "Not verifiable from the diff alone: how Save's caller counts ActionUnchanged (the test expects it as a duplicate) and whether any post-write step is skipped on this early return. The test expectation suggests both are as intended."
+    ]
+  }
+}

@@ -46,7 +46,8 @@ commands:
                            document; session summaries and sdd/ odd/ project/
                            mirrors one line each; a query appends its top 5 hits
   capture                  read text on stdin and save each numbered item of its
-                           "## Key Learnings" block as a memory (type learning);
+                           "## Key Learnings" block as a memory (type learning,
+                           topic learning/<hash>);
                            items under 60 characters or with a probe marker are
                            skipped; no block or no items saves nothing;
                            --transcript FILE files them under the repository

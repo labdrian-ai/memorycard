@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "bb4d0dc47a880742aceb2659da65a0b7aa73911c",
+    "head": "8f8707a80a785f95fa6b8b32d3d3ece4535463ce",
+    "diff_sha256": "921781518cb61409249907ef3b7c5b943b189d08f790b69206fc7947e223bee1",
+    "paths": [
+      "README.md",
+      "internal/cli/capture.go",
+      "internal/cli/capture_test.go",
+      "internal/cli/cli.go",
+      "internal/memory/save.go"
+    ]
+  },
+  "rows": [
+    "recall",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "bb4d0dc47a880742aceb2659da65a0b7aa73911c",
+      "head": "8f8707a80a785f95fa6b8b32d3d3ece4535463ce",
+      "diff_sha256": "921781518cb61409249907ef3b7c5b943b189d08f790b69206fc7947e223bee1"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "README.md",
+        "internal/cli/capture.go",
+        "internal/cli/capture_test.go",
+        "internal/cli/cli.go",
+        "internal/memory/save.go"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "WARNING",
+        "location": "internal/cli/capture.go:72-79",
+        "claim": "learningTopic was inserted between captureTitle's doc comment and the captureTitle func. The comment 'captureTitle is the item's first sentence...' now runs straight into learningTopic's comment as one block above learningTopic, and captureTitle has no doc comment. Godoc and readers attribute the title-truncation description to the wrong function.",
+        "evidence_class": "deterministic",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/cli/capture.go:69-79"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "SUGGESTION",
+        "location": "README.md:76-79",
+        "claim": "The edited README paragraph now has uneven line wrapping. One line ('same input twice adds nothing, nor does a learning already saved without a topic, and input with no block...') is far longer than its neighbours, which hurts readability of the prose.",
+        "evidence_class": "deterministic",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "README.md:76-79"
+        ]
+      }
+    ],
+    "evidence": [
+      "Reviewed the whole diff of the five changed paths.",
+      "The only changed behaviour in capture is TopicKey: learningTopic(title, item), built from memory.ContentHash(title, item)[:16]. I found no recall defect in it from the diff alone.",
+      "The test for a learning saved earlier without a topic depends on store dedupe code that is not in the diff, so I could not confirm it from here."
+    ]
+  }
+}
