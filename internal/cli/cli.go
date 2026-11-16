@@ -279,17 +279,17 @@ func (a *app) search(ctx context.Context, svc *memory.Service, args []string) in
 	return 0
 }
 
-// prefixFlag collects every value of a repeatable flag (--topic-prefix,
+// repeatedFlag collects every value of a repeatable flag (--topic-prefix,
 // --key).
-type prefixFlag []string
+type repeatedFlag []string
 
-func (p *prefixFlag) String() string     { return strings.Join(*p, ",") }
-func (p *prefixFlag) Set(v string) error { *p = append(*p, v); return nil }
+func (p *repeatedFlag) String() string     { return strings.Join(*p, ",") }
+func (p *repeatedFlag) Set(v string) error { *p = append(*p, v); return nil }
 
 func (a *app) list(ctx context.Context, svc *memory.Service, args []string) int {
 	const usage = "usage: memorycard list --topic-prefix P [--topic-prefix P2 ...] [--project NAME] [--json]"
 	fs := a.flags("list")
-	var prefixes prefixFlag
+	var prefixes repeatedFlag
 	var asJSON bool
 	project := a.project()
 	fs.Var(&prefixes, "topic-prefix", "topic key prefix, repeatable")
@@ -325,7 +325,7 @@ func (a *app) list(ctx context.Context, svc *memory.Service, args []string) int 
 func (a *app) resolve(ctx context.Context, svc *memory.Service, args []string) int {
 	const usage = "usage: memorycard resolve --source S --key K [--key K2 ...] [--json]"
 	fs := a.flags("resolve")
-	var keys prefixFlag
+	var keys repeatedFlag
 	var source string
 	var asJSON bool
 	fs.StringVar(&source, "source", "", "import source, for example engram")

@@ -157,8 +157,10 @@ func TestResolveWritesNothing(t *testing.T) {
 		}
 		defer raw.Close()
 		var m, im, v, u int
-		raw.QueryRow(`select (select count(*) from memories), (select count(*) from import_map),
-			(select count(*) from memory_versions), (select coalesce(sum(use_count),0) from memories)`).Scan(&m, &im, &v, &u)
+		if err := raw.QueryRow(`select (select count(*) from memories), (select count(*) from import_map),
+			(select count(*) from memory_versions), (select coalesce(sum(use_count),0) from memories)`).Scan(&m, &im, &v, &u); err != nil {
+			t.Fatal(err)
+		}
 		return strings.Join([]string{strconv.Itoa(m), strconv.Itoa(im), strconv.Itoa(v), strconv.Itoa(u)}, ",")
 	}
 	before := read()

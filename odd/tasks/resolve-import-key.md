@@ -1,6 +1,6 @@
 # memorycard resolve — read-only lookup of import keys
 Objective: a read-only `memorycard resolve --source S --key K` verb so labdrian counts one observation once when it is listed as `engram:<n>` and as `memorycard:<m>`, reading memorycard's `import_map` through its public CLI instead of its private SQLite schema.
-Branch: feat/resolve-import-key (from main 0f273c8, which holds the `list` verb) | Delivery: one PR, owner's standing merge ok | Test runner: `go test ./...`
+Branch: feat/resolve-import-key (from main 0f273c8, which holds the `list` verb) | Delivery: one PR, standing merge ok (green CI, clear review check) | Test runner: `go test ./...`
 
 ## Specs
 Source of truth: the labdrian-sdd-overlay feature document `odd/tasks/labdrian-orchestrator-opencode.md` (branch `feat/labdrian-orchestrator-opencode`), task T25c, design in its Log L46; the verb's place in the engine (T25d) and the skill text (T23) are there too.
@@ -22,3 +22,9 @@ Source of truth: the labdrian-sdd-overlay feature document `odd/tasks/labdrian-o
   - Mutant: changing the lookup to `part = 2` made seven `--- FAIL` lines appear across the two packages; reverted.
   - Existing verbs: `list`, `get`, `search` and the rest are untouched in behaviour; the only shared code changed is the `prefixFlag` comment and the command list of `Run`, and the full suite passes.
   - Size note: 506 changed lines against a forecast of 170-320; 320 are tests (two files with a fixture builder and a case table per rule) and 26 are README. Not split: one verb, one commit.
+- **L3** (2026-11-16, review of `259cb77`; the coordinator asked for "L2", but L2 already holds the builder evidence, so this is the next free id.)
+  - `259cb77` sweep T2 `errcheck` on the unchecked `.Scan(&m, &im, &v, &u)` in `TestResolveWritesNothing`: live, fixed in this entry's commit (the error now fails the test with `t.Fatal`). The unchecked `defer raw.Close()` stays, as the repository's convention (see L2 of the list-topic-prefix document).
+  - `259cb77` F1 (`prefixFlag` reused for `--key` under a name that says prefix): fixed in this entry's commit, the type is `repeatedFlag` in `internal/cli/cli.go`, at its definition and in `list` and `resolve`; behaviour is unchanged and `list`'s tests pass.
+  - `259cb77` F2 (one query per key, no transaction): answered, no change. Each answer is an independent read of a primary-key row; `import_map` is written only by an import, and a concurrent import between two selects changes at most which keys are already mapped, a state a later call would see anyway. A transaction would add a wrapper for no observable difference.
+  - `259cb77` F3 (usage errors detected after the store opens): answered, no change. It is the same as `list`: `Run` opens the service before any verb (`internal/cli/cli.go`, the second `switch` follows `a.open()`), so every verb's flag checks come after the open; a usage error still exits 2 with the usage line and prints nothing on stdout, which the exit-2 table pins.
+  - Header: the delivery wording now reads "standing merge ok (green CI, clear review check)".
