@@ -48,7 +48,7 @@ commands:
                            is recorded; a memory saved in parts is listed as
                            its parts; text is one "#id topic: title" line each,
                            --json prints {"project", "memories": [{id,
-                           topic_key, title, body}]} with memories [] when none
+                           topic_key, scope, title, body}]} with memories [] when none
                            match
   context [--project P] [--query Q | <query>]
                            print the project digest: pinned, up to 3 stale

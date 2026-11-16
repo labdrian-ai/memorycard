@@ -129,10 +129,14 @@ family of keys (for example `procedural/candidates/`), not for finding things.
   no topic key never matches; superseded and archived memories are left out.
 - Rows are listed as stored: a document saved in parts comes back as its
   parts (`<key>`, `<key>/part-2`, ...), each with its own body, not joined.
+- A topic key can be live in several scopes (`project`, `personal`,
+  `global`) and `list` returns each, so every JSON memory carries its `scope`.
 - Text output is one line per memory, `#<id> <topic key>: <title>`, or
-  `no results`. `--json` prints one object:
-  `{"project": "p", "memories": [{"id": 7, "topic_key": "k/a", "title": "T",
-  "body": "..."}]}`, with `memories` always an array (`[]` when none match).
+  `no results`; it does not show the scope (use `--json` to tell them apart).
+  `--json` prints one object:
+  `{"project": "p", "memories": [{"id": 7, "topic_key": "k/a",
+  "scope": "project", "title": "T", "body": "..."}]}`, with `memories` always
+  an array (`[]` when none match).
 - `--project` defaults to the project the other commands resolve; an empty
   one, no `--topic-prefix` or an empty prefix exits 2 with the usage line.
 

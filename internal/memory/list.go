@@ -25,6 +25,7 @@ type ListInput struct {
 type Listed struct {
 	ID       int64
 	TopicKey string
+	Scope    string // one key may be live in several scopes
 	Title    string
 	Body     string
 }
@@ -49,7 +50,7 @@ func (s *Service) List(ctx context.Context, in ListInput) ([]Listed, error) {
 		args = append(args, p, p)
 	}
 	rows, err := s.db.SQL().QueryContext(ctx,
-		`select id, topic_key, title, body from memories
+		`select id, topic_key, scope, title, body from memories
 		 where project = ? and status = 'active' and topic_key is not null and (`+strings.Join(conds, ` or `)+`)
 		 order by topic_key, id`, args...)
 	if err != nil {
@@ -59,7 +60,7 @@ func (s *Service) List(ctx context.Context, in ListInput) ([]Listed, error) {
 	out := []Listed{}
 	for rows.Next() {
 		var m Listed
-		if err := rows.Scan(&m.ID, &m.TopicKey, &m.Title, &m.Body); err != nil {
+		if err := rows.Scan(&m.ID, &m.TopicKey, &m.Scope, &m.Title, &m.Body); err != nil {
 			return nil, err
 		}
 		out = append(out, m)

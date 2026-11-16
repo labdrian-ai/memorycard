@@ -24,6 +24,7 @@ type listJSON struct {
 	Memories []struct {
 		ID       int64  `json:"id"`
 		TopicKey string `json:"topic_key"`
+		Scope    string `json:"scope"`
 		Title    string `json:"title"`
 		Body     string `json:"body"`
 	} `json:"memories"`
@@ -45,21 +46,31 @@ func TestListJSONShape(t *testing.T) {
 		t.Fatalf("got %+v", got)
 	}
 	a, b := got.Memories[0], got.Memories[1]
-	if a.ID != 1 || a.TopicKey != "procedural/candidates/a" || a.Title != "Cand A" || a.Body != "body a" {
+	if a.ID != 1 || a.TopicKey != "procedural/candidates/a" || a.Title != "Cand A" || a.Body != "body a" || a.Scope != "project" {
 		t.Errorf("first = %+v", a)
 	}
 	if b.ID != 2 || b.TopicKey != "procedural/drafts/b" || b.Body != "body \"b\"\nline two" {
 		t.Errorf("second = %+v", b)
 	}
-	// Exactly the four documented keys per memory, nothing else.
+	// Exactly the five documented keys per memory, nothing else.
 	var raw struct {
 		Memories []map[string]json.RawMessage `json:"memories"`
 	}
 	if err := json.Unmarshal([]byte(out), &raw); err != nil {
 		t.Fatal(err)
 	}
-	if len(raw.Memories[0]) != 4 {
-		t.Errorf("memory keys = %v, want id, topic_key, title, body", raw.Memories[0])
+	if len(raw.Memories[0]) != 5 {
+		t.Errorf("memory keys = %v, want id, topic_key, scope, title, body", raw.Memories[0])
+	}
+	// The same key in two scopes comes back twice, told apart by scope.
+	if code, _, errOut := run(t, db, "", "save", "--title", "Mine", "--body", "m", "--topic", "procedural/candidates/a", "--scope", "personal"); code != 0 {
+		t.Fatalf("save personal: %q", errOut)
+	}
+	_, out, _ = run(t, db, "", "list", "--json", "--topic-prefix", "procedural/candidates/")
+	var two listJSON
+	if err := json.Unmarshal([]byte(out), &two); err != nil || len(two.Memories) != 2 ||
+		two.Memories[0].Scope != "project" || two.Memories[1].Scope != "personal" {
+		t.Errorf("same key in two scopes: err=%v %+v", err, two.Memories)
 	}
 }
 

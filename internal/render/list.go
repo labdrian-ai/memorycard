@@ -23,6 +23,7 @@ func List(ms []memory.Listed) string {
 type listedJSON struct {
 	ID       int64  `json:"id"`
 	TopicKey string `json:"topic_key"`
+	Scope    string `json:"scope"`
 	Title    string `json:"title"`
 	Body     string `json:"body"`
 }

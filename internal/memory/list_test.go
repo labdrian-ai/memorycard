@@ -55,7 +55,7 @@ func TestListReturnsFullFieldsOfOneProjectOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []Listed{{ID: id, TopicKey: "procedural/candidates/x", Title: "Cand", Body: "full body"}}
+	want := []Listed{{ID: id, TopicKey: "procedural/candidates/x", Scope: "project", Title: "Cand", Body: "full body"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %+v, want %+v", got, want)
 	}
@@ -164,6 +164,9 @@ func TestListOrdersEqualDocumentKeyAndPartNumberByID(t *testing.T) {
 	ids := []int64{}
 	for _, m := range got {
 		ids = append(ids, m.ID)
+	}
+	if len(got) != 3 || got[0].Scope != "project" || got[2].Scope != "personal" {
+		t.Errorf("scopes = %+v, want project, project, personal", got)
 	}
 	if want := []int64{first, second, third}; !reflect.DeepEqual(ids, want) {
 		t.Errorf("ids = %v, want %v", ids, want)
