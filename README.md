@@ -140,6 +140,28 @@ family of keys (for example `procedural/candidates/`), not for finding things.
 - `--project` defaults to the project the other commands resolve; an empty
   one, no `--topic-prefix` or an empty prefix exits 2 with the usage line.
 
+### Resolve (`memorycard resolve`)
+
+`memorycard resolve --source S --key K [--key K2 ...] [--json]` says which
+memory each key of an [import](#importing-existing-memories) became, for
+example `memorycard resolve --source engram --key 5595` for an Engram
+observation id. It is for tools that hold ids recorded before the import.
+
+- Read-only: it reads the import map and writes nothing, `use_count` included.
+- A key that was saved in parts resolves to its part-1 memory. Two keys whose
+  content the import merged into one memory resolve to the same id.
+- A key the import never mapped (never imported, deleted in Engram before the
+  import, not an Engram id at all) is reported, not an error: the exit code
+  stays 0. Another source's key is never matched.
+- Text output is one line per key, in the order given, duplicates included:
+  `engram:5595 #812` or `engram:5595 unknown`. `--json` prints one object,
+  `{"source": "engram", "ids": [{"key": "5595", "memory_id": 812},
+  {"key": "7", "memory_id": null}]}`, with `memory_id` `null` for an unknown
+  key.
+- The map has no project: `--project` is not an option. A missing or empty
+  `--source`, no `--key`, an empty `--key` or a positional argument exits 2
+  with the usage line.
+
 ### Get (`memorycard get`, `mem_get`)
 
 `memorycard get [--history] <id>` prints the current version only, ending with
@@ -319,6 +341,10 @@ an observation Engram has since deleted (imported, or with its `topic_key` or
 its exact content) is archived, unless it was written after the deletion or a
 live observation still holds that key or content. `archived deleted` counts
 them.
+
+The import keeps which source key became which memory, so ids recorded
+before the import still resolve: `memorycard resolve --source engram --key
+<id>` prints the memory (see [Resolve](#resolve-memorycard-resolve)).
 
 ## Benchmark
 

@@ -50,6 +50,15 @@ commands:
                            --json prints {"project", "memories": [{id,
                            topic_key, scope, title, body}]} with memories [] when none
                            match
+  resolve --source S --key K [--key K2 ...] [--json]
+                           print the memory each import key became, from the
+                           import map: the key's part-1 memory (an Engram
+                           observation id with --source engram); a key never
+                           imported is reported "unknown", not an error; text
+                           is one "<S>:<K> #id" or "<S>:<K> unknown" line per
+                           key in the order given, --json prints {"source",
+                           "ids": [{key, memory_id}]} with memory_id null for
+                           an unknown key; read-only
   context [--project P] [--query Q | <query>]
                            print the project digest: pinned, up to 3 stale
                            decisions, then recent memories, one line per
@@ -122,7 +131,7 @@ func Run(args []string, in io.Reader, out, errOut io.Writer, getenv func(string)
 		return 0
 	case "session":
 		return a.session(rest)
-	case "mcp", "save", "search", "get", "list", "context", "stats", "embed", "import", "capture":
+	case "mcp", "save", "search", "get", "list", "resolve", "context", "stats", "embed", "import", "capture":
 	default:
 		fmt.Fprintf(errOut, "unknown command %q\n%s", cmd, usage)
 		return 2
@@ -149,6 +158,8 @@ func Run(args []string, in io.Reader, out, errOut io.Writer, getenv func(string)
 		return a.get(ctx, svc, rest)
 	case "list":
 		return a.list(ctx, svc, rest)
+	case "resolve":
+		return a.resolve(ctx, svc, rest)
 	case "context":
 		return a.context(ctx, svc, rest)
 	case "stats":
@@ -268,7 +279,8 @@ func (a *app) search(ctx context.Context, svc *memory.Service, args []string) in
 	return 0
 }
 
-// prefixFlag collects every --topic-prefix given.
+// prefixFlag collects every value of a repeatable flag (--topic-prefix,
+// --key).
 type prefixFlag []string
 
 func (p *prefixFlag) String() string     { return strings.Join(*p, ",") }
@@ -303,6 +315,42 @@ func (a *app) list(ctx context.Context, svc *memory.Service, args []string) int 
 		return 0
 	}
 	s, err := render.ListJSON(project, ms)
+	if err != nil {
+		return a.fail(err)
+	}
+	fmt.Fprint(a.out, s)
+	return 0
+}
+
+func (a *app) resolve(ctx context.Context, svc *memory.Service, args []string) int {
+	const usage = "usage: memorycard resolve --source S --key K [--key K2 ...] [--json]"
+	fs := a.flags("resolve")
+	var keys prefixFlag
+	var source string
+	var asJSON bool
+	fs.StringVar(&source, "source", "", "import source, for example engram")
+	fs.Var(&keys, "key", "source key to resolve, repeatable")
+	fs.BoolVar(&asJSON, "json", false, "print JSON")
+	if fs.Parse(args) != nil {
+		return 2
+	}
+	if fs.NArg() > 0 {
+		fmt.Fprintln(a.err, usage)
+		return 2
+	}
+	rs, err := svc.Resolve(ctx, memory.ResolveInput{Source: source, Keys: keys})
+	if errors.Is(err, memory.ErrResolveInput) {
+		fmt.Fprintln(a.err, usage)
+		return 2
+	}
+	if err != nil {
+		return a.fail(err)
+	}
+	if !asJSON {
+		fmt.Fprint(a.out, render.Resolve(source, rs))
+		return 0
+	}
+	s, err := render.ResolveJSON(source, rs)
 	if err != nil {
 		return a.fail(err)
 	}
