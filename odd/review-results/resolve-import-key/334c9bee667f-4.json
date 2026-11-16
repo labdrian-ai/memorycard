@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "514a997c2449e42a4ebd499788c27b8f1fb5314c",
+    "head": "334c9bee667f9cc2b672f3d24d5fa16f16abb158",
+    "diff_sha256": "c1bcd34a6fe4e928c1b7b78aa686ac1bec0303cce1c24b78e46ba42afe7749b9",
+    "paths": [
+      "odd/tasks/resolve-import-key.md"
+    ]
+  },
+  "rows": [
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "514a997c2449e42a4ebd499788c27b8f1fb5314c",
+      "head": "334c9bee667f9cc2b672f3d24d5fa16f16abb158",
+      "diff_sha256": "c1bcd34a6fe4e928c1b7b78aa686ac1bec0303cce1c24b78e46ba42afe7749b9"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "odd/tasks/resolve-import-key.md"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/resolve-import-key.md:3",
+        "claim": "The rewritten Delivery line says the PR is 'merged by the coordinator' and no longer says the merge happens under the owner's standing ok. The conditions (green CI, clear review check) are now stated in the coordinator's voice, and the owner appears only in a parenthetical that says the owner 'made general' the rule. A reader can no longer tell from the header that the coordinator's merge authority comes from the owner's delegated ok, nor which conditions the owner actually set. L5 says the header now 'quotes only what the owner said', yet the parenthetical still attributes the whole rule to the owner. The change therefore blurs the authority and attribution that L4 F1 had asked to keep clear.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/resolve-import-key.md:3"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/resolve-import-key.md:32",
+        "claim": "The L5 answer to F2 cites specific line numbers in internal/cli/cli.go at d57c2be (140, 122, 148) and a test result. The diff contains none of that code, so these references cannot be checked from this change. The test result is described as 'the builder's' report, not as evidence. The log entry therefore asserts facts that this commit does not show.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/resolve-import-key.md:32"
+        ]
+      }
+    ],
+    "evidence": [
+      "The diff changes only the Delivery header line and appends log entry L5 in odd/tasks/resolve-import-key.md. No code is touched, so the change cannot cause a runtime regression.",
+      "The cli.go line numbers and the test-run claim in L5 cannot be checked against the diff."
+    ]
+  }
+}

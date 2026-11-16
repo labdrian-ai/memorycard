@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "d57c2bede20c6d260cd82b55789b9d75f98d2cc7",
+    "head": "514a997c2449e42a4ebd499788c27b8f1fb5314c",
+    "diff_sha256": "5e8392edad7b71972473fe39540575be0c724e573fc7da7b0eaa9eff94b83a55",
+    "paths": [
+      "odd/tasks/resolve-import-key.md"
+    ]
+  },
+  "rows": [
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "d57c2bede20c6d260cd82b55789b9d75f98d2cc7",
+      "head": "514a997c2449e42a4ebd499788c27b8f1fb5314c",
+      "diff_sha256": "5e8392edad7b71972473fe39540575be0c724e573fc7da7b0eaa9eff94b83a55"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "odd/tasks/resolve-import-key.md"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "WARNING",
+        "location": "odd/tasks/resolve-import-key.md:3",
+        "claim": "The delivery line presents a quote from another project (the overlay project, 2026-11-13) as the owner's standing authorization to merge this PR. The quoted words say only that the ok is 'general'. The two conditions (green CI, clear review check) are attributed to the owner in a parenthetical outside the quote, so the verbatim quote does not support them. The document cannot show that the authorization covers this repository and PR, and nothing in the diff shows that the owner set these conditions. An agent that reads this line may merge without a fresh ok.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/resolve-import-key.md:3"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/resolve-import-key.md:31",
+        "claim": "The L4 answer to F3 says the full `go test -count=1 ./...` run passed at d57c2be and that cli.go opens the service before the verb switch. Neither claim is backed by output or a reference in the diff, and this docs-only commit cannot verify them. This repeats the unsupported-assertion pattern the review criticized.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/resolve-import-key.md:31"
+        ]
+      }
+    ],
+    "evidence": [
+      "The diff changes only odd/tasks/resolve-import-key.md: the header delivery line and one appended Log entry, L4.",
+      "The new header quotes 'ya te dije que el.ok es general' and adds the conditions outside the quotation.",
+      "L4 asserts a passing test run and the behavior of cli.go, but the diff contains no proof of either."
+    ]
+  }
+}

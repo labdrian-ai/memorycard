@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "d57c2bede20c6d260cd82b55789b9d75f98d2cc7",
+    "head": "514a997c2449e42a4ebd499788c27b8f1fb5314c",
+    "diff_sha256": "5e8392edad7b71972473fe39540575be0c724e573fc7da7b0eaa9eff94b83a55",
+    "paths": [
+      "odd/tasks/resolve-import-key.md"
+    ]
+  },
+  "rows": [
+    "recall",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "d57c2bede20c6d260cd82b55789b9d75f98d2cc7",
+      "head": "514a997c2449e42a4ebd499788c27b8f1fb5314c",
+      "diff_sha256": "5e8392edad7b71972473fe39540575be0c724e573fc7da7b0eaa9eff94b83a55"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "odd/tasks/resolve-import-key.md"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "WARNING",
+        "location": "odd/tasks/resolve-import-key.md:3",
+        "claim": "The header says it quotes the owner's standing ok verbatim, but the quoted words (\"ya te dije que el.ok es general\") contain no conditions. The conditions (CI green, `labdrian review check` clear) follow the colon as if they were part of the owner's statement, and their source is only said to be \"the overlay project\", which the diff cannot confirm. The previous review's complaint, that the delivery line adds conditions the owner did not state, is therefore only partly resolved. The quote also says the ok is \"general\", which is unclear for this specific PR.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/resolve-import-key.md:3"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/resolve-import-key.md:31",
+        "claim": "The L4 answer to the earlier F3 (\"cites `Run` without proof\") again gives no proof. It only asserts that `Run` opens the service before the verb switch and that the full test run passed at `d57c2be`, with no output, CI link or line reference. The L4 entry also says the header \"quotes the owner's standing ok... with the conditions it was given under\", which restates the unsupported attribution in F1.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/resolve-import-key.md:31"
+        ]
+      }
+    ],
+    "evidence": [
+      "The diff changes only the header delivery line and appends the Log entry L4 to the feature document, so no code paths are affected.",
+      "The quoted owner statement in the header does not mention CI or the review check, so the conditions after the colon are not covered by the quote."
+    ]
+  }
+}

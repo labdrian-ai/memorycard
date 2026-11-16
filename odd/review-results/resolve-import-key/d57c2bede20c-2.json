@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "4f8b1a0f304c5ca4f6245f1b3f2d593d26e08127",
+    "head": "d57c2bede20c6d260cd82b55789b9d75f98d2cc7",
+    "diff_sha256": "28e2db983ff0355d203c7e92b70a1f3de4b7637640a42364cb3d5b74a18a4af4",
+    "paths": [
+      "internal/cli/cli.go",
+      "internal/cli/resolve_test.go",
+      "odd/tasks/resolve-import-key.md"
+    ]
+  },
+  "rows": [
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "4f8b1a0f304c5ca4f6245f1b3f2d593d26e08127",
+      "head": "d57c2bede20c6d260cd82b55789b9d75f98d2cc7",
+      "diff_sha256": "28e2db983ff0355d203c7e92b70a1f3de4b7637640a42364cb3d5b74a18a4af4"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "internal/cli/cli.go",
+        "internal/cli/resolve_test.go",
+        "odd/tasks/resolve-import-key.md"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "WARNING",
+        "location": "odd/tasks/resolve-import-key.md:3",
+        "claim": "The Delivery header changed from \"owner's standing merge ok\" to \"standing merge ok (green CI, clear review check)\". This drops the attribution to the owner and adds conditions that the owner is not shown to have set. The commit presents the edit as an answer to a review, but a delivery or merge authorization is not the reviewer's or the author's to rewrite. A later agent or process reading the document could treat the merge as pre-authorized by a generic standing grant, or could take the CI and review conditions as the only gate. The diff does not show that the owner approved the new scope.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/resolve-import-key.md:3 (header line changed in the diff)",
+          "odd/tasks/resolve-import-key.md:30 (L3 says the wording was changed, with no owner confirmation)"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/resolve-import-key.md:22",
+        "claim": "The L2 evidence entry says the only shared code changed is the `prefixFlag` comment. This commit renames the type to `repeatedFlag`, so that statement is now stale and the Log contradicts the code. L3 records the rename, but L2 is not amended or cross-referenced.",
+        "evidence_class": "deterministic",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/cli/cli.go:282-289 (type renamed to repeatedFlag)",
+          "odd/tasks/resolve-import-key.md:24 (L2 still names prefixFlag)"
+        ]
+      }
+    ],
+    "evidence": [
+      "The rename in internal/cli/cli.go is applied consistently at the type definition, its methods, and both uses in list and resolve. I found no behaviour change.",
+      "The test change in resolve_test.go now fails with t.Fatal on a Scan error, which is correct. I found no defect in it.",
+      "The main concern is the unattributed change to the delivery and merge authorization wording in the feature document."
+    ]
+  }
+}

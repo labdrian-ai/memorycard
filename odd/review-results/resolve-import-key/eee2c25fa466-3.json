@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "334c9bee667f9cc2b672f3d24d5fa16f16abb158",
+    "head": "eee2c25fa466eb6f162120667dce6bb96a4130ad",
+    "diff_sha256": "65b17cd1d04da21e76b51342fce5d7d3acb07af492793608f36c60d78206ad8c",
+    "paths": [
+      "odd/tasks/resolve-import-key.md"
+    ]
+  },
+  "rows": [
+    "recall",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "334c9bee667f9cc2b672f3d24d5fa16f16abb158",
+      "head": "eee2c25fa466eb6f162120667dce6bb96a4130ad",
+      "diff_sha256": "65b17cd1d04da21e76b51342fce5d7d3acb07af492793608f36c60d78206ad8c"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "odd/tasks/resolve-import-key.md"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/resolve-import-key.md:33",
+        "claim": "L6 answers the 'second-hand' objection with another assertion that a reader cannot check from the document. It says the coordinating agent ran the tests at 334c9be and that cli.go is unchanged between d57c2be and 334c9be, but it gives no log excerpt, command output, or diff reference. The run is also pinned to 334c9be, not to the head commit that carries this entry. The 'first-hand' record is therefore still a claim, and L5's line numbers are re-endorsed without evidence in the diff.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/resolve-import-key.md:33"
+        ]
+      }
+    ],
+    "evidence": [
+      "The diff changes only odd/tasks/resolve-import-key.md: it rewords the header Delivery line (line 3) and appends the L6 log entry (line 33).",
+      "L6 states the test result (exit 0, 11 packages ok, go1.27.3) and the cli.go unchanged claim, but the diff contains no artifact that backs either statement.",
+      "The header rewording is consistent with L6's description of it. I found no other defects in the visible lines."
+    ]
+  }
+}

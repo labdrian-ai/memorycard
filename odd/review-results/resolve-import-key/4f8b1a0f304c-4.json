@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "259cb775a8e10c255be3ae35e49cf3252f1e2157",
+    "head": "4f8b1a0f304c5ca4f6245f1b3f2d593d26e08127",
+    "diff_sha256": "703400a2a052da4867b603e566c4cadfc66ad38c9fd74b8bc235e7e02a17e1db",
+    "paths": [
+      "odd/tasks/resolve-import-key.md"
+    ]
+  },
+  "rows": [
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "259cb775a8e10c255be3ae35e49cf3252f1e2157",
+      "head": "4f8b1a0f304c5ca4f6245f1b3f2d593d26e08127",
+      "diff_sha256": "703400a2a052da4867b603e566c4cadfc66ad38c9fd74b8bc235e7e02a17e1db"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "odd/tasks/resolve-import-key.md"
+      ],
+      "reason": ""
+    },
+    "findings": [],
+    "evidence": [
+      "The change adds one markdown feature document and touches no code, so it cannot cause a runtime regression.",
+      "The Specs S1-S5, task T1 and the Log entries L1-L2 agree with each other: the same flags, the exit codes, the JSON shape and the commit 259cb77 are described consistently throughout.",
+      "The diff alone cannot verify the claims about 259cb77 (the 506-line count, the seven mutant failures, the lookup at internal/memory/import.go). They are recorded evidence, not defects in this change."
+    ]
+  }
+}

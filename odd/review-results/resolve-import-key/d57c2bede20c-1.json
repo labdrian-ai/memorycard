@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "4f8b1a0f304c5ca4f6245f1b3f2d593d26e08127",
+    "head": "d57c2bede20c6d260cd82b55789b9d75f98d2cc7",
+    "diff_sha256": "28e2db983ff0355d203c7e92b70a1f3de4b7637640a42364cb3d5b74a18a4af4",
+    "paths": [
+      "internal/cli/cli.go",
+      "internal/cli/resolve_test.go",
+      "odd/tasks/resolve-import-key.md"
+    ]
+  },
+  "rows": [
+    "recall",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "4f8b1a0f304c5ca4f6245f1b3f2d593d26e08127",
+      "head": "d57c2bede20c6d260cd82b55789b9d75f98d2cc7",
+      "diff_sha256": "28e2db983ff0355d203c7e92b70a1f3de4b7637640a42364cb3d5b74a18a4af4"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "internal/cli/cli.go",
+        "internal/cli/resolve_test.go",
+        "odd/tasks/resolve-import-key.md"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "WARNING",
+        "location": "odd/tasks/resolve-import-key.md:3",
+        "claim": "The delivery line is rewritten from \"owner's standing merge ok\" to \"standing merge ok (green CI, clear review check)\". The wording no longer says who gave the approval, and it adds merge conditions that the diff does not show the owner agreed to. The author changed the merge authorization in the same commit that answers its own review. The commit message presents this as a refactor with \"Risk: none\" and does not mention the change.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/resolve-import-key.md:3"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/resolve-import-key.md:22",
+        "claim": "The L2 entry (line 22) still says the only shared code changed is the `prefixFlag` comment. This commit renames that type, so the sentence now points at a name that no longer exists in the code. L3 does record the rename, but the stale statement stays in the log without a pointer to it.",
+        "evidence_class": "deterministic",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/resolve-import-key.md:22",
+          "internal/cli/cli.go:282-287"
+        ]
+      },
+      {
+        "id": "F3",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/resolve-import-key.md:28",
+        "claim": "The F3 answer relies on the claim that the second `switch` in `Run` follows `a.open()`, and L3 states that `list`'s tests pass. Neither claim can be checked from this diff, and `Run` is not touched here. The log presents both as verified fact, but it only cites a code location.",
+        "evidence_class": "inferential",
+        "causal_disposition": "unknown",
+        "proof_refs": [
+          "odd/tasks/resolve-import-key.md:27-28"
+        ]
+      }
+    ],
+    "evidence": [
+      "The rename in internal/cli/cli.go is applied consistently at the type definition, its two methods, and the two uses in list and resolve. I found no leftover reference to prefixFlag in the diff.",
+      "The Scan error check in resolve_test.go calls t.Fatal from the test goroutine inside a closure. The closure is called synchronously, so this is valid.",
+      "The doc edits are the only changes that go beyond what the commit message describes."
+    ]
+  }
+}

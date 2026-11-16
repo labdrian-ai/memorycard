@@ -1,0 +1,25 @@
+{
+  "kind": "sweeper",
+  "base": "0f273c850122265724bc2bbcde292d19a06b1f93",
+  "head": "259cb775a8e10c255be3ae35e49cf3252f1e2157",
+  "diff_sha256": "e95a2eccd773899eb4872dc6719a81af1a5032eb70ebe3998e437f720db6f47c",
+  "sweep": "259cb775a8e1-1.sweep.json",
+  "commit": null,
+  "candidates": [
+    {
+      "candidate": "T2 errcheck .: internal/cli/resolve_test.go: unchecked error: (select count(*) from memory_versions), (select coalesce(sum(use_count),0) from memories)`).Scan(&m, &im, &v, &u)",
+      "disposition": "finding",
+      "evidence": "d57c2be checks the Scan error with t.Fatal in TestResolveWritesNothing (odd/tasks/resolve-import-key.md L3)."
+    },
+    {
+      "candidate": "T2 errcheck .: internal/cli/resolve_test.go: unchecked error: defer db.Close()",
+      "disposition": "live",
+      "evidence": "Deferred Close in a test follows the repository convention (internal/cli list tests do the same); a close error cannot change a test outcome. Answered in L3."
+    },
+    {
+      "candidate": "T2 errcheck .: internal/cli/resolve_test.go: unchecked error: defer raw.Close()",
+      "disposition": "live",
+      "evidence": "Same convention as the deferred db.Close; the read-only probe handle is closed at test end. Answered in L3."
+    }
+  ]
+}
