@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "733c8e071c37a5174a619e728e610435fdf27dce",
+    "head": "d9943f969528a59bdd4568f27a92c4af61e0f96c",
+    "diff_sha256": "e57fa2e9acaafb069690e6f06a687c8b22711fab6a9b3ec2e679b39dcad2c026",
+    "paths": [
+      "README.md",
+      "internal/cli/cli.go",
+      "internal/memory/list.go",
+      "internal/memory/list_test.go"
+    ]
+  },
+  "rows": [
+    "recall",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "733c8e071c37a5174a619e728e610435fdf27dce",
+      "head": "d9943f969528a59bdd4568f27a92c4af61e0f96c",
+      "diff_sha256": "e57fa2e9acaafb069690e6f06a687c8b22711fab6a9b3ec2e679b39dcad2c026"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "README.md",
+        "internal/cli/cli.go",
+        "internal/memory/list.go",
+        "internal/memory/list_test.go"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "WARNING",
+        "location": "internal/memory/list.go:76-82",
+        "claim": "The commit claims to be docs-only with Risk: none, but it changes runtime ordering in List by adding an id tiebreaker (out[i].ID < out[j].ID) when base key and part number are equal. Previously equal rows compared as equal and, with an unstable sort.Slice, their order was undefined; now it is deterministic. This is a behavior change not disclosed in the commit message. Also, the sort comparator code before the hunk is not visible, so the claimed sibling-key ordering (doc/big, doc/big/part-2, doc/big-x) cannot be confirmed from the diff alone; the new test relies on existing code to satisfy it.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/list.go:76-82"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "SUGGESTION",
+        "location": "internal/cli/cli.go:45-48",
+        "claim": "The help text wrapping leaves an orphan line ('is recorded; a') that breaks the column layout of the usage block, reducing readability of the help output.",
+        "evidence_class": "deterministic",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/cli/cli.go:45-48"
+        ]
+      }
+    ],
+    "evidence": [
+      "The diff changes the comparator in internal/memory/list.go to add an ID tiebreaker, which is a runtime change under a commit labelled docs with Risk: none.",
+      "The sort's earlier lines (computing base key bi/bj and part numbers ni/nj) are outside the diff, so the sibling-key ordering is only verified by the new test, not by visible code.",
+      "The cli.go usage text rewrap leaves a short dangling line 'is recorded; a'."
+    ]
+  }
+}

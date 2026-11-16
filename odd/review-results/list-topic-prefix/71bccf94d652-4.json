@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "f3944a581a0f82aa7c337691ba67df8fc6add21e",
+    "head": "71bccf94d6521ff9dec1a0c30bdcb29dae61c1b9",
+    "diff_sha256": "f8097d5fd6d59a7b92517f4b4f119ea396df8d48faf71640bf30ca85db34b5cb",
+    "paths": [
+      "odd/tasks/list-topic-prefix.md"
+    ]
+  },
+  "rows": [
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "f3944a581a0f82aa7c337691ba67df8fc6add21e",
+      "head": "71bccf94d6521ff9dec1a0c30bdcb29dae61c1b9",
+      "diff_sha256": "f8097d5fd6d59a7b92517f4b4f119ea396df8d48faf71640bf30ca85db34b5cb"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "odd/tasks/list-topic-prefix.md"
+      ],
+      "reason": ""
+    },
+    "findings": [],
+    "evidence": [
+      "The diff adds one Log entry (L6) to odd/tasks/list-topic-prefix.md and changes no code, tests, or contract text (S2).",
+      "The quoted hash 22e75a0402f9650ca2acaa25750311af9d05acb6 is 40 hex characters and begins with the 22e75a04 prefix cited in L5, so it is consistent with the earlier entry.",
+      "The 8-character form in L5 is left in place on purpose, which matches L5's own rule that Log entries are dated records. L6 states the full hash without contradicting L5.",
+      "The diff cannot show whether the hash exists in the overlay repository. That is a cross-repository fact outside this diff, so it is not a finding."
+    ]
+  }
+}

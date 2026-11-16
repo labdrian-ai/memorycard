@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "d9943f969528a59bdd4568f27a92c4af61e0f96c",
+    "head": "5d29f4d274110b4a8ebf6c171bd4d0c1769749d2",
+    "diff_sha256": "4feabbaddc80f05230e8e00a22279914e081a285d78afc6279b4756b05f74a8e",
+    "paths": [
+      "internal/cli/cli.go",
+      "internal/memory/list.go",
+      "internal/memory/list_test.go"
+    ]
+  },
+  "rows": [
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "d9943f969528a59bdd4568f27a92c4af61e0f96c",
+      "head": "5d29f4d274110b4a8ebf6c171bd4d0c1769749d2",
+      "diff_sha256": "4feabbaddc80f05230e8e00a22279914e081a285d78afc6279b4756b05f74a8e"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "internal/cli/cli.go",
+        "internal/memory/list.go",
+        "internal/memory/list_test.go"
+      ],
+      "reason": ""
+    },
+    "findings": [],
+    "evidence": [
+      "The diff only rewraps usage text in internal/cli/cli.go and a doc comment in internal/memory/list.go; no executable code changed there.",
+      "The only added logic is the test TestListOrdersEqualDocumentKeyAndPartNumberByID in internal/memory/list_test.go. The id tie-break it pins was introduced in an earlier commit (d9943f9), not in this diff, so it is not attributable to this change.",
+      "The test relies on ids increasing in insertion order and on the same key being allowed in two scopes. Both follow from its own comments. The diff does not show the comparator, so I could not verify the ordering independently."
+    ]
+  }
+}

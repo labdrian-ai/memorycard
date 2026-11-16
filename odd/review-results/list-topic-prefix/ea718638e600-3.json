@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "0a2af25d548822c88c20cdaa4ca9fc8216881407",
+    "head": "ea718638e600816e7fe827fbf6644d4e6d735277",
+    "diff_sha256": "fc9efb5fe113f1f3cdc2fbec245c7f2f37bb93de54217ff994f6ab1e6289df16",
+    "paths": [
+      "odd/tasks/list-topic-prefix.md"
+    ]
+  },
+  "rows": [
+    "recall",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "0a2af25d548822c88c20cdaa4ca9fc8216881407",
+      "head": "ea718638e600816e7fe827fbf6644d4e6d735277",
+      "diff_sha256": "fc9efb5fe113f1f3cdc2fbec245c7f2f37bb93de54217ff994f6ab1e6289df16"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "odd/tasks/list-topic-prefix.md"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "WARNING",
+        "location": "odd/tasks/list-topic-prefix.md:9",
+        "claim": "S2 now states that the overlay document records the extension (scope, order, --project default) for T25b, and L4 says this is fixed. This commit changes only odd/tasks/list-topic-prefix.md, so the diff does not show the overlay document being updated. If it was not updated, the spec points readers to a record that does not exist. The claim cannot be checked from this change.",
+        "evidence_class": "inferential",
+        "causal_disposition": "unknown",
+        "proof_refs": [
+          "odd/tasks/list-topic-prefix.md:9",
+          "odd/tasks/list-topic-prefix.md:25"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/list-topic-prefix.md:22",
+        "claim": "This commit removes the hard-coded `cli.go:282-284` range because line ranges go stale, but the L2 log entry in the same file still cites `internal/store/schema.go:98-99`. The same staleness fix was applied to one citation and not the other. This is the base's existing pattern, not something the commit introduced.",
+        "evidence_class": "inferential",
+        "causal_disposition": "pre-existing",
+        "proof_refs": [
+          "odd/tasks/list-topic-prefix.md:22",
+          "odd/tasks/list-topic-prefix.md:25"
+        ]
+      },
+      {
+        "id": "F3",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/list-topic-prefix.md:9",
+        "claim": "The S2 contract paragraph is now one very long line. It nests parentheticals, which makes the order rule and the --project default hard to read. The new L4 entry says 'fixed in this entry's commit' without naming a hash.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/list-topic-prefix.md:9",
+          "odd/tasks/list-topic-prefix.md:25"
+        ]
+      }
+    ],
+    "evidence": [
+      "The diff changes only documentation in one file: S2 is reworded and an L4 log entry is added.",
+      "The head-side line numbers come from the hunk headers: S2 is line 9 and L4 is line 25.",
+      "The claims about the `a.project()` flag default, `render.ListJSON` and the overlay document cannot be verified from the diff alone."
+    ]
+  }
+}

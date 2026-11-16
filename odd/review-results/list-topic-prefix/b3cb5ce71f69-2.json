@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "89178c7fc36f7eaddcd0229c4212cf90981d3335",
+    "head": "b3cb5ce71f69809ca1754d416c41520f3cd057e4",
+    "diff_sha256": "9bce089f8fb7bb8ba7df545e23dacdf7acb2dcda11dab25862ade88739eee4e4",
+    "paths": [
+      "README.md",
+      "internal/cli/cli.go",
+      "internal/cli/list_test.go",
+      "internal/memory/list.go",
+      "internal/memory/list_test.go",
+      "internal/render/list.go"
+    ]
+  },
+  "rows": [
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "89178c7fc36f7eaddcd0229c4212cf90981d3335",
+      "head": "b3cb5ce71f69809ca1754d416c41520f3cd057e4",
+      "diff_sha256": "9bce089f8fb7bb8ba7df545e23dacdf7acb2dcda11dab25862ade88739eee4e4"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "README.md",
+        "internal/cli/cli.go",
+        "internal/cli/list_test.go",
+        "internal/memory/list.go",
+        "internal/memory/list_test.go",
+        "internal/render/list.go"
+      ],
+      "reason": ""
+    },
+    "findings": [],
+    "evidence": [
+      "Read the whole diff; no tools were available, so nothing was run.",
+      "The query in internal/memory/list.go matches prefixes with substr(topic_key, 1, length(?)) = ? bound as parameters, so '_' and '%' are literal. It filters on project and status = 'active', excludes NULL topic keys, and issues only a SELECT.",
+      "internal/cli/cli.go validates input as documented: an empty project, no prefix or an empty prefix gives ErrListInput, which exits 2 with the usage line. A stray positional argument also exits 2, and an option parse error returns 2.",
+      "render.ListJSON builds the memories slice with make(..., len(ms)), so an empty result encodes as [] and never null. The listedJSON(m) struct conversion is valid because the field names and types are identical.",
+      "Not checked: the memories schema (the status column) and the existing a.flags helper, which this diff does not show."
+    ]
+  }
+}

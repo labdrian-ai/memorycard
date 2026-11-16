@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "71bccf94d6521ff9dec1a0c30bdcb29dae61c1b9",
+    "head": "9ba137ff6372ea94066ad97c43c3abe8e645a360",
+    "diff_sha256": "209f0378678924466ac0e2fd39dfc4c8be1962694e811c97ded5238f79cb259d",
+    "paths": [
+      "odd/tasks/list-topic-prefix.md"
+    ]
+  },
+  "rows": [
+    "recall",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "71bccf94d6521ff9dec1a0c30bdcb29dae61c1b9",
+      "head": "9ba137ff6372ea94066ad97c43c3abe8e645a360",
+      "diff_sha256": "209f0378678924466ac0e2fd39dfc4c8be1962694e811c97ded5238f79cb259d"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "odd/tasks/list-topic-prefix.md"
+      ],
+      "reason": ""
+    },
+    "findings": [],
+    "evidence": [
+      "The change appends one Log entry (L7) to odd/tasks/list-topic-prefix.md and touches nothing else.",
+      "L7 follows the append-only convention that L5 set out: it leaves L5's text unchanged and points to L6, the next entry, as the place that resolves the short hash.",
+      "The full hash in L7 matches the one in L6, and the review it cites (71bccf9) matches the base commit.",
+      "The numbering and date format are consistent with L1-L6, so I found no defect that this commit causes."
+    ]
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "1dfacc1d837c6d78dcd75cb749f3e2c6401f7caf",
+    "head": "30d4f03201bc0e35d972382f4e13cece636dd383",
+    "diff_sha256": "ac8497bae3598647e197e81ae0163dc2c467c369c5f94464356260130cbdf1d7",
+    "paths": [
+      "README.md",
+      "internal/cli/cli.go",
+      "internal/cli/list_test.go",
+      "internal/memory/list.go",
+      "internal/memory/list_test.go",
+      "internal/render/list.go"
+    ]
+  },
+  "rows": [
+    "recall",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "1dfacc1d837c6d78dcd75cb749f3e2c6401f7caf",
+      "head": "30d4f03201bc0e35d972382f4e13cece636dd383",
+      "diff_sha256": "ac8497bae3598647e197e81ae0163dc2c467c369c5f94464356260130cbdf1d7"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "README.md",
+        "internal/cli/cli.go",
+        "internal/cli/list_test.go",
+        "internal/memory/list.go",
+        "internal/memory/list_test.go",
+        "internal/render/list.go"
+      ],
+      "reason": ""
+    },
+    "findings": [],
+    "evidence": [
+      "internal/memory/list.go: the select list and rows.Scan both gain scope in the same position, so columns and destinations match.",
+      "internal/render/list.go: listedJSON gains Scope between TopicKey and Title, the same order as Listed. The code that builds listedJSON is outside the diff, so I could not check that it copies Scope. The new CLI test asserts Scope == \"project\", which would catch a missing copy.",
+      "The README, the help text and the tests all describe the five-key JSON shape, and the text output is untouched, as the commit claims. I found no defect this change causes."
+    ]
+  }
+}

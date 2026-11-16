@@ -113,6 +113,33 @@ directory's, the memories go to that repository's project. A pinned
   default) does not translate: its dense ranking already matches across
   languages.
 
+### List (`memorycard list`)
+
+`memorycard list --topic-prefix P [--topic-prefix P2 ...] [--project NAME]
+[--json]` lists the active memories of a project whose topic key starts with
+any given prefix. Rows are ordered by their document key (a part
+`<key>/part-N` counts as `<key>`), then by part number, then by id: a
+document's parts stay together and in part order (`part-2` before `part-10`),
+so `doc/big`, `doc/big/part-2`, `doc/big-x`. It is for tools that read a
+family of keys (for example `procedural/candidates/`), not for finding things.
+
+- Read-only: it records no read, so `use_count` and `last_used_at` stay as
+  they are (`get` counts a use; `list` does not).
+- Prefixes match literally: `_` and `%` are ordinary characters. A memory with
+  no topic key never matches; superseded and archived memories are left out.
+- Rows are listed as stored: a document saved in parts comes back as its
+  parts (`<key>`, `<key>/part-2`, ...), each with its own body, not joined.
+- A topic key can be live in several scopes (`project`, `personal`,
+  `global`) and `list` returns each, so every JSON memory carries its `scope`.
+- Text output is one line per memory, `#<id> <topic key>: <title>`, or
+  `no results`; it does not show the scope (use `--json` to tell them apart).
+  `--json` prints one object:
+  `{"project": "p", "memories": [{"id": 7, "topic_key": "k/a",
+  "scope": "project", "title": "T", "body": "..."}]}`, with `memories` always
+  an array (`[]` when none match).
+- `--project` defaults to the project the other commands resolve; an empty
+  one, no `--topic-prefix` or an empty prefix exits 2 with the usage line.
+
 ### Get (`memorycard get`, `mem_get`)
 
 `memorycard get [--history] <id>` prints the current version only, ending with

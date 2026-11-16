@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "89178c7fc36f7eaddcd0229c4212cf90981d3335",
+    "head": "b3cb5ce71f69809ca1754d416c41520f3cd057e4",
+    "diff_sha256": "9bce089f8fb7bb8ba7df545e23dacdf7acb2dcda11dab25862ade88739eee4e4",
+    "paths": [
+      "README.md",
+      "internal/cli/cli.go",
+      "internal/cli/list_test.go",
+      "internal/memory/list.go",
+      "internal/memory/list_test.go",
+      "internal/render/list.go"
+    ]
+  },
+  "rows": [
+    "recall",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "89178c7fc36f7eaddcd0229c4212cf90981d3335",
+      "head": "b3cb5ce71f69809ca1754d416c41520f3cd057e4",
+      "diff_sha256": "9bce089f8fb7bb8ba7df545e23dacdf7acb2dcda11dab25862ade88739eee4e4"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "README.md",
+        "internal/cli/cli.go",
+        "internal/cli/list_test.go",
+        "internal/memory/list.go",
+        "internal/memory/list_test.go",
+        "internal/render/list.go"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "WARNING",
+        "location": "internal/memory/list.go:50",
+        "claim": "Rows are ordered by `topic_key` as text, so a document saved in 10 or more parts comes back out of order: `<key>/part-10` sorts before `<key>/part-2`. The README presents the output as a document's parts in order, and the only split test covers 2 parts. Whether realistic documents split into 10 or more parts cannot be shown from this diff.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/list.go:50",
+          "README.md:130-131"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "SUGGESTION",
+        "location": "internal/cli/cli.go:286-292",
+        "claim": "The query runs before the extra positional arguments are checked. A call such as `list --topic-prefix a/ extra` first executes the database query and only then exits 2. If the query fails, the user sees a database error instead of the usage line. Checking `fs.NArg()` straight after parsing would avoid both.",
+        "evidence_class": "deterministic",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/cli/cli.go:286-292"
+        ]
+      }
+    ],
+    "evidence": [
+      "The diff was read in full. The list.go query is parameterised and uses substr, so prefixes match literally. The `status='active'` and `topic_key is not null` filters are present, and the query only reads, so no use is recorded.",
+      "render.ListJSON builds `Memories` with make(), so an empty result encodes as [] rather than null. The `listedJSON(m)` struct conversion compiles because the field names and types match.",
+      "The README example and the CLI usage text agree with the implemented output format."
+    ]
+  }
+}

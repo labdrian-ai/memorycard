@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "71bccf94d6521ff9dec1a0c30bdcb29dae61c1b9",
+    "head": "9ba137ff6372ea94066ad97c43c3abe8e645a360",
+    "diff_sha256": "209f0378678924466ac0e2fd39dfc4c8be1962694e811c97ded5238f79cb259d",
+    "paths": [
+      "odd/tasks/list-topic-prefix.md"
+    ]
+  },
+  "rows": [
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "71bccf94d6521ff9dec1a0c30bdcb29dae61c1b9",
+      "head": "9ba137ff6372ea94066ad97c43c3abe8e645a360",
+      "diff_sha256": "209f0378678924466ac0e2fd39dfc4c8be1962694e811c97ded5238f79cb259d"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "odd/tasks/list-topic-prefix.md"
+      ],
+      "reason": ""
+    },
+    "findings": [],
+    "evidence": [
+      "The diff adds one Log line (L7) to odd/tasks/list-topic-prefix.md and changes no code.",
+      "L7 cites review of `71bccf9`, which matches the base hash prefix 71bccf94.",
+      "L7 gives the full hash 22e75a0402f9650ca2acaa25750311af9d05acb6, which is identical to the one in L6.",
+      "L7 correctly says L6 follows L5, so L5 is left unchanged as an append-only record.",
+      "The entry numbering continues in sequence from L6 to L7, and the line contradicts nothing else in the visible context."
+    ]
+  }
+}

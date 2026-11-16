@@ -40,6 +40,16 @@ commands:
                            range (both inclusive) and let keyword search return
                            session summaries, as --type session_summary does
   get    [--history] <id>  print one memory; --history adds its earlier versions
+  list   --topic-prefix P [--topic-prefix P2 ...] [--project NAME] [--json]
+                           list the active memories of a project whose topic key
+                           starts with any prefix (literal match); ordered by
+                           document key (a part <key>/part-N counts as <key>),
+                           then part number, then id; read-only: no use count
+                           is recorded; a memory saved in parts is listed as
+                           its parts; text is one "#id topic: title" line each,
+                           --json prints {"project", "memories": [{id,
+                           topic_key, scope, title, body}]} with memories [] when none
+                           match
   context [--project P] [--query Q | <query>]
                            print the project digest: pinned, up to 3 stale
                            decisions, then recent memories, one line per
@@ -112,7 +122,7 @@ func Run(args []string, in io.Reader, out, errOut io.Writer, getenv func(string)
 		return 0
 	case "session":
 		return a.session(rest)
-	case "mcp", "save", "search", "get", "context", "stats", "embed", "import", "capture":
+	case "mcp", "save", "search", "get", "list", "context", "stats", "embed", "import", "capture":
 	default:
 		fmt.Fprintf(errOut, "unknown command %q\n%s", cmd, usage)
 		return 2
@@ -137,6 +147,8 @@ func Run(args []string, in io.Reader, out, errOut io.Writer, getenv func(string)
 		return a.search(ctx, svc, rest)
 	case "get":
 		return a.get(ctx, svc, rest)
+	case "list":
+		return a.list(ctx, svc, rest)
 	case "context":
 		return a.context(ctx, svc, rest)
 	case "stats":
@@ -253,6 +265,48 @@ func (a *app) search(ctx context.Context, svc *memory.Service, args []string) in
 		return a.fail(err)
 	}
 	fmt.Fprint(a.out, render.Search(r))
+	return 0
+}
+
+// prefixFlag collects every --topic-prefix given.
+type prefixFlag []string
+
+func (p *prefixFlag) String() string     { return strings.Join(*p, ",") }
+func (p *prefixFlag) Set(v string) error { *p = append(*p, v); return nil }
+
+func (a *app) list(ctx context.Context, svc *memory.Service, args []string) int {
+	const usage = "usage: memorycard list --topic-prefix P [--topic-prefix P2 ...] [--project NAME] [--json]"
+	fs := a.flags("list")
+	var prefixes prefixFlag
+	var asJSON bool
+	project := a.project()
+	fs.Var(&prefixes, "topic-prefix", "topic key prefix, repeatable")
+	fs.StringVar(&project, "project", project, "project")
+	fs.BoolVar(&asJSON, "json", false, "print JSON")
+	if fs.Parse(args) != nil {
+		return 2
+	}
+	if fs.NArg() > 0 {
+		fmt.Fprintln(a.err, usage)
+		return 2
+	}
+	ms, err := svc.List(ctx, memory.ListInput{Project: project, TopicPrefixes: prefixes})
+	if errors.Is(err, memory.ErrListInput) {
+		fmt.Fprintln(a.err, usage)
+		return 2
+	}
+	if err != nil {
+		return a.fail(err)
+	}
+	if !asJSON {
+		fmt.Fprint(a.out, render.List(ms))
+		return 0
+	}
+	s, err := render.ListJSON(project, ms)
+	if err != nil {
+		return a.fail(err)
+	}
+	fmt.Fprint(a.out, s)
 	return 0
 }
 

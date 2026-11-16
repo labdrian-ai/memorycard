@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "b3cb5ce71f69809ca1754d416c41520f3cd057e4",
+    "head": "733c8e071c37a5174a619e728e610435fdf27dce",
+    "diff_sha256": "879a3ece01246335000de1179f25c2e4d8e97bc69c100474e07cb94c0494c699",
+    "paths": [
+      "README.md",
+      "internal/cli/cli.go",
+      "internal/cli/list_test.go",
+      "internal/memory/list.go",
+      "internal/memory/list_test.go"
+    ]
+  },
+  "rows": [
+    "recall",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "b3cb5ce71f69809ca1754d416c41520f3cd057e4",
+      "head": "733c8e071c37a5174a619e728e610435fdf27dce",
+      "diff_sha256": "879a3ece01246335000de1179f25c2e4d8e97bc69c100474e07cb94c0494c699"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "README.md",
+        "internal/cli/cli.go",
+        "internal/cli/list_test.go",
+        "internal/memory/list.go",
+        "internal/memory/list_test.go"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "internal/memory/list.go:71-79",
+        "claim": "The comparator orders by the part's base key, not by the full topic key. A part's base key sorts it next to its document, ahead of keys that sit between them in text order. For example, \"a/b-c\" and \"a/b/c\" now fall differently relative to \"a/b/part-2\" than the documented \"topic key then id\" ordering gives. The README says only that parts come in part order, so this wider reordering of unrelated keys is undocumented. It is a minor behavior change for consumers who read a key family.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/list.go:71-79",
+          "README.md:120-121"
+        ]
+      }
+    ],
+    "evidence": [
+      "The diff has two behavior changes: the CLI now rejects extra args before querying, and List re-sorts results with a stable sort on (base key, part number).",
+      "The comparator is a consistent strict weak order and the sort is stable, so ties keep the SQL order. Atoi overflow falls back to treating the key as its own base.",
+      "The CLI reordering is correct. Extra positional args now return exit 2 before the query, and the new test covers the case where a positional arg comes before the flags.",
+      "The new memory test depends on helpers (partKey, listKeys, paragraphs) that are not in the diff. I assumed they exist in the base."
+    ]
+  }
+}
