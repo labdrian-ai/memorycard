@@ -117,8 +117,10 @@ directory's, the memories go to that repository's project. A pinned
 
 `memorycard list --topic-prefix P [--topic-prefix P2 ...] [--project NAME]
 [--json]` lists the active memories of a project whose topic key starts with
-any given prefix, ordered by topic key then id, except that a document's parts
-come in part order (`part-2` before `part-10`). It is for tools that read a
+any given prefix. Rows are ordered by their document key (a part
+`<key>/part-N` counts as `<key>`), then by part number, then by id: a
+document's parts stay together and in part order (`part-2` before `part-10`),
+so `doc/big`, `doc/big/part-2`, `doc/big-x`. It is for tools that read a
 family of keys (for example `procedural/candidates/`), not for finding things.
 
 - Read-only: it records no read, so `use_count` and `last_used_at` stay as

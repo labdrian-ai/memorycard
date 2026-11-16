@@ -42,8 +42,10 @@ commands:
   get    [--history] <id>  print one memory; --history adds its earlier versions
   list   --topic-prefix P [--topic-prefix P2 ...] [--project NAME] [--json]
                            list the active memories of a project whose topic key
-                           starts with any prefix (literal match, ordered by
-                           topic key); read-only: no use count is recorded; a
+                           starts with any prefix (literal match); ordered by
+                           document key (a part <key>/part-N counts as <key>),
+                           then part number, then id; read-only: no use count
+                           is recorded; a
                            memory saved in parts is listed as its parts; text
                            is one "#id topic: title" line each, --json prints
                            {"project", "memories": [{id, topic_key, title,

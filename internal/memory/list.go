@@ -30,9 +30,10 @@ type Listed struct {
 }
 
 // List returns the active memories of a project whose topic key starts with
-// any given prefix, ordered by topic key (a document's parts in part order,
-// 2 before 10) then id. Prefixes match literally
-// (substr, never LIKE, so "_" and "%" in a key are ordinary characters) and
+// any given prefix. Rows are ordered by their document key (a part
+// <key>/part-N counts as <key>), then by part number, then by id. Prefixes
+// match literally (substr, never LIKE, so "_" and "%" in a key are ordinary
+// characters) and
 // memories with no topic key never match. It reads only: unlike Get it does
 // not touch use_count or last_used_at.
 func (s *Service) List(ctx context.Context, in ListInput) ([]Listed, error) {
@@ -75,7 +76,10 @@ func (s *Service) List(ctx context.Context, in ListInput) ([]Listed, error) {
 		if bi != bj {
 			return bi < bj
 		}
-		return ni < nj
+		if ni != nj {
+			return ni < nj
+		}
+		return out[i].ID < out[j].ID
 	})
 	return out, nil
 }

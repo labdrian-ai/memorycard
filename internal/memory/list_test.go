@@ -137,6 +137,17 @@ func TestListOrdersTenOrMorePartsNumerically(t *testing.T) {
 	}
 }
 
+func TestListKeepsADocumentsPartsBeforeASiblingKey(t *testing.T) {
+	s := newSvc(t)
+	// "-" sorts before "/" as text, yet the sibling follows the parts.
+	save(t, s, SaveInput{Project: "p", Title: "X", Body: "x", TopicKey: "doc/big-x"})
+	save(t, s, SaveInput{Project: "p", Title: "Big", Body: paragraphs(20, "big"), TopicKey: "doc/big"})
+	got, want := listKeys(t, s, "p", "doc/"), []string{"doc/big", "doc/big/part-2", "doc/big-x"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("order = %v, want %v", got, want)
+	}
+}
+
 func TestListRequiresProjectAndPrefix(t *testing.T) {
 	s := newSvc(t)
 	for _, in := range []ListInput{
