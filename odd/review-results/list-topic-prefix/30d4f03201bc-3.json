@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "1dfacc1d837c6d78dcd75cb749f3e2c6401f7caf",
+    "head": "30d4f03201bc0e35d972382f4e13cece636dd383",
+    "diff_sha256": "ac8497bae3598647e197e81ae0163dc2c467c369c5f94464356260130cbdf1d7",
+    "paths": [
+      "README.md",
+      "internal/cli/cli.go",
+      "internal/cli/list_test.go",
+      "internal/memory/list.go",
+      "internal/memory/list_test.go",
+      "internal/render/list.go"
+    ]
+  },
+  "rows": [
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "1dfacc1d837c6d78dcd75cb749f3e2c6401f7caf",
+      "head": "30d4f03201bc0e35d972382f4e13cece636dd383",
+      "diff_sha256": "ac8497bae3598647e197e81ae0163dc2c467c369c5f94464356260130cbdf1d7"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "README.md",
+        "internal/cli/cli.go",
+        "internal/cli/list_test.go",
+        "internal/memory/list.go",
+        "internal/memory/list_test.go",
+        "internal/render/list.go"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "internal/render/list.go:26",
+        "claim": "The diff only adds the Scope field to listedJSON. The code that builds listedJSON values from memory.Listed is not in the diff. If it uses a field-by-field literal, Scope would be emitted as an empty string. If it uses a struct conversion, it works. The new CLI test (list_test.go) would catch this, but the diff alone cannot confirm the mapping.",
+        "evidence_class": "inferential",
+        "causal_disposition": "unknown",
+        "proof_refs": [
+          "internal/render/list.go:23-28 adds the Scope field; no mapping change appears in the diff"
+        ]
+      }
+    ],
+    "evidence": [
+      "The SQL select and Scan in internal/memory/list.go are updated consistently: five columns, five scan targets.",
+      "Tests cover the JSON key count, the scope values, and the same key in two scopes.",
+      "Text output is unchanged, as the commit message claims.",
+      "The README and CLI help text were updated to match the new JSON shape."
+    ]
+  }
+}

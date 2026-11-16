@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "5d29f4d274110b4a8ebf6c171bd4d0c1769749d2",
+    "head": "1dfacc1d837c6d78dcd75cb749f3e2c6401f7caf",
+    "diff_sha256": "502665dcd175405893dae194425a417b0f9ccf3aeb1aada5a4e855ed9a7dce59",
+    "paths": [
+      "odd/tasks/list-topic-prefix.md"
+    ]
+  },
+  "rows": [
+    "recall",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "5d29f4d274110b4a8ebf6c171bd4d0c1769749d2",
+      "head": "1dfacc1d837c6d78dcd75cb749f3e2c6401f7caf",
+      "diff_sha256": "502665dcd175405893dae194425a417b0f9ccf3aeb1aada5a4e855ed9a7dce59"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "odd/tasks/list-topic-prefix.md"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/list-topic-prefix.md:9",
+        "claim": "The Specs contract (S2) omits the output ordering (document key, then part number, then id). The Log (L2) says the order was fixed and pinned across several commits, so the ordering is an implemented, tested behavior. A reader of Specs alone cannot learn it, and the document that is meant to be the source of truth is incomplete. The default of --project when omitted is also unstated.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/list-topic-prefix.md:9",
+          "odd/tasks/list-topic-prefix.md:18-20"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/list-topic-prefix.md:22",
+        "claim": "The last Log entry says the same topic key can appear twice, in two scopes. The S2 JSON shape ({id, topic_key, title, body}) has no scope field, so a consumer cannot tell the duplicates apart. The caveat is recorded only in the Log as a note for T25b, not in the Specs contract. The document does not say whether this is accepted behavior or a gap, and the Tasks list has no follow-up item for it.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/list-topic-prefix.md:9",
+          "odd/tasks/list-topic-prefix.md:22"
+        ]
+      },
+      {
+        "id": "F3",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/list-topic-prefix.md:16-21",
+        "claim": "L2 is hard to read. It packs the review answers of four commits into dense nested bullets that use shorthand such as 'F1 and F1 (2nd)', 'sweep T2' and 'RED' without defining it. The references to identifiers like 'sweep T2' and the 'F1/F2' review labels cannot be resolved from this document.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/list-topic-prefix.md:16-21"
+        ]
+      }
+    ],
+    "evidence": [
+      "The diff adds one new documentation file, with no code changes. Findings concern the completeness and readability of the document itself.",
+      "The Specs contract at line 9 contains no ordering statement, while Log lines 18-20 describe an ordering contract.",
+      "Line 22 describes duplicate topic keys across scopes, and the S2 JSON shape has no scope field."
+    ]
+  }
+}

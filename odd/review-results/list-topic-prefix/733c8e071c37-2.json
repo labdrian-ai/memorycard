@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "b3cb5ce71f69809ca1754d416c41520f3cd057e4",
+    "head": "733c8e071c37a5174a619e728e610435fdf27dce",
+    "diff_sha256": "879a3ece01246335000de1179f25c2e4d8e97bc69c100474e07cb94c0494c699",
+    "paths": [
+      "README.md",
+      "internal/cli/cli.go",
+      "internal/cli/list_test.go",
+      "internal/memory/list.go",
+      "internal/memory/list_test.go"
+    ]
+  },
+  "rows": [
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "b3cb5ce71f69809ca1754d416c41520f3cd057e4",
+      "head": "733c8e071c37a5174a619e728e610435fdf27dce",
+      "diff_sha256": "879a3ece01246335000de1179f25c2e4d8e97bc69c100474e07cb94c0494c699"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "README.md",
+        "internal/cli/cli.go",
+        "internal/cli/list_test.go",
+        "internal/memory/list.go",
+        "internal/memory/list_test.go"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "internal/memory/list.go:70-78",
+        "claim": "The Go-side sort groups parts under their base key and compares bases as plain strings. A sibling key that sorts between '<key>' and '<key>/part-N' in byte order, such as '<key>-x' ('-' is 0x2d, '/' is 0x2f), is now ordered after all of the document's parts. The SQL order would have put it before them. The result no longer matches the documented 'ordered by topic key then id' for such keys. The README exception covers only part numbering, not this regrouping. The effect is cosmetic and unlikely to matter in practice.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/list.go:70-78"
+        ]
+      }
+    ],
+    "evidence": [
+      "The diff shows the CLI now rejects extra args before calling svc.List, and the new test case covers 'list extra --topic-prefix a/'. I found no regression there.",
+      "The sort comparator maps each key to a (base, n) tuple, so it is a consistent strict weak ordering. Atoi overflow falls back safely, and the stable sort keeps the SQL id order for ties."
+    ]
+  }
+}

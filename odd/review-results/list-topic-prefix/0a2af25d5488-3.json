@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "30d4f03201bc0e35d972382f4e13cece636dd383",
+    "head": "0a2af25d548822c88c20cdaa4ca9fc8216881407",
+    "diff_sha256": "54632a39450da6163c0dd2e9bba9ac71464a9091a1181e95c881ca1bbfda4caa",
+    "paths": [
+      "odd/tasks/list-topic-prefix.md"
+    ]
+  },
+  "rows": [
+    "recall",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "30d4f03201bc0e35d972382f4e13cece636dd383",
+      "head": "0a2af25d548822c88c20cdaa4ca9fc8216881407",
+      "diff_sha256": "54632a39450da6163c0dd2e9bba9ac71464a9091a1181e95c881ca1bbfda4caa"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "odd/tasks/list-topic-prefix.md"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/list-topic-prefix.md:9",
+        "claim": "The newly stated order is ambiguous for a bare document key versus its parts. It does not say whether `<key>` itself sorts before `<key>/part-1`, or what part number a non-part row has. Both `d/part-2` and `d/part-02` count as part 2, which the spec only explains in L2. A reader of S2 cannot reproduce the order from it alone.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/list-topic-prefix.md:9 'Order: document key (a part `<key>/part-N` counts as `<key>`), then part number, then id.'"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/list-topic-prefix.md:9",
+        "claim": "S2 is still labelled 'Contract (overlay L37)' but now lists a `scope` field, an order and a default that are not in that overlay contract. The added-in note is inline and easy to miss. The overlay adapter (T25b) reads the overlay's contract and could miss `scope` and the repeated-key case. S2 also hard-codes the line range `internal/cli/cli.go:282-284`, which goes stale with the next edit to that file.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/list-topic-prefix.md:9 'Contract (overlay L37)' ... '`scope` added in `30d4f03`, L3' ... '`internal/cli/cli.go:282-284`'"
+        ]
+      }
+    ],
+    "evidence": [
+      "Only odd/tasks/list-topic-prefix.md changed, and it is documentation only. I checked its internal consistency: the T1 commit list, the S2 additions and the L3 log entry agree with each other.",
+      "I could not check the cited code facts (cli.go line range, project default resolution chain, README wording, the review of `1dfacc1`) because the diff shows no code.",
+      "30d4f03 is the base commit, so listing it in T1 and citing it in S2 is consistent."
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "kind": "sweeper",
+  "base": "89178c7fc36f7eaddcd0229c4212cf90981d3335",
+  "head": "b3cb5ce71f69809ca1754d416c41520f3cd057e4",
+  "diff_sha256": "9bce089f8fb7bb8ba7df545e23dacdf7acb2dcda11dab25862ade88739eee4e4",
+  "sweep": "b3cb5ce71f69-6.sweep.json",
+  "commit": null,
+  "candidates": [
+    {
+      "candidate": "T2 errcheck .: internal/memory/list.go: unchecked error: defer rows.Close()",
+      "disposition": "live",
+      "evidence": "Repository convention: every query in internal/ defers rows.Close() unchecked (internal/memory/ops.go:85, search.go:350, deleted.go:158, accept/accept.go:308, importer/engram.go:75) and returns rows.Err(), as list.go:63 does; a Close error after a full iteration carries nothing rows.Err() has not reported."
+    }
+  ]
+}

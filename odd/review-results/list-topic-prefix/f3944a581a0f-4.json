@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "ea718638e600816e7fe827fbf6644d4e6d735277",
+    "head": "f3944a581a0f82aa7c337691ba67df8fc6add21e",
+    "diff_sha256": "98fc3dcd548f0b3c77eab7a40d1d1076eeed22488b48a2da77a7905a53d9891e",
+    "paths": [
+      "odd/tasks/list-topic-prefix.md"
+    ]
+  },
+  "rows": [
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "ea718638e600816e7fe827fbf6644d4e6d735277",
+      "head": "f3944a581a0f82aa7c337691ba67df8fc6add21e",
+      "diff_sha256": "98fc3dcd548f0b3c77eab7a40d1d1076eeed22488b48a2da77a7905a53d9891e"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "odd/tasks/list-topic-prefix.md"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/list-topic-prefix.md:26",
+        "claim": "L5 answers the earlier review warning that this repository's diff cannot show the overlay document's extension. Its only evidence is a cross-repository commit hash (22e75a04) and the claim that it appends L42 and rewrites T25b. A reader of this repository cannot verify either, so the answer rests on an assertion. The entry does not say how to check it (for example, the overlay path and line). The hash is also abbreviated to 8 characters, unlike the 7-character hashes used elsewhere in the log.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/list-topic-prefix.md:26 (L5: 'overlay commit `22e75a04` ... appends L42')"
+        ]
+      }
+    ],
+    "evidence": [
+      "The diff is a single added Log entry (L5) in a docs file, with no code or behavior change.",
+      "L5's claims about this repository (L2 keeps its line citations, and ea71863 is the commit L4 meant by 'this entry's commit') are consistent with the L2 and L4 text visible in the diff context.",
+      "The overlay-side claim cannot be checked from the diff."
+    ]
+  }
+}

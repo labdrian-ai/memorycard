@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "0a2af25d548822c88c20cdaa4ca9fc8216881407",
+    "head": "ea718638e600816e7fe827fbf6644d4e6d735277",
+    "diff_sha256": "fc9efb5fe113f1f3cdc2fbec245c7f2f37bb93de54217ff994f6ab1e6289df16",
+    "paths": [
+      "odd/tasks/list-topic-prefix.md"
+    ]
+  },
+  "rows": [
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "0a2af25d548822c88c20cdaa4ca9fc8216881407",
+      "head": "ea718638e600816e7fe827fbf6644d4e6d735277",
+      "diff_sha256": "fc9efb5fe113f1f3cdc2fbec245c7f2f37bb93de54217ff994f6ab1e6289df16"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "odd/tasks/list-topic-prefix.md"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/list-topic-prefix.md:9",
+        "claim": "S2 now asserts that the overlay document records the extension (scope, order, --project default) for T25b, and L4 repeats it as 'fixed'. This commit changes only the list-topic-prefix document, so the diff does not show that the overlay was updated. If it was not, the spec points readers to a record that does not exist, and the T25b adapter could follow the older L37 contract.",
+        "evidence_class": "inferential",
+        "causal_disposition": "unknown",
+        "proof_refs": [
+          "odd/tasks/list-topic-prefix.md:9",
+          "odd/tasks/list-topic-prefix.md:25"
+        ]
+      }
+    ],
+    "evidence": [
+      "The commit changes one documentation file. The S2 edit adds the part-number and bare-key ordering text and replaces the cli.go line range with a handler and usage-text reference. L4 is the new log entry.",
+      "The overlay file odd/tasks/labdrian-orchestrator-opencode.md is not in the changed paths, so the claim that it records the extension cannot be confirmed from the diff.",
+      "No other change-caused defect found. The ordering text matches L2: part-2 and part-02 compare equal as integers."
+    ]
+  }
+}

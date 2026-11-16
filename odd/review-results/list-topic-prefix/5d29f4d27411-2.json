@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "d9943f969528a59bdd4568f27a92c4af61e0f96c",
+    "head": "5d29f4d274110b4a8ebf6c171bd4d0c1769749d2",
+    "diff_sha256": "4feabbaddc80f05230e8e00a22279914e081a285d78afc6279b4756b05f74a8e",
+    "paths": [
+      "internal/cli/cli.go",
+      "internal/memory/list.go",
+      "internal/memory/list_test.go"
+    ]
+  },
+  "rows": [
+    "recall",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "d9943f969528a59bdd4568f27a92c4af61e0f96c",
+      "head": "5d29f4d274110b4a8ebf6c171bd4d0c1769749d2",
+      "diff_sha256": "4feabbaddc80f05230e8e00a22279914e081a285d78afc6279b4756b05f74a8e"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "internal/cli/cli.go",
+        "internal/memory/list.go",
+        "internal/memory/list_test.go"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "internal/memory/list_test.go:151-171",
+        "claim": "The new test asserts the order [first, second, third], where third differs by scope and shares the key d/part-2 with first. Whether it pins the id tie-break depends on the part-number parse: the comment says d/part-02 and d/part-2 are both part 2, but the diff does not show that parsing. The test also cannot tell whether the comparator breaks ties by id or the query happens to return rows in insertion order. Ids ascend in insertion order, so a stable sort over insertion-ordered rows would pass without any tie-break. It would be stronger to save the rows in an order that does not match the expected id order, so only a real tie-break passes.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/list_test.go:154-160"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "SUGGESTION",
+        "location": "internal/cli/cli.go:44-52",
+        "claim": "The commit message says it only rewraps docs, but the description (and the comparator tie-break it documents) is pre-existing from the base. The rewrap is cosmetic. The usage text is fine, but the commit message's mention of behavior changing in d9943f9 is not reflected in this diff, so the history is misleading about what this commit changes.",
+        "evidence_class": "inferential",
+        "causal_disposition": "unknown",
+        "proof_refs": [
+          "internal/cli/cli.go:45-52"
+        ]
+      }
+    ],
+    "evidence": [
+      "The diff changes only the usage text wrapping in cli.go, the doc comment wrapping in list.go, and adds one test in list_test.go.",
+      "No production logic changes are visible in this diff, so no behavioral regression can be attributed to it.",
+      "The new test's ordering depends on insertion order versus id order, which could mask a missing tie-break."
+    ]
+  }
+}

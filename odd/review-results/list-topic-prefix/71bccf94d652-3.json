@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "f3944a581a0f82aa7c337691ba67df8fc6add21e",
+    "head": "71bccf94d6521ff9dec1a0c30bdcb29dae61c1b9",
+    "diff_sha256": "f8097d5fd6d59a7b92517f4b4f119ea396df8d48faf71640bf30ca85db34b5cb",
+    "paths": [
+      "odd/tasks/list-topic-prefix.md"
+    ]
+  },
+  "rows": [
+    "recall",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "f3944a581a0f82aa7c337691ba67df8fc6add21e",
+      "head": "71bccf94d6521ff9dec1a0c30bdcb29dae61c1b9",
+      "diff_sha256": "f8097d5fd6d59a7b92517f4b4f119ea396df8d48faf71640bf30ca85db34b5cb"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "odd/tasks/list-topic-prefix.md"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/list-topic-prefix.md:27",
+        "claim": "The commit subject says it cites the overlay commit by its full hash, but it only appends L6. L5 still cites the overlay commit as the 8-character `22e75a04`, so the Log gives the same commit in two forms. A reader of L5 alone gets the short, ambiguous form, and the full hash exists only in L6. The L6 hash `22e75a0402f9650ca2acaa25750311af9d05acb6` also cannot be checked from this diff, since it points to another repository.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/list-topic-prefix.md:27 (added L6 gives the full hash)",
+          "odd/tasks/list-topic-prefix.md:26 (L5, unchanged context, still cites `22e75a04`)"
+        ]
+      }
+    ],
+    "evidence": [
+      "The diff adds one Log line (L6) at line 27 and changes nothing else.",
+      "L5, context line 26, is unchanged and still contains the 8-character hash `22e75a04`.",
+      "The change is documentation only, so no behavioral regression is possible."
+    ]
+  }
+}

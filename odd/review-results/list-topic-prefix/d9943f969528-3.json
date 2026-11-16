@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "733c8e071c37a5174a619e728e610435fdf27dce",
+    "head": "d9943f969528a59bdd4568f27a92c4af61e0f96c",
+    "diff_sha256": "e57fa2e9acaafb069690e6f06a687c8b22711fab6a9b3ec2e679b39dcad2c026",
+    "paths": [
+      "README.md",
+      "internal/cli/cli.go",
+      "internal/memory/list.go",
+      "internal/memory/list_test.go"
+    ]
+  },
+  "rows": [
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "733c8e071c37a5174a619e728e610435fdf27dce",
+      "head": "d9943f969528a59bdd4568f27a92c4af61e0f96c",
+      "diff_sha256": "e57fa2e9acaafb069690e6f06a687c8b22711fab6a9b3ec2e679b39dcad2c026"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "README.md",
+        "internal/cli/cli.go",
+        "internal/memory/list.go",
+        "internal/memory/list_test.go"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "internal/memory/list.go:76-82",
+        "claim": "The commit labelled docs-only (Risk: none) changes runtime behavior: it adds an id tie-breaker to the sort comparator, so rows with the same document key and part number now order by id. The change is deterministic, matches the new documentation, and is not harmful, but the commit message and risk label do not disclose it. The sort is also presumably not stable (sort.Slice), so the old code's order for ties was nondeterministic; the change fixes that rather than regressing it.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/list.go:76-82"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "SUGGESTION",
+        "location": "internal/cli/cli.go:45-48",
+        "claim": "The help text wrapping leaves a short orphan line (\"is recorded; a\") in the usage block, which is cosmetic only. Separately, the Go doc comment in list.go leaves a short dangling line. No behavioral impact.",
+        "evidence_class": "deterministic",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/cli/cli.go:45-48"
+        ]
+      }
+    ],
+    "evidence": [
+      "Only the diff was available; the comparator's earlier lines (computing bi/bj and ni/nj) are not visible, so the correctness of the document-key derivation was judged from the new test, which expects doc/big, doc/big/part-2, doc/big-x.",
+      "The new tie-breaker compares out[i].ID < out[j].ID, which is a valid total order given unique IDs.",
+      "README, help text and doc comment all consistently describe the order: document key, then part number, then id."
+    ]
+  }
+}

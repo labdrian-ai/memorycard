@@ -1,0 +1,25 @@
+{
+  "kind": "sweep",
+  "base": "89178c7fc36f7eaddcd0229c4212cf90981d3335",
+  "head": "b3cb5ce71f69809ca1754d416c41520f3cd057e4",
+  "diff_sha256": "9bce089f8fb7bb8ba7df545e23dacdf7acb2dcda11dab25862ade88739eee4e4",
+  "outcome": "fired",
+  "t1": {
+    "deleted_or_renamed": [],
+    "removed_names": []
+  },
+  "t2": [
+    {
+      "tool": "errcheck",
+      "module": ".",
+      "new": [
+        "internal/memory/list.go: unchecked error: defer rows.Close()"
+      ]
+    }
+  ],
+  "t3": [],
+  "t4": {
+    "leftovers": [],
+    "orphaned_fixtures": []
+  }
+}

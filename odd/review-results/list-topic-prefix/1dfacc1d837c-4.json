@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "5d29f4d274110b4a8ebf6c171bd4d0c1769749d2",
+    "head": "1dfacc1d837c6d78dcd75cb749f3e2c6401f7caf",
+    "diff_sha256": "502665dcd175405893dae194425a417b0f9ccf3aeb1aada5a4e855ed9a7dce59",
+    "paths": [
+      "odd/tasks/list-topic-prefix.md"
+    ]
+  },
+  "rows": [
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "5d29f4d274110b4a8ebf6c171bd4d0c1769749d2",
+      "head": "1dfacc1d837c6d78dcd75cb749f3e2c6401f7caf",
+      "diff_sha256": "502665dcd175405893dae194425a417b0f9ccf3aeb1aada5a4e855ed9a7dce59"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "odd/tasks/list-topic-prefix.md"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/list-topic-prefix.md:9",
+        "claim": "The S2 contract omits the ordering rule (document key, part number, id) and the duplicate-key case that the Log (lines 19-22) describes as implemented behaviour. The JSON shape has no scope field, so a consumer cannot tell two rows with the same topic_key apart. The Specs are the stated source of truth, so these behaviours exist only in the Log and the spec is incomplete.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/list-topic-prefix.md:9",
+          "odd/tasks/list-topic-prefix.md:22"
+        ]
+      }
+    ],
+    "evidence": [
+      "The change adds only a documentation file. No code behaviour is affected.",
+      "S2 lists the JSON fields id, topic_key, title and body, and states no ordering. Log lines 19-22 state the ordering and that the same topic key can appear twice."
+    ]
+  }
+}
