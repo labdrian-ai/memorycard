@@ -97,6 +97,7 @@ func TestListBadUsageExitsTwo(t *testing.T) {
 		{"list", "--topic-prefix", ""},
 		{"list", "--topic-prefix", "a/", "--project", ""},
 		{"list", "--topic-prefix", "a/", "extra"},
+		{"list", "extra", "--topic-prefix", "a/"},
 		{"list", "--nope"},
 	} {
 		code, out, errOut := run(t, db, "", args...)

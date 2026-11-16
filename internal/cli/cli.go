@@ -284,8 +284,12 @@ func (a *app) list(ctx context.Context, svc *memory.Service, args []string) int 
 	if fs.Parse(args) != nil {
 		return 2
 	}
+	if fs.NArg() > 0 {
+		fmt.Fprintln(a.err, usage)
+		return 2
+	}
 	ms, err := svc.List(ctx, memory.ListInput{Project: project, TopicPrefixes: prefixes})
-	if errors.Is(err, memory.ErrListInput) || (err == nil && fs.NArg() > 0) {
+	if errors.Is(err, memory.ErrListInput) {
 		fmt.Fprintln(a.err, usage)
 		return 2
 	}

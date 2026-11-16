@@ -121,6 +121,22 @@ func TestListShowsSplitMemoryAsItsStoredParts(t *testing.T) {
 	}
 }
 
+func TestListOrdersTenOrMorePartsNumerically(t *testing.T) {
+	s := newSvc(t)
+	r := save(t, s, SaveInput{Project: "p", Title: "Huge", Body: paragraphs(130, "huge"), TopicKey: "doc/huge"})
+	if len(r.Parts) < 11 {
+		t.Fatalf("fixture made %d parts, want 11 or more", len(r.Parts))
+	}
+	got := listKeys(t, s, "p", "doc/")
+	want := []string{"doc/huge"}
+	for i := 2; i <= len(r.Parts); i++ {
+		want = append(want, partKey("doc/huge", i))
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("order = %v, want parts in part order %v", got, want)
+	}
+}
+
 func TestListRequiresProjectAndPrefix(t *testing.T) {
 	s := newSvc(t)
 	for _, in := range []ListInput{

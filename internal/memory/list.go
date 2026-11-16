@@ -3,6 +3,9 @@ package memory
 import (
 	"context"
 	"errors"
+	"regexp"
+	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -27,7 +30,8 @@ type Listed struct {
 }
 
 // List returns the active memories of a project whose topic key starts with
-// any given prefix, ordered by topic key then id. Prefixes match literally
+// any given prefix, ordered by topic key (a document's parts in part order,
+// 2 before 10) then id. Prefixes match literally
 // (substr, never LIKE, so "_" and "%" in a key are ordinary characters) and
 // memories with no topic key never match. It reads only: unlike Get it does
 // not touch use_count or last_used_at.
@@ -60,5 +64,34 @@ func (s *Service) List(ctx context.Context, in ListInput) ([]Listed, error) {
 		}
 		out = append(out, m)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// Text order puts "<key>/part-10" before "<key>/part-2"; order parts by
+	// number instead (ids are no guide: a re-save reuses the old part rows).
+	sort.SliceStable(out, func(i, j int) bool {
+		bi, ni := splitPartKey(out[i].TopicKey)
+		bj, nj := splitPartKey(out[j].TopicKey)
+		if bi != bj {
+			return bi < bj
+		}
+		return ni < nj
+	})
+	return out, nil
+}
+
+var partSuffix = regexp.MustCompile(`^(.*)/part-(\d+)$`)
+
+// splitPartKey returns the key a part belongs to and its part number; a key
+// that is not a part is its own base, number 0.
+func splitPartKey(key string) (string, int) {
+	m := partSuffix.FindStringSubmatch(key)
+	if m == nil {
+		return key, 0
+	}
+	n, err := strconv.Atoi(m[2])
+	if err != nil {
+		return key, 0
+	}
+	return m[1], n
 }
