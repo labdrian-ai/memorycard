@@ -148,6 +148,28 @@ func TestListKeepsADocumentsPartsBeforeASiblingKey(t *testing.T) {
 	}
 }
 
+func TestListOrdersEqualDocumentKeyAndPartNumberByID(t *testing.T) {
+	s := newSvc(t)
+	// "d/part-02" and "d/part-2" are both part 2 of "d"; as text the first
+	// sorts first, so only the id tie-break puts the older row first.
+	first := save(t, s, SaveInput{Project: "p", Title: "A", Body: "a", TopicKey: "d/part-2"}).ID
+	second := save(t, s, SaveInput{Project: "p", Title: "B", Body: "b", TopicKey: "d/part-02"}).ID
+	// The same key in two scopes is two live rows (the unique index covers
+	// project, scope and key), so it ties on key and part number as well.
+	third := save(t, s, SaveInput{Project: "p", Scope: "personal", Title: "C", Body: "c", TopicKey: "d/part-2"}).ID
+	got, err := s.List(context.Background(), ListInput{Project: "p", TopicPrefixes: []string{"d/"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ids := []int64{}
+	for _, m := range got {
+		ids = append(ids, m.ID)
+	}
+	if want := []int64{first, second, third}; !reflect.DeepEqual(ids, want) {
+		t.Errorf("ids = %v, want %v", ids, want)
+	}
+}
+
 func TestListRequiresProjectAndPrefix(t *testing.T) {
 	s := newSvc(t)
 	for _, in := range []ListInput{

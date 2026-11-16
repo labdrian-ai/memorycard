@@ -45,11 +45,11 @@ commands:
                            starts with any prefix (literal match); ordered by
                            document key (a part <key>/part-N counts as <key>),
                            then part number, then id; read-only: no use count
-                           is recorded; a
-                           memory saved in parts is listed as its parts; text
-                           is one "#id topic: title" line each, --json prints
-                           {"project", "memories": [{id, topic_key, title,
-                           body}]} with memories [] when none match
+                           is recorded; a memory saved in parts is listed as
+                           its parts; text is one "#id topic: title" line each,
+                           --json prints {"project", "memories": [{id,
+                           topic_key, title, body}]} with memories [] when none
+                           match
   context [--project P] [--query Q | <query>]
                            print the project digest: pinned, up to 3 stale
                            decisions, then recent memories, one line per

@@ -33,9 +33,8 @@ type Listed struct {
 // any given prefix. Rows are ordered by their document key (a part
 // <key>/part-N counts as <key>), then by part number, then by id. Prefixes
 // match literally (substr, never LIKE, so "_" and "%" in a key are ordinary
-// characters) and
-// memories with no topic key never match. It reads only: unlike Get it does
-// not touch use_count or last_used_at.
+// characters) and memories with no topic key never match. It reads only:
+// unlike Get it does not touch use_count or last_used_at.
 func (s *Service) List(ctx context.Context, in ListInput) ([]Listed, error) {
 	if in.Project == "" || len(in.TopicPrefixes) == 0 {
 		return nil, ErrListInput
