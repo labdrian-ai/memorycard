@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "334c9bee667f9cc2b672f3d24d5fa16f16abb158",
+    "head": "eee2c25fa466eb6f162120667dce6bb96a4130ad",
+    "diff_sha256": "65b17cd1d04da21e76b51342fce5d7d3acb07af492793608f36c60d78206ad8c",
+    "paths": [
+      "odd/tasks/resolve-import-key.md"
+    ]
+  },
+  "rows": [
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "334c9bee667f9cc2b672f3d24d5fa16f16abb158",
+      "head": "eee2c25fa466eb6f162120667dce6bb96a4130ad",
+      "diff_sha256": "65b17cd1d04da21e76b51342fce5d7d3acb07af492793608f36c60d78206ad8c"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "odd/tasks/resolve-import-key.md"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/resolve-import-key.md:33",
+        "claim": "L6 asserts that internal/cli/cli.go is unchanged between d57c2be and 334c9be, so L5's line numbers still hold. It also asserts a first-hand test run of 11 packages ok. The diff shows neither the file comparison nor the test output. Earlier log entries (L4, L5) were flagged for the same kind of unproven claim, so a reviewer cannot verify this one from the commit. A command or check (e.g. `git diff d57c2be 334c9be -- internal/cli/cli.go` was empty) would let the claim be verified.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/resolve-import-key.md:33"
+        ]
+      }
+    ],
+    "evidence": [
+      "The change touches only one documentation file: it rewrites the Delivery header line and appends the Log entry L6.",
+      "The rewritten header names the owner's standing ok, keeps the quoted text verbatim, and names the overlay's coordinating agent as the merger. This is consistent with the L6 F1 answer.",
+      "No code, tests, or behavior change, so no regression is possible. The only gap is that the new factual claims in L6 (unchanged cli.go, test run result) cannot be verified from the diff."
+    ]
+  }
+}

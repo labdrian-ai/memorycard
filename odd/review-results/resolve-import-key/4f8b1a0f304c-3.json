@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "259cb775a8e10c255be3ae35e49cf3252f1e2157",
+    "head": "4f8b1a0f304c5ca4f6245f1b3f2d593d26e08127",
+    "diff_sha256": "703400a2a052da4867b603e566c4cadfc66ad38c9fd74b8bc235e7e02a17e1db",
+    "paths": [
+      "odd/tasks/resolve-import-key.md"
+    ]
+  },
+  "rows": [
+    "recall",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "259cb775a8e10c255be3ae35e49cf3252f1e2157",
+      "head": "4f8b1a0f304c5ca4f6245f1b3f2d593d26e08127",
+      "diff_sha256": "703400a2a052da4867b603e566c4cadfc66ad38c9fd74b8bc235e7e02a17e1db"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "odd/tasks/resolve-import-key.md"
+      ],
+      "reason": ""
+    },
+    "findings": [],
+    "evidence": [
+      "The change adds one documentation file and no code, so it cannot regress behavior.",
+      "The spec items S1-S5, task T1 and logs L1-L2 agree with each other on the contract, the usage line, the JSON shape, exit codes and the commit 259cb77.",
+      "The size note is arithmetically consistent: 320 test lines plus 26 README lines leave about 160 for code, within a 506-line total.",
+      "I could not check the claims about the external overlay document, the code in 259cb77, or the mutant result, since only this diff is visible. The diff gives no evidence that any of them is wrong."
+    ]
+  }
+}

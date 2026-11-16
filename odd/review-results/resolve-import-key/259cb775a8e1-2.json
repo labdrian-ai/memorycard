@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "0f273c850122265724bc2bbcde292d19a06b1f93",
+    "head": "259cb775a8e10c255be3ae35e49cf3252f1e2157",
+    "diff_sha256": "e95a2eccd773899eb4872dc6719a81af1a5032eb70ebe3998e437f720db6f47c",
+    "paths": [
+      "README.md",
+      "internal/cli/cli.go",
+      "internal/cli/resolve_test.go",
+      "internal/memory/resolve.go",
+      "internal/memory/resolve_test.go",
+      "internal/render/resolve.go"
+    ]
+  },
+  "rows": [
+    "recall",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "0f273c850122265724bc2bbcde292d19a06b1f93",
+      "head": "259cb775a8e10c255be3ae35e49cf3252f1e2157",
+      "diff_sha256": "e95a2eccd773899eb4872dc6719a81af1a5032eb70ebe3998e437f720db6f47c"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "README.md",
+        "internal/cli/cli.go",
+        "internal/cli/resolve_test.go",
+        "internal/memory/resolve.go",
+        "internal/memory/resolve_test.go",
+        "internal/render/resolve.go"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "internal/cli/cli.go:282-284",
+        "claim": "The type prefixFlag is now reused for --key but keeps its topic-prefix name; the comment was updated while the name was not, so `var keys prefixFlag` reads misleadingly.",
+        "evidence_class": "deterministic",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/cli/cli.go:282-284",
+          "internal/cli/cli.go:327"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "SUGGESTION",
+        "location": "internal/memory/resolve.go:42-57",
+        "claim": "Resolve issues one query per key with no transaction, so a many-key call does N round trips and the answers do not come from one consistent snapshot if an import runs concurrently. Not a correctness defect for typical use.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/memory/resolve.go:42-57"
+        ]
+      },
+      {
+        "id": "F3",
+        "severity": "SUGGESTION",
+        "location": "internal/cli/cli.go:343-345",
+        "claim": "A missing or empty --source and an empty --key are only detected after opening the service, so a usage error needs a working store. Validation could happen in the CLI before Run opens the database, which would give exit 2 even when the store is unavailable.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "internal/cli/cli.go:134-162",
+          "internal/cli/cli.go:343-346"
+        ]
+      }
+    ],
+    "evidence": [
+      "Reviewed all six changed paths in the diff. Resolve reads only import_map (part = 1) and writes nothing; the text and JSON output match the documented formats, and null memory_id is produced via a pointer. Usage errors exit 2 with the usage line. No behavior defect found; only readability and minor robustness notes."
+    ]
+  }
+}

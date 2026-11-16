@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "0f273c850122265724bc2bbcde292d19a06b1f93",
+    "head": "259cb775a8e10c255be3ae35e49cf3252f1e2157",
+    "diff_sha256": "e95a2eccd773899eb4872dc6719a81af1a5032eb70ebe3998e437f720db6f47c",
+    "paths": [
+      "README.md",
+      "internal/cli/cli.go",
+      "internal/cli/resolve_test.go",
+      "internal/memory/resolve.go",
+      "internal/memory/resolve_test.go",
+      "internal/render/resolve.go"
+    ]
+  },
+  "rows": [
+    "risk-line"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "0f273c850122265724bc2bbcde292d19a06b1f93",
+      "head": "259cb775a8e10c255be3ae35e49cf3252f1e2157",
+      "diff_sha256": "e95a2eccd773899eb4872dc6719a81af1a5032eb70ebe3998e437f720db6f47c"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "README.md",
+        "internal/cli/cli.go",
+        "internal/cli/resolve_test.go",
+        "internal/memory/resolve.go",
+        "internal/memory/resolve_test.go",
+        "internal/render/resolve.go"
+      ],
+      "reason": ""
+    },
+    "findings": [],
+    "evidence": [
+      "Service.Resolve in internal/memory/resolve.go only runs a select on import_map with part = 1, so it writes nothing and leaves use_count untouched.",
+      "The CLI handler returns exit 2 with the usage line for ErrResolveInput and for positional arguments, and it reports an unknown key with exit 0 as claimed.",
+      "render.Resolve and render.ResolveJSON keep the input order and duplicates and emit memory_id null for an unknown key, matching the stated behavior.",
+      "The new 'resolve' case is added to the command dispatch list and the switch in Run.",
+      "I found no defect this change introduces. I could not see the base code (flags helper, service opening), so this review rests on the diff alone."
+    ]
+  }
+}

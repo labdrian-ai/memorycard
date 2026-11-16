@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "binding": {
+    "base": "514a997c2449e42a4ebd499788c27b8f1fb5314c",
+    "head": "334c9bee667f9cc2b672f3d24d5fa16f16abb158",
+    "diff_sha256": "c1bcd34a6fe4e928c1b7b78aa686ac1bec0303cce1c24b78e46ba42afe7749b9",
+    "paths": [
+      "odd/tasks/resolve-import-key.md"
+    ]
+  },
+  "rows": [
+    "recall",
+    "readability"
+  ],
+  "reply": {
+    "candidate": {
+      "base": "514a997c2449e42a4ebd499788c27b8f1fb5314c",
+      "head": "334c9bee667f9cc2b672f3d24d5fa16f16abb158",
+      "diff_sha256": "c1bcd34a6fe4e928c1b7b78aa686ac1bec0303cce1c24b78e46ba42afe7749b9"
+    },
+    "inspection": {
+      "status": "completed",
+      "paths": [
+        "odd/tasks/resolve-import-key.md"
+      ],
+      "reason": ""
+    },
+    "findings": [
+      {
+        "id": "F1",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/resolve-import-key.md:3",
+        "claim": "The Delivery line now says the PR is 'merged by the coordinator', and the reader can't tell who that is. The document shown in this diff never defines the role. The owner's authority is demoted to a parenthetical, so the line no longer says plainly that the owner's standing ok is what allows the merge. This is close to what L4 F1 flagged earlier, when the delivery line dropped the owner. A reader who doesn't know the coordinator role can't tell who acts or under whose authority.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/resolve-import-key.md:3 (+Delivery: one PR, merged by the coordinator once CI is green ... (the merge rule the owner made general ...))"
+        ]
+      },
+      {
+        "id": "F2",
+        "severity": "SUGGESTION",
+        "location": "odd/tasks/resolve-import-key.md:32",
+        "claim": "L5 F2 gives line numbers (140, 122, 148) in internal/cli/cli.go at d57c2be, and says the builder's test run was 'reported as every package ok'. The diff doesn't show either claim. The test result is second-hand, so the entry only restates the evidence-free answer L4 was criticized for. The line numbers are also fragile and will go stale as the file changes.",
+        "evidence_class": "inferential",
+        "causal_disposition": "introduced",
+        "proof_refs": [
+          "odd/tasks/resolve-import-key.md:32 (+calls `a.open()` at line 140 ... the builder's, reported as every package `ok`)"
+        ]
+      }
+    ],
+    "evidence": [
+      "The only changed file is odd/tasks/resolve-import-key.md. The diff rewrites the Delivery header line and appends the L5 Log entry.",
+      "Nothing in the diff lets me check the cli.go line references or the test-run claim."
+    ]
+  }
+}
